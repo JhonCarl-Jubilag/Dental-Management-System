@@ -1,0 +1,157 @@
+.logout-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.logout-card {
+  background: white;
+  border-radius: 20px;
+  padding: 50px 40px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 450px;
+  width: 100%;
+  animation: fadeInUp 0.5s ease;
+}
+
+.logout-icon {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.logout-icon i {
+  font-size: 4rem;
+}
+
+.logout-icon i.fa-sign-out-alt {
+  color: #4d83d4;
+}
+
+.logout-icon i.fa-check-circle {
+  color: #27ae60;
+  animation: none;
+}
+
+.logout-icon i.fa-exclamation-circle {
+  color: #e74c3c;
+  animation: none;
+}
+
+.logout-card h2 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.logout-message {
+  color: #666;
+  margin-bottom: 30px;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.logout-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4d83d4;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 25px;
+}
+
+.logout-redirect {
+  font-size: 0.95rem !important;
+  color: #999 !important;
+  margin-top: 20px;
+}
+
+.logout-home-btn {
+  background: #4d83d4;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.logout-home-btn:hover {
+  background: #354D70;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 480px) {
+  .logout-card {
+    padding: 40px 20px;
+  }
+  
+  .logout-icon {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .logout-icon i {
+    font-size: 3rem;
+  }
+  
+  .logout-card h2 {
+    font-size: 1.5rem;
+  }
+  
+  .logout-message {
+    font-size: 1rem;
+  }
+  
+  .logout-spinner {
+    width: 50px;
+    height: 50px;
+  }
+}

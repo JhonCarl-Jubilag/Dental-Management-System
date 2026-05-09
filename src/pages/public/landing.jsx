@@ -54,9 +54,10 @@ const Landing = () => {
     return '🦷'; // Default icon
   };
 
-  // Fetch services from Supabase
   useEffect(() => {
     fetchServices();
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchServices = async () => {

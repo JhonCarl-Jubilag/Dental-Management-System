@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';  // <-- Remove extra }
 import { useAuth } from '../../contexts/AuthContext';
 import './login.css';
 import DentalLogo from '../../assets/DentalLogo.png';
@@ -10,17 +10,16 @@ import bg4 from '../../assets/bg4.jpg';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn, user, userType, signOut } = useAuth();
+  const { signIn, user, userType, signOut, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('patient');
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({ email: '', password: '', general: '' });
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
+  const [redirecting, setRedirecting] = useState(false);
   
-  // Popup notification state
   const [toast, setToast] = useState({ show: false, message: '', type: 'error' });
 
-  // Auto-hide toast after 3 seconds
   useEffect(() => {
     if (toast.show) {
       const timer = setTimeout(() => {
@@ -30,35 +29,53 @@ const Login = () => {
     }
   }, [toast.show]);
 
-  // Listen for userType changes after login
   useEffect(() => {
-    if (user && userType) {
-      const isPatientTab = activeTab === 'patient';
-      const isPatientRole = userType === 'patient';
+    console.log('Login - Auth state changed:', { 
+      user: user?.email, 
+      userType, 
+      activeTab, 
+      authLoading,
+      redirecting 
+    });
+    
+    if (redirecting) return;
+    
+    if (user && userType && !authLoading) {
+      setRedirecting(true);
       
-      if (isPatientTab && !isPatientRole) {
-        signOut();
-        showToast('You are not a patient. Please use the Staff Login tab.', 'error');
-        setLoading(false);
-        return;
-      }
-      
-      if (!isPatientTab && isPatientRole) {
-        signOut();
-        showToast('Patient accounts cannot access staff area. Please use the Patient Login tab.', 'error');
-        setLoading(false);
-        return;
-      }
-      
-      if (userType === 'patient') {
-        navigate('/');
-      } else if (userType === 'doctor' || userType === 'admin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/');
+      if (activeTab === 'staff') {
+        if (userType === 'admin') {
+          console.log('Redirecting admin to /admin/dashboard');
+          setTimeout(() => {
+            navigate('/admin/dashboard', { replace: true });
+          }, 100);
+        } else if (userType === 'doctor') {
+          console.log('Redirecting doctor to /doctor/dashboard');
+          setTimeout(() => {
+            navigate('/doctor/dashboard', { replace: true });
+          }, 100);
+        } else {
+          signOut();
+          showToast('Patient accounts cannot access staff area. Please use the Patient Login tab.', 'error');
+          setLoading(false);
+          setRedirecting(false);
+        }
+      } 
+      else if (activeTab === 'patient') {
+        if (userType === 'patient') {
+          console.log('Redirecting patient to home page');
+          setTimeout(() => {
+            navigate('/', { replace: true });
+          }, 100);
+        } else {
+          signOut();
+          showToast('Staff accounts cannot access patient area. Please use the Staff Login tab.', 'error');
+          setLoading(false);
+          setRedirecting(false);
+        }
       }
     }
-  }, [user, userType, activeTab, navigate, signOut]);
+  }, [user, userType, activeTab, navigate, signOut, authLoading, redirecting]);
 
   const showToast = (message, type = 'error') => {
     setToast({ show: true, message, type });
@@ -106,23 +123,14 @@ const Login = () => {
     setLoading(true);
     const result = await signIn(formData.email, formData.password);
 
-    if (result.success) {
-      // Check user type and redirect accordingly
-      if (userType === 'admin') {
-        navigate('/admin/dashboard');
-      } else if (userType === 'doctor') {
-        navigate('/doctor/dashboard');
-      } else {
-        navigate('/');
-      }
+    if (!result.success) {
+      setErrors({ ...errors, general: result.message || 'Invalid email or password' });
+      setLoading(false);
     }
   };
 
- 
-
   return (
     <div className="login-container">
-      {/* Toast Popup Notification */}
       {toast.show && (
         <div className={`toast-notification ${toast.type} ${toast.show ? 'show' : ''}`}>
           <div className="toast-icon">
@@ -158,7 +166,7 @@ const Login = () => {
         <div className="color-overlay"></div>
       </div>
 
-        <div className="login-wrapper">
+      <div className="login-wrapper">
         <div className="form-wrapper">
           <div className="form-header">
             <div className="logo-container">
@@ -166,9 +174,9 @@ const Login = () => {
                 <img src={DentalLogo} alt="Fifthcusp Logo" />
               </div>
               <div className="logo-text-wrapp">
-             <span className="logo-system-name">Fifthcusp</span>
-             <span className="logo-sub-name">Dental Clinic</span>
-             </div>
+                <span className="logo-system-name">Fifthcusp</span>
+                <span className="logo-sub-name">Dental Clinic</span>
+              </div>
             </div>
             <p className="subtitle">Access your dental clinic account</p>
           </div>
@@ -194,6 +202,13 @@ const Login = () => {
             <div className="alert alert-info">
               <i className="fas fa-info-circle"></i>
               For doctors and administrators only. Use your clinic email and password.
+            </div>
+          )}
+
+          {errors.general && (
+            <div className="alert alert-error">
+              <i className="fas fa-exclamation-circle"></i>
+              {errors.general}
             </div>
           )}
 

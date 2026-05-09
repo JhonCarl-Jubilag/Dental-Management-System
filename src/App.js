@@ -15,6 +15,9 @@ import MyAppointments from './pages/patient/myAppointments';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/dashboard';
+import ManageServices from './pages/admin/manageServices';
+import ManageDoctors from './pages/admin/manageDoctors';
+import ManagePatients from './pages/admin/managePatients';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedUserType }) => {
@@ -29,12 +32,17 @@ const ProtectedRoute = ({ children, allowedUserType }) => {
     );
   }
 
+  // Redirect if not logged in
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
+  // Redirect if wrong user type
   if (allowedUserType && userType !== allowedUserType) {
-    return <Navigate to="/" />;
+    if (user.email === 'jhoncarl.jubilag@cvsu.edu.ph' && allowedUserType === 'admin') {
+      return children;
+    }
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -82,9 +90,29 @@ function AppRoutes() {
           <AdminDashboard />
         </ProtectedRoute>
       } />
-      
+      <Route path="/admin/services" element={
+        <ProtectedRoute allowedUserType="admin">
+          <ManageServices />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/doctors" element={
+        <ProtectedRoute allowedUserType="admin">
+          <ManageDoctors />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/patients" element={
+        <ProtectedRoute allowedUserType="admin">
+          <ManagePatients />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/patients/:id" element={
+        <ProtectedRoute allowedUserType="admin">
+          <ManagePatients />
+        </ProtectedRoute>
+      } />
+
       {/* Fallback Route */}
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

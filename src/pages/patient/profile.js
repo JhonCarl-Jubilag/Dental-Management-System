@@ -4,6 +4,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import './Profile.css';
+import DentalLogo from '../../assets/DentalLogo.png';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -185,8 +186,8 @@ const Profile = () => {
       {/* Modern Navigation Bar */}
       <nav className="modern-nav">
         <div className="nav-container">
-          <Link to="/" className="logo">
-            <div className="logo-placeholder"></div>
+          <Link to="/profile" className="logo">
+            <img src={DentalLogo} alt="Fifthcusp Dental Clinic Logo" className="logo-image" />
             <div className="logo-text-wrapper">
               <span className="logo-main-text">Fifthcusp</span>
               <span className="logo-sub-text">Dental Clinic</span>
@@ -231,7 +232,7 @@ const Profile = () => {
 
       {/* Main Profile Content */}
       <div className="profile-container">
-        <div className="profile-header">
+        <div className="profile-headerss">
           <h1>My Profile</h1>
           <p>Manage your personal information and account settings</p>
         </div>

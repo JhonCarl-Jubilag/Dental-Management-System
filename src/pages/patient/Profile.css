@@ -223,19 +223,19 @@ body {
   padding: 40px 20px;
 }
 
-.profile-header {
+.profile-headerss {
   text-align: center;
   margin-bottom: 40px;
 }
 
-.profile-header h1 {
+.profile-headerss h1 {
   font-size: 2.5rem;
   color: #354D70;
   margin-bottom: 10px;
   font-weight: 700;
 }
 
-.profile-header p {
+.profile-headerss p {
   color: #666;
   font-size: 1.1rem;
   padding-right: 200px;
@@ -676,11 +676,11 @@ body {
     padding: 20px;
   }
   
-  .profile-header h1 {
+  .profile-headerss h1 {
     font-size: 1.8rem;
   }
   
-  .profile-header p {
+  .profile-headerss p {
     font-size: 0.9rem;
     padding: 0 10px;
   }

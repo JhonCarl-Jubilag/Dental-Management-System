@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import './bookAppointment.css';
+import DentalLogo from '../../assets/DentalLogo.png';
 
 const BookAppointment = () => {
   const [searchParams] = useSearchParams();
@@ -361,8 +362,8 @@ const BookAppointment = () => {
     <div className="booking-page">
       <nav className="modern-nav">
         <div className="nav-container">
-          <Link to="/" className="logo">
-            <div className="logo-placeholder"></div>
+          <Link to="/book-appointment" className="logo">
+            <img src={DentalLogo} alt="Fifthcusp Dental Clinic Logo" className="logo-image" />
             <div className="logo-text-wrapper">
               <span className="logo-main-text">Fifthcusp</span>
               <span className="logo-sub-text">Dental Clinic</span>

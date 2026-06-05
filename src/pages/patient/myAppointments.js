@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import './MyAppointments.css';
+import DentalLogo from '../../assets/DentalLogo.png';
 
 const MyAppointments = () => {
   const { user, userDetails, loading: authLoading, signOut } = useAuth();
@@ -499,8 +500,8 @@ const MyAppointments = () => {
     <div className="my-appointments-page">
       <nav className="modern-nav">
         <div className="nav-container">
-          <Link to="/" className="logo">
-            <div className="logo-placeholder"></div>
+          <Link to="/my-appointments" className="logo">
+            <img src={DentalLogo} alt="Fifthcusp Dental Clinic Logo" className="logo-image" />
             <div className="logo-text-wrapper">
               <span className="logo-main-text">Fifthcusp</span>
               <span className="logo-sub-text">Dental Clinic</span>

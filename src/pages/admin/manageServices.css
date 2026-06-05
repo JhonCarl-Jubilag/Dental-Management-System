@@ -288,26 +288,6 @@
   color: #7f8c8d;
 }
 
-.manage-services-page .alert {
-  padding: 12px 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  font-weight: 500;
-  border-left: 4px solid;
-}
-
-.manage-services-page .alert-error {
-  background: #ffeaea;
-  color: #c33;
-  border-left-color: #e74c3c;
-}
-
-.manage-services-page .alert-success {
-  background: #e8f7ed;
-  color: #27ae60;
-  border-left-color: #27ae60;
-}
-
 .manage-services-page .modal {
   position: fixed;
   top: 0;

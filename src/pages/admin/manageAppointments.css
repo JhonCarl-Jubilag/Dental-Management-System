@@ -299,23 +299,6 @@
   100% { transform: rotate(360deg); }
 }
 
-.manage-appointments-page .alert {
-  padding: 12px 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  font-weight: 500;
-}
-.manage-appointments-page .alert-error {
-  background: #ffeaea;
-  color: #c33;
-  border-left: 4px solid #e74c3c;
-}
-.manage-appointments-page .alert-success {
-  background: #e8f7ed;
-  color: #27ae60;
-  border-left: 4px solid #27ae60;
-}
-
 .manage-appointments-page .modal {
   position: fixed;
   top: 0;

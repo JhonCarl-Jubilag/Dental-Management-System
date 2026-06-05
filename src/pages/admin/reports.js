@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
@@ -41,8 +43,7 @@ const Reports = () => {
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [generatingPdf, setGeneratingPdf] = useState(false); 
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   // Report filters
   const [reportType, setReportType] = useState('financial');
@@ -454,7 +455,6 @@ const Reports = () => {
   // Main fetch depending on report type
   const fetchAllData = useCallback(async () => {
     setLoading(true);
-    setError('');
     try {
       await fetchOverallStats();
       if (reportType === 'financial') {
@@ -468,7 +468,7 @@ const Reports = () => {
       }
     } catch (err) {
       console.error(err);
-      setError('Error loading report data');
+      toast.error('Error loading report data');
     } finally {
       setLoading(false);
     }
@@ -527,7 +527,7 @@ const Reports = () => {
       pdf.save(`Fifthcusp_${reportTitle}_${startDate}_to_${endDate}.pdf`);
     } catch (err) {
       console.error('PDF generation error:', err);
-      setError('Failed to generate PDF. Please try again.');
+      toast.error('Failed to generate PDF. Please try again.');
     } finally {
       setGeneratingPdf(false);
     }
@@ -599,8 +599,6 @@ const Reports = () => {
             </div>
           </div>
         </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
 
         <div className="report-filters">
           <div className="filter-grid">
@@ -744,7 +742,7 @@ const Reports = () => {
                     <thead><tr><th>Doctor</th><th>Specialization</th><th>Total Apps</th><th>Completed</th><th>Cancelled</th><th>Completion Rate</th></tr></thead>
                     <tbody>
                       {appointmentData.doctorLoad.map(d => (
-                        <tr key={d.doctor_name}><td>{d.doctor_name}</td><td>{d.specialization}</td><td>{d.total_appointments}</td><td>{d.completed_count}</td><td>{d.cancelled_count}</td><td><span className={`badge ${d.completion_rate > 80 ? 'badge-success' : (d.completion_rate > 60 ? 'badge-warning' : 'badge-danger')}`}>{d.completion_rate}%</span></td></tr>
+                        <tr key={d.doctor_name}><td>{d.doctor_name}</td><td>{d.specialization}</td><td>{d.total_appointments}</td><td>{d.completed_count}</td><td>{d.cancelled_count}</td><td className={`badge ${d.completion_rate > 80 ? 'badge-success' : (d.completion_rate > 60 ? 'badge-warning' : 'badge-danger')}`}>{d.completion_rate}%</td></tr>
                       ))}
                     </tbody>
                   </table>
@@ -856,7 +854,7 @@ const Reports = () => {
                     <thead><tr><th>Doctor</th><th>Unique Patients</th><th>Total Apps</th><th>Avg Apps/Patient</th><th>Repeat Patients</th><th>Repeat Rate</th></tr></thead>
                     <tbody>
                       {doctorPerformanceData.satisfaction.map(d => (
-                        <tr key={d.doctor_name}><td>{d.doctor_name}</td><td>{d.unique_patients}</td><td>{d.total_appointments}</td><td>{d.avg_appointments_per_patient}</td><td>{d.repeat_patients}</td><td><span className={`badge ${d.repeat_rate > 40 ? 'badge-success' : (d.repeat_rate > 20 ? 'badge-warning' : 'badge-danger')}`}>{d.repeat_rate}%</span></td></tr>
+                        <tr key={d.doctor_name}><td>{d.doctor_name}</td><td>{d.unique_patients}</td><td>{d.total_appointments}</td><td>{d.avg_appointments_per_patient}</td><td>{d.repeat_patients}</td><td className={`badge ${d.repeat_rate > 40 ? 'badge-success' : (d.repeat_rate > 20 ? 'badge-warning' : 'badge-danger')}`}>{d.repeat_rate}%</td></tr>
                       ))}
                     </tbody>
                   </table>
@@ -873,6 +871,7 @@ const Reports = () => {
       </div>
 
       {isLoggingOut && <div className="logout-overlay"><div className="logout-content"><i className="fas fa-spinner fa-spin"></i><p>Logging out...</p></div></div>}
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };

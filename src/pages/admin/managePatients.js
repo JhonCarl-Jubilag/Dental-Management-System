@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
@@ -42,7 +44,6 @@ const ManagePatients = () => {
   const isSuperAdmin = user?.email === 'jhoncarl.jubilag@cvsu.edu.ph';
   if (!user || (userType !== 'admin' && !isSuperAdmin)) return null;
 
-  // Same user info as ManageServices
   const adminName = isSuperAdmin ? 'Super Admin' : (user?.email?.split('@')[0] || 'Admin');
   const adminInitial = adminName.charAt(0).toUpperCase();
 
@@ -77,6 +78,7 @@ const ManagePatients = () => {
           </div>
         </div>
       )}
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };
@@ -84,8 +86,6 @@ const ManagePatients = () => {
 const PatientList = ({ onViewDetail, user, isSuperAdmin, adminName, adminInitial }) => {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -143,7 +143,6 @@ const PatientList = ({ onViewDetail, user, isSuperAdmin, adminName, adminInitial
 
   const fetchPatients = useCallback(async () => {
     setLoading(true);
-    setError('');
     try {
       let query = supabase.from('patients').select('*', { count: 'exact' });
       if (debouncedSearch) {
@@ -160,7 +159,7 @@ const PatientList = ({ onViewDetail, user, isSuperAdmin, adminName, adminInitial
       setTotalCount(count || 0);
       setTotalPages(Math.ceil((count || 0) / perPage));
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -174,21 +173,20 @@ const PatientList = ({ onViewDetail, user, isSuperAdmin, adminName, adminInitial
   const handleAddPatient = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
     if (addForm.password !== addForm.confirm_password) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       setIsSubmitting(false);
       return;
     }
     if (addForm.password.length < 8) {
-      setError('Password must be at least 8 characters');
+      toast.error('Password must be at least 8 characters');
       setIsSubmitting(false);
       return;
     }
     try {
       const { data: existing } = await supabase.from('patients').select('patient_id').eq('email', addForm.email).maybeSingle();
       if (existing) {
-        setError('A patient with this email already exists');
+        toast.error('A patient with this email already exists');
         setIsSubmitting(false);
         return;
       }
@@ -213,7 +211,7 @@ const PatientList = ({ onViewDetail, user, isSuperAdmin, adminName, adminInitial
         status: 'active'
       }]);
       if (insertError) throw insertError;
-      setSuccess('Patient added successfully!');
+      toast.success('Patient added successfully!');
       setShowAddModal(false);
       setAddForm({
         first_name: '', last_name: '', email: '', password: '', confirm_password: '',
@@ -221,9 +219,8 @@ const PatientList = ({ onViewDetail, user, isSuperAdmin, adminName, adminInitial
       });
       fetchPatients();
       fetchStats();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -249,7 +246,6 @@ const PatientList = ({ onViewDetail, user, isSuperAdmin, adminName, adminInitial
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
             <i className="fas fa-plus"></i> Add New Patient
           </button>
-          {/* User Info - same as ManageServices */}
           <div className="user-info">
             <div className="user-avatar">{adminInitial}</div>
             <div className="user-details">
@@ -259,9 +255,6 @@ const PatientList = ({ onViewDetail, user, isSuperAdmin, adminName, adminInitial
           </div>
         </div>
       </div>
-
-      {error && <div className="alert alert-error">{error}</div>}
-      {success && <div className="alert alert-success">{success}</div>}
 
       <div className="stats-grid">
         <div className="stat-card"><div className="stat-value">{stats.total}</div><div className="stat-label">Total Patients</div></div>
@@ -345,7 +338,7 @@ const PatientList = ({ onViewDetail, user, isSuperAdmin, adminName, adminInitial
                           </button>
                         </div>
                       </div>
-                    </td>
+                     </td>
                     <td style={{ verticalAlign: 'middle' }}>📧 {patient.email}<br />📱 {patient.contact_no || 'N/A'}</td>
                     <td style={{ verticalAlign: 'middle' }}>{patient.birthday ? new Date(patient.birthday).toLocaleDateString() : 'N/A'}<br />{patient.age ? `${patient.age} years old` : ''}</td>
                     <td style={{ verticalAlign: 'middle' }}><span className={`status-badge status-${patient.status}`}>{patient.status === 'active' ? 'Active' : 'Inactive'}</span></td>
@@ -391,8 +384,6 @@ const PatientList = ({ onViewDetail, user, isSuperAdmin, adminName, adminInitial
 const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, adminInitial }) => {
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', contact_no: '', address: '', birthday: '' });
   const [showResetModal, setShowResetModal] = useState(false);
@@ -423,7 +414,7 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
         birthday: data.birthday || ''
       });
     } catch (err) {
-      setError('Failed to load patient details');
+      toast.error('Failed to load patient details');
     } finally {
       setLoading(false);
     }
@@ -438,7 +429,6 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
   const handleEditPatient = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
     try {
       const { data: existing, error: checkErr } = await supabase
         .from('patients')
@@ -448,7 +438,7 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
         .maybeSingle();
       if (checkErr && checkErr.code !== 'PGRST116') throw checkErr;
       if (existing) {
-        setError('Email already exists for another patient');
+        toast.error('Email already exists for another patient');
         setIsSubmitting(false);
         return;
       }
@@ -466,12 +456,11 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
         })
         .eq('patient_id', patientId);
       if (updateErr) throw updateErr;
-      setSuccess('Patient updated successfully');
+      toast.success('Patient updated successfully');
       setEditMode(false);
       fetchPatient();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -487,22 +476,21 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
         .update({ status: newStatus })
         .eq('patient_id', patientId);
       if (error) throw error;
-      setSuccess(`Patient ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
+      toast.success(`Patient ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
       fetchPatient();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     }
   };
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
     if (resetForm.new_password !== resetForm.confirm_password) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
     if (resetForm.new_password.length < 8) {
-      setError('Password must be at least 8 characters');
+      toast.error('Password must be at least 8 characters');
       return;
     }
     setIsSubmitting(true);
@@ -511,12 +499,11 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
         redirectTo: `${window.location.origin}/reset-password`
       });
       if (error) throw error;
-      setSuccess(`Password reset email sent to ${patient.email}`);
+      toast.success(`Password reset email sent to ${patient.email}`);
       setShowResetModal(false);
       setResetForm({ new_password: '', confirm_password: '' });
-      setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -543,9 +530,6 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
           <h1>Patient Profile</h1>
         </div>
       </div>
-
-      {error && <div className="alert alert-error">{error}</div>}
-      {success && <div className="alert alert-success">{success}</div>}
 
       <div className="patient-profile">
         <div className="profile-header">

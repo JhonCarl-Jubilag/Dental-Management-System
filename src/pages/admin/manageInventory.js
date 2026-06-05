@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
@@ -11,8 +13,6 @@ const ManageInventory = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [loading, setLoading] = useState(true);
   const [inventory, setInventory] = useState([]);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   // Filters & Pagination
   const [search, setSearch] = useState('');
@@ -69,7 +69,6 @@ const ManageInventory = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      // 1. Total active items
       const { count: total, error: totalError } = await supabase
         .from('inventory')
         .select('*', { count: 'exact', head: true })
@@ -77,7 +76,6 @@ const ManageInventory = () => {
       
       if (totalError) throw totalError;
 
-      // 2. Get all active items to compute low stock and total value
       const { data: items, error: itemsError } = await supabase
         .from('inventory')
         .select('stock_quantity, reorder_level, unit_cost')
@@ -85,7 +83,6 @@ const ManageInventory = () => {
       
       if (itemsError) throw itemsError;
 
-      // Count low stock items (stock_quantity <= reorder_level)
       let lowStockCount = 0;
       let totalValue = 0;
       
@@ -106,13 +103,12 @@ const ManageInventory = () => {
       });
     } catch (err) {
       console.error('Error fetching stats:', err);
-      setError('Failed to load statistics');
+      toast.error('Failed to load statistics');
     }
   }, []);
 
   const fetchInventory = useCallback(async () => {
     setLoading(true);
-    setError('');
     try {
       let query = supabase
         .from('inventory')
@@ -141,7 +137,7 @@ const ManageInventory = () => {
       setTotalCount(count || 0);
       setTotalPages(Math.ceil((count || 0) / perPage));
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -163,7 +159,6 @@ const ManageInventory = () => {
   const handleAddItem = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
     try {
       const { error } = await supabase
         .from('inventory')
@@ -179,14 +174,13 @@ const ManageInventory = () => {
           status: formData.status
         }]);
       if (error) throw error;
-      setSuccess('Item added successfully!');
+      toast.success('Item added successfully!');
       setShowAddModal(false);
       resetForm();
       fetchInventory();
       fetchStats();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -195,7 +189,6 @@ const ManageInventory = () => {
   const handleEditItem = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
     try {
       const { error } = await supabase
         .from('inventory')
@@ -212,14 +205,13 @@ const ManageInventory = () => {
         })
         .eq('item_id', selectedItem.item_id);
       if (error) throw error;
-      setSuccess('Item updated successfully!');
+      toast.success('Item updated successfully!');
       setShowEditModal(false);
       resetForm();
       fetchInventory();
       fetchStats();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -227,7 +219,6 @@ const ManageInventory = () => {
 
   const openAddModal = () => {
     resetForm();
-    setError('');
     setShowAddModal(true);
   };
 
@@ -261,6 +252,12 @@ const ManageInventory = () => {
     });
   };
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await signOut();
+    navigate('/login');
+  };
+
   if (authLoading) {
     return (
       <div className="admin-loading">
@@ -273,7 +270,7 @@ const ManageInventory = () => {
 
   return (
     <div className="admin-dashboard">
-      <Sidebar onLogout={async () => { setIsLoggingOut(true); await signOut(); navigate('/login'); }} />
+      <Sidebar onLogout={handleLogout} />
       <div className="main-content manage-inventory-page">
         <div className="dashboard-header">
           <div className="header-title">
@@ -293,9 +290,6 @@ const ManageInventory = () => {
             </div>
           </div>
         </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
 
         <div className="stats-grid">
           <div className="stat-card">
@@ -438,7 +432,7 @@ const ManageInventory = () => {
         </div>
       )}
 
-      {/* Edit Modal – includes stock quantity field */}
+      {/* Edit Modal */}
       {showEditModal && selectedItem && (
         <div className="modal active" onClick={(e) => e.target === e.currentTarget && setShowEditModal(false)}>
           <div className="modal-content modal-lg">
@@ -479,6 +473,8 @@ const ManageInventory = () => {
           </div>
         </div>
       )}
+
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };

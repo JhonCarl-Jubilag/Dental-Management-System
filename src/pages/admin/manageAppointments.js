@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
@@ -12,22 +14,14 @@ const ManageAppointments = () => {
   const [loading, setLoading] = useState(true);
   const [appointments, setAppointments] = useState([]);
   const [stats, setStats] = useState({ pending: 0, confirmed: 0, cancelled: 0, completed: 0 });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [doctors, setDoctors] = useState([]);
   const [allServices, setAllServices] = useState([]);
   const [expandedCard, setExpandedCard] = useState(null);
-
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
-
-  // Filters
   const [selectedDoctor, setSelectedDoctor] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedDate, setSelectedDate] = useState('');
-
-  // Modal states
   const [showRemarksModal, setShowRemarksModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showRescheduleRequestModal, setShowRescheduleRequestModal] = useState(false);
@@ -48,19 +42,14 @@ const ManageAppointments = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Redirect if not admin
   useEffect(() => {
     if (!authLoading) {
       const isSuperAdmin = user?.email === 'jhoncarl.jubilag@cvsu.edu.ph';
-      if (!user) {
-        navigate('/login');
-      } else if (userType !== 'admin' && !isSuperAdmin) {
-        navigate('/');
-      }
+      if (!user) navigate('/login');
+      else if (userType !== 'admin' && !isSuperAdmin) navigate('/');
     }
   }, [user, userType, authLoading, navigate]);
 
-  // Fetch doctors & services
   useEffect(() => {
     const fetchDoctors = async () => {
       const { data, error } = await supabase
@@ -82,12 +71,10 @@ const ManageAppointments = () => {
     fetchServices();
   }, []);
 
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedDoctor, selectedStatus, selectedDate]);
 
-  // Auto‑update expired appointments
   const autoUpdateExpired = useCallback(async () => {
     const now = new Date().toISOString();
     let cancelledCount = 0;
@@ -119,12 +106,10 @@ const ManageAppointments = () => {
       let msg = '';
       if (cancelledCount > 0) msg += `${cancelledCount} expired pending appointment(s) cancelled. `;
       if (completedCount > 0) msg += `${completedCount} expired confirmed appointment(s) marked as completed.`;
-      setSuccess(msg);
-      setTimeout(() => setSuccess(''), 5000);
+      toast.info(msg);
     }
   }, []);
 
-  // Fetch stats
   const fetchStats = useCallback(async () => {
     try {
       const { data, error } = await supabase.from('appointments').select('status');
@@ -142,10 +127,8 @@ const ManageAppointments = () => {
     }
   }, []);
 
-  // Fetch appointments with filters
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
-    setError('');
     try {
       let query = supabase
         .from('appointments')
@@ -170,13 +153,12 @@ const ManageAppointments = () => {
       setAppointments(data || []);
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to load appointments');
+      toast.error(err.message || 'Failed to load appointments');
     } finally {
       setLoading(false);
     }
   }, [selectedDoctor, selectedStatus, selectedDate]);
 
-  // Initial load
   useEffect(() => {
     const init = async () => {
       await autoUpdateExpired();
@@ -186,7 +168,6 @@ const ManageAppointments = () => {
     init();
   }, [autoUpdateExpired, fetchStats, fetchAppointments]);
 
-  // Helper: update appointment status
   const updateStatus = async (appointmentId, status, remarksOverride = null) => {
     const updateData = {
       status,
@@ -197,79 +178,67 @@ const ManageAppointments = () => {
     if (error) throw error;
   };
 
-  // Action handlers
   const handleApprove = async (appointment) => {
     if (!window.confirm('Approve this appointment?')) return;
     try {
       await updateStatus(appointment.appointment_id, 'confirmed');
-      setSuccess('Appointment approved!');
+      toast.success('Appointment approved!');
       await autoUpdateExpired();
       await fetchStats();
       await fetchAppointments();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) { setError(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
   const handleCancel = async (appointment) => {
     if (!window.confirm('Cancel this appointment?')) return;
     try {
       await updateStatus(appointment.appointment_id, 'cancelled');
-      setSuccess('Appointment cancelled.');
+      toast.success('Appointment cancelled.');
       await fetchStats();
       await fetchAppointments();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) { setError(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
   const handleMarkCompleted = async (appointment) => {
     const apptTime = new Date(appointment.appointment_datetime);
     if (apptTime > new Date()) {
-      setError('Cannot mark as completed – appointment time has not yet passed.');
+      toast.error('Cannot mark as completed – appointment time has not yet passed.');
       return;
     }
     if (!window.confirm('Mark this appointment as completed?')) return;
     try {
       await updateStatus(appointment.appointment_id, 'completed', `[Admin Action ${new Date().toLocaleString()}]: Marked as COMPLETED`);
-      setSuccess('Appointment marked as completed!');
+      toast.success('Appointment marked as completed!');
       await autoUpdateExpired();
       await fetchStats();
       await fetchAppointments();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) { setError(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
   const handleDelete = async (appointment) => {
     if (appointment.status !== 'cancelled') {
-      setError('Only cancelled appointments can be deleted.');
+      toast.error('Only cancelled appointments can be deleted.');
       return;
     }
     if (!window.confirm('Permanently delete this cancelled appointment?')) return;
     try {
       const { error } = await supabase.from('appointments').delete().eq('appointment_id', appointment.appointment_id);
       if (error) throw error;
-      setSuccess('Appointment deleted.');
+      toast.success('Appointment deleted.');
       await fetchStats();
       await fetchAppointments();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) { setError(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
-  // Toggle accordion
   const toggleExpand = (appointmentId) => {
-    if (expandedCard === appointmentId) {
-      setExpandedCard(null);
-    } else {
-      setExpandedCard(appointmentId);
-    }
+    setExpandedCard(expandedCard === appointmentId ? null : appointmentId);
   };
 
-  // Open patient details modal
   const openPatientDetailsModal = (appointment) => {
     setCurrentAppointment(appointment);
     setShowPatientDetailsModal(true);
   };
 
-  // Remarks modal
   const openRemarksModal = (appointment) => {
     setCurrentAppointment(appointment);
     setRemarksForm({
@@ -294,14 +263,12 @@ const ManageAppointments = () => {
         .update({ remarks: newRemarks, updated_at: new Date().toISOString() })
         .eq('appointment_id', remarksForm.appointment_id);
       if (error) throw error;
-      setSuccess('Remarks added!');
+      toast.success('Remarks added!');
       setShowRemarksModal(false);
       await fetchAppointments();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) { setError(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
-  // Reschedule modal
   const openRescheduleModal = (appointment) => {
     setCurrentAppointment(appointment);
     setRescheduleForm({ appointment_id: appointment.appointment_id, new_datetime: '' });
@@ -311,12 +278,12 @@ const ManageAppointments = () => {
   const approveReschedule = async (e) => {
     e.preventDefault();
     if (!rescheduleForm.new_datetime) {
-      setError('Please select a new date and time.');
+      toast.error('Please select a new date and time.');
       return;
     }
     const newTime = new Date(rescheduleForm.new_datetime);
     if (newTime - new Date() < 3600000) {
-      setError('New time must be at least 1 hour from now.');
+      toast.error('New time must be at least 1 hour from now.');
       return;
     }
     try {
@@ -354,15 +321,13 @@ const ManageAppointments = () => {
         .from('appointments')
         .update({ appointment_datetime: rescheduleForm.new_datetime, remarks: newRemarks, updated_at: new Date().toISOString() })
         .eq('appointment_id', currentAppointment.appointment_id);
-      setSuccess('Appointment rescheduled!');
+      toast.success('Appointment rescheduled!');
       setShowRescheduleModal(false);
       await autoUpdateExpired();
       await fetchStats(); await fetchAppointments();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) { setError(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
-  // Reschedule request from patient
   const openRescheduleRequestModal = (appointment) => {
     setCurrentAppointment(appointment);
     setShowRescheduleRequestModal(true);
@@ -416,7 +381,7 @@ const ManageAppointments = () => {
             updated_at: new Date().toISOString()
           })
           .eq('appointment_id', currentAppointment.appointment_id);
-        setSuccess('Reschedule request approved!');
+        toast.success('Reschedule request approved!');
       } else {
         const rejectMsg = rejectReasonText ? ` - ${rejectReasonText}` : '';
         const newRemarks = `[Admin Action ${new Date().toLocaleString()}]: Patient reschedule request REJECTED${rejectMsg}`;
@@ -430,16 +395,14 @@ const ManageAppointments = () => {
             updated_at: new Date().toISOString()
           })
           .eq('appointment_id', currentAppointment.appointment_id);
-        setSuccess('Reschedule request rejected.');
+        toast.success('Reschedule request rejected.');
       }
       setShowRescheduleRequestModal(false);
       await autoUpdateExpired();
       await fetchStats(); await fetchAppointments();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) { setError(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
-  // Cancel request from patient
   const openCancelRequestModal = (appointment) => {
     setCurrentAppointment(appointment);
     setShowCancelRequestModal(true);
@@ -462,7 +425,7 @@ const ManageAppointments = () => {
             updated_at: new Date().toISOString()
           })
           .eq('appointment_id', currentAppointment.appointment_id);
-        setSuccess('Cancellation request approved! Appointment cancelled.');
+        toast.success('Cancellation request approved! Appointment cancelled.');
       } else {
         const rejectMsg = rejectReasonText ? ` - ${rejectReasonText}` : '';
         const newRemarks = `[Admin Action ${new Date().toLocaleString()}]: Patient cancellation request REJECTED${rejectMsg}`;
@@ -476,13 +439,12 @@ const ManageAppointments = () => {
             updated_at: new Date().toISOString()
           })
           .eq('appointment_id', currentAppointment.appointment_id);
-        setSuccess('Cancellation request rejected.');
+        toast.success('Cancellation request rejected.');
       }
       setShowCancelRequestModal(false);
       await autoUpdateExpired();
       await fetchStats(); await fetchAppointments();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) { setError(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
   const handleLogout = async () => {
@@ -501,48 +463,32 @@ const ManageAppointments = () => {
     }
   };
 
-  // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentAppointments = appointments.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(appointments.length / itemsPerPage);
-
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const goToPreviousPage = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-  const goToNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
+  const goToPreviousPage = () => currentPage > 1 && setCurrentPage(currentPage - 1);
+  const goToNextPage = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
 
-  // Generate page numbers to display
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxPagesToShow = 5;
-    
     if (totalPages <= maxPagesToShow) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
+      for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
     } else {
       const startPage = Math.max(1, currentPage - 2);
       const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-      
       if (startPage > 1) {
         pageNumbers.push(1);
         if (startPage > 2) pageNumbers.push('...');
       }
-      
-      for (let i = startPage; i <= endPage; i++) {
-        pageNumbers.push(i);
-      }
-      
+      for (let i = startPage; i <= endPage; i++) pageNumbers.push(i);
       if (endPage < totalPages) {
         if (endPage < totalPages - 1) pageNumbers.push('...');
         pageNumbers.push(totalPages);
       }
     }
-    
     return pageNumbers;
   };
 
@@ -591,9 +537,6 @@ const ManageAppointments = () => {
             </div>
           </div>
         </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
 
         <div className="stats-grid">
           <div className="stat-card"><div className="stat-number">{stats.pending}</div><div className="stat-label">Pending</div></div>
@@ -731,42 +674,27 @@ const ManageAppointments = () => {
                   </div>
                 );
               })}
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="pagination-container">
                   <div className="pagination-info">
                     Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, appointments.length)} of {appointments.length} appointments
                   </div>
                   <div className="pagination-controls">
-                    <button 
-                      onClick={goToPreviousPage} 
-                      disabled={currentPage === 1}
-                      className="pagination-btn"
-                    >
+                    <button onClick={goToPreviousPage} disabled={currentPage === 1} className="pagination-btn">
                       <i className="fas fa-chevron-left"></i> Previous
                     </button>
-                    
                     <div className="pagination-numbers">
                       {getPageNumbers().map((page, index) => (
                         page === '...' ? (
                           <span key={index} className="pagination-dots">...</span>
                         ) : (
-                          <button
-                            key={index}
-                            onClick={() => paginate(page)}
-                            className={`pagination-number ${currentPage === page ? 'active' : ''}`}
-                          >
+                          <button key={index} onClick={() => paginate(page)} className={`pagination-number ${currentPage === page ? 'active' : ''}`}>
                             {page}
                           </button>
                         )
                       ))}
                     </div>
-                    
-                    <button 
-                      onClick={goToNextPage} 
-                      disabled={currentPage === totalPages}
-                      className="pagination-btn"
-                    >
+                    <button onClick={goToNextPage} disabled={currentPage === totalPages} className="pagination-btn">
                       Next <i className="fas fa-chevron-right"></i>
                     </button>
                   </div>
@@ -777,68 +705,29 @@ const ManageAppointments = () => {
         </div>
       </div>
 
-      {/* Patient Details Modal */}
+      {/* Modals (unchanged except no alerts inside) */}
       {showPatientDetailsModal && currentAppointment && (
         <div className="modal active" onClick={e => e.target === e.currentTarget && setShowPatientDetailsModal(false)}>
           <div className="modal-content">
-            <div className="modal-header">
-              <h3><i className="fas fa-user-circle"></i> Patient Details</h3>
-              <button className="modal-close" onClick={() => setShowPatientDetailsModal(false)}>&times;</button>
-            </div>
+            <div className="modal-header"><h3><i className="fas fa-user-circle"></i> Patient Details</h3><button className="modal-close" onClick={() => setShowPatientDetailsModal(false)}>&times;</button></div>
             <div className="modal-body">
               <div className="patient-details-modal">
-                <div className="detail-row">
-                  <div className="detail-label">Full Name:</div>
-                  <div className="detail-value">{currentAppointment.patients?.first_name} {currentAppointment.patients?.last_name}</div>
-                </div>
-                <div className="detail-row">
-                  <div className="detail-label">Email:</div>
-                  <div className="detail-value">{currentAppointment.patients?.email}</div>
-                </div>
-                <div className="detail-row">
-                  <div className="detail-label">Contact Number:</div>
-                  <div className="detail-value">{currentAppointment.patients?.contact_no || 'N/A'}</div>
-                </div>
-                <div className="detail-row">
-                  <div className="detail-label">Patient ID:</div>
-                  <div className="detail-value">{currentAppointment.patients?.patient_id}</div>
-                </div>
-                <div className="detail-row">
-                  <div className="detail-label">Service:</div>
-                  <div className="detail-value">{currentAppointment.services?.service_name}</div>
-                </div>
-                <div className="detail-row">
-                  <div className="detail-label">Doctor:</div>
-                  <div className="detail-value">Dr. {currentAppointment.doctors?.first_name} {currentAppointment.doctors?.last_name}</div>
-                </div>
-                <div className="detail-row">
-                  <div className="detail-label">Appointment Date:</div>
-                  <div className="detail-value">{new Date(currentAppointment.appointment_datetime).toLocaleString()}</div>
-                </div>
-                <div className="detail-row">
-                  <div className="detail-label">Status:</div>
-                  <div className="detail-value">
-                    <span className={`status-badge ${getStatusClass(currentAppointment.status)}`}>
-                      {currentAppointment.status.toUpperCase()}
-                    </span>
-                  </div>
-                </div>
-                {currentAppointment.remarks && (
-                  <div className="detail-row">
-                    <div className="detail-label">Remarks:</div>
-                    <div className="detail-value remarks-text">{currentAppointment.remarks}</div>
-                  </div>
-                )}
+                <div className="detail-row"><div className="detail-label">Full Name:</div><div className="detail-value">{currentAppointment.patients?.first_name} {currentAppointment.patients?.last_name}</div></div>
+                <div className="detail-row"><div className="detail-label">Email:</div><div className="detail-value">{currentAppointment.patients?.email}</div></div>
+                <div className="detail-row"><div className="detail-label">Contact Number:</div><div className="detail-value">{currentAppointment.patients?.contact_no || 'N/A'}</div></div>
+                <div className="detail-row"><div className="detail-label">Patient ID:</div><div className="detail-value">{currentAppointment.patients?.patient_id}</div></div>
+                <div className="detail-row"><div className="detail-label">Service:</div><div className="detail-value">{currentAppointment.services?.service_name}</div></div>
+                <div className="detail-row"><div className="detail-label">Doctor:</div><div className="detail-value">Dr. {currentAppointment.doctors?.first_name} {currentAppointment.doctors?.last_name}</div></div>
+                <div className="detail-row"><div className="detail-label">Appointment Date:</div><div className="detail-value">{new Date(currentAppointment.appointment_datetime).toLocaleString()}</div></div>
+                <div className="detail-row"><div className="detail-label">Status:</div><div className="detail-value"><span className={`status-badge ${getStatusClass(currentAppointment.status)}`}>{currentAppointment.status.toUpperCase()}</span></div></div>
+                {currentAppointment.remarks && <div className="detail-row"><div className="detail-label">Remarks:</div><div className="detail-value remarks-text">{currentAppointment.remarks}</div></div>}
               </div>
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowPatientDetailsModal(false)}>Close</button>
-            </div>
+            <div className="modal-footer"><button className="btn btn-secondary" onClick={() => setShowPatientDetailsModal(false)}>Close</button></div>
           </div>
         </div>
       )}
 
-      {/* Remarks Modal */}
       {showRemarksModal && (
         <div className="modal active" onClick={e => e.target === e.currentTarget && setShowRemarksModal(false)}>
           <div className="modal-content">
@@ -855,7 +744,6 @@ const ManageAppointments = () => {
         </div>
       )}
 
-      {/* Reschedule Modal */}
       {showRescheduleModal && (
         <div className="modal active" onClick={e => e.target === e.currentTarget && setShowRescheduleModal(false)}>
           <div className="modal-content">
@@ -871,7 +759,6 @@ const ManageAppointments = () => {
         </div>
       )}
 
-      {/* Reschedule Request Modal */}
       {showRescheduleRequestModal && currentAppointment && (
         <div className="modal active" onClick={e => e.target === e.currentTarget && setShowRescheduleRequestModal(false)}>
           <div className="modal-content">
@@ -891,7 +778,6 @@ const ManageAppointments = () => {
         </div>
       )}
 
-      {/* Cancel Request Modal */}
       {showCancelRequestModal && currentAppointment && (
         <div className="modal active" onClick={e => e.target === e.currentTarget && setShowCancelRequestModal(false)}>
           <div className="modal-content">
@@ -911,6 +797,7 @@ const ManageAppointments = () => {
       )}
 
       {isLoggingOut && <div className="logout-overlay"><div className="logout-content"><i className="fas fa-spinner fa-spin"></i><p>Logging out...</p></div></div>}
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };

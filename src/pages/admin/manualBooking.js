@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
@@ -10,9 +12,6 @@ const ManualBooking = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
   const [patients, setPatients] = useState([]);
   const [services, setServices] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -101,7 +100,7 @@ const ManualBooking = () => {
         const doctorsList = data.map(item => item.doctors);
         setDoctors(doctorsList);
       } catch (err) {
-        setError(err.message);
+        toast.error(err.message);
       } finally {
         setLoading(false);
       }
@@ -127,7 +126,7 @@ const ManualBooking = () => {
         if (error) throw error;
         setAvailableDates(data.map(d => d.available_date));
       } catch (err) {
-        setError(err.message);
+        toast.error(err.message);
       } finally {
         setLoading(false);
       }
@@ -220,7 +219,7 @@ const ManualBooking = () => {
 
         setAvailableTimeSlots(slots);
       } catch (err) {
-        setError(err.message);
+        toast.error(err.message);
         setAvailableTimeSlots([]);
       } finally {
         setLoading(false);
@@ -245,14 +244,12 @@ const ManualBooking = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedPatient || !selectedServiceId || !selectedDoctorId || !selectedDate || !selectedTime) {
-      setError('Please fill all required fields.');
+      toast.error('Please fill all required fields.');
       return;
     }
 
     const appointmentDatetime = `${selectedDate} ${selectedTime}:00`;
     setLoading(true);
-    setError('');
-    setSuccess('');
 
     try {
       // Insert appointment as 'confirmed' (walk‑in)
@@ -289,7 +286,7 @@ const ManualBooking = () => {
 
       if (billError) console.error('Billing creation error:', billError);
 
-      setSuccess(`Appointment booked successfully for ${selectedPatient.first_name} ${selectedPatient.last_name}!`);
+      toast.success(`Appointment booked successfully for ${selectedPatient.first_name} ${selectedPatient.last_name}!`);
       // Reset form
       setSelectedPatient(null);
       setPatientSearch('');
@@ -302,7 +299,7 @@ const ManualBooking = () => {
       setAvailableDates([]);
       setAvailableTimeSlots([]);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -339,9 +336,6 @@ const ManualBooking = () => {
             </div>
           </div>
         </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
 
         <div className="booking-form-container">
           <form onSubmit={handleSubmit} className="booking-form">
@@ -520,6 +514,8 @@ const ManualBooking = () => {
           </div>
         </div>
       )}
+
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };

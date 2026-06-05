@@ -475,26 +475,6 @@
   opacity: 0.5;
 }
 
-.alert {
-  padding: 12px 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  font-weight: 500;
-  border-left: 4px solid;
-}
-
-.alert-error {
-  background: #ffeaea;
-  color: #c33;
-  border-left-color: #e74c3c;
-}
-
-.alert-success {
-  background: #e8f7ed;
-  color: #27ae60;
-  border-left-color: #27ae60;
-}
-
 .modal {
   position: fixed;
   top: 0;

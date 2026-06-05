@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
@@ -13,8 +15,6 @@ const ManageDoctors = () => {
   const [doctors, setDoctors] = useState([]);
   const [allServices, setAllServices] = useState([]);
   const [specializations, setSpecializations] = useState([]);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -101,7 +101,6 @@ const ManageDoctors = () => {
   const fetchData = useCallback(async () => {
     if (!user || (userType !== 'admin' && !isSuperAdmin)) return;
     setLoading(true);
-    setError('');
 
     try {
       // 1. Fetch all active services
@@ -224,7 +223,7 @@ const ManageDoctors = () => {
 
     } catch (err) {
       console.error('Error fetching doctors:', err);
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -245,15 +244,14 @@ const ManageDoctors = () => {
   const handleAddDoctor = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
 
     if (addForm.password !== addForm.confirm_password) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       setIsSubmitting(false);
       return;
     }
     if (addForm.password.length < 6) {
-      setError('Password must be at least 6 characters');
+      toast.error('Password must be at least 6 characters');
       setIsSubmitting(false);
       return;
     }
@@ -286,17 +284,16 @@ const ManageDoctors = () => {
         if (servicesError) throw servicesError;
       }
 
-      setSuccess('Doctor added successfully!');
+      toast.success('Doctor added successfully!');
       setShowAddModal(false);
       setAddForm({
         first_name: '', last_name: '', email: '', password: '', confirm_password: '',
         specialization: '', contact_no: '', service_ids: []
       });
       fetchData();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Error adding doctor:', err);
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -305,7 +302,6 @@ const ManageDoctors = () => {
   const handleEditDoctor = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
 
     try {
       const { error: updateError } = await supabase
@@ -339,13 +335,12 @@ const ManageDoctors = () => {
         if (insertError) throw insertError;
       }
 
-      setSuccess('Doctor updated successfully!');
+      toast.success('Doctor updated successfully!');
       setShowEditModal(false);
       fetchData();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Error updating doctor:', err);
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -354,27 +349,27 @@ const ManageDoctors = () => {
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
 
     if (resetForm.new_password !== resetForm.confirm_password) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       setIsSubmitting(false);
       return;
     }
     if (resetForm.new_password.length < 6) {
-      setError('Password must be at least 6 characters');
+      toast.error('Password must be at least 6 characters');
       setIsSubmitting(false);
       return;
     }
 
     try {
-      setSuccess('Password reset request sent. The doctor will receive an email to set a new password.');
+      // In a real implementation, you would call Supabase Auth admin API to reset password
+      // For now we simulate success
+      toast.success('Password reset request sent. The doctor will receive an email to set a new password.');
       setShowResetPasswordModal(false);
       setResetForm({ doctor_id: '', new_password: '', confirm_password: '' });
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Error resetting password:', err);
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -383,10 +378,9 @@ const ManageDoctors = () => {
   const handleAddAvailability = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
 
     if (availabilityForm.start_time >= availabilityForm.end_time) {
-      setError('End time must be after start time');
+      toast.error('End time must be after start time');
       setIsSubmitting(false);
       return;
     }
@@ -402,7 +396,7 @@ const ManageDoctors = () => {
 
       if (checkError) throw checkError;
       if (existing) {
-        setError('Availability slot already exists for this doctor on the selected date and time.');
+        toast.error('Availability slot already exists for this doctor on the selected date and time.');
         setIsSubmitting(false);
         return;
       }
@@ -418,14 +412,13 @@ const ManageDoctors = () => {
         }]);
       if (error) throw error;
 
-      setSuccess('Availability slot added successfully!');
+      toast.success('Availability slot added successfully!');
       setShowAvailabilityModal(false);
       setAvailabilityForm({ doctor_id: '', available_date: '', start_time: '09:00', end_time: '17:00' });
       fetchData();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Error adding availability:', err);
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -436,7 +429,6 @@ const ManageDoctors = () => {
       first_name: '', last_name: '', email: '', password: '', confirm_password: '',
       specialization: '', contact_no: '', service_ids: []
     });
-    setError('');
     setShowAddModal(true);
   };
 
@@ -451,13 +443,11 @@ const ManageDoctors = () => {
       status: doctor.status,
       service_ids: doctorServicesMap[doctor.doctor_id]?.map(s => s.service_id) || []
     });
-    setError('');
     setShowEditModal(true);
   };
 
   const openResetPasswordModal = (doctorId) => {
     setResetForm({ doctor_id: doctorId, new_password: '', confirm_password: '' });
-    setError('');
     setShowResetPasswordModal(true);
   };
 
@@ -469,7 +459,6 @@ const ManageDoctors = () => {
       start_time: '09:00',
       end_time: '17:00'
     });
-    setError('');
     setShowAvailabilityModal(true);
   };
 
@@ -512,9 +501,6 @@ const ManageDoctors = () => {
             </div>
           </div>
         </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
 
         {/* Stats Grid */}
         <div className="stats-grid">
@@ -893,6 +879,7 @@ const ManageDoctors = () => {
       )}
 
       {isLoggingOut && <div className="logout-overlay"><div className="logout-content"><i className="fas fa-spinner fa-spin"></i><p>Logging out...</p></div></div>}
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };

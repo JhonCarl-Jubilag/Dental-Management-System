@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
@@ -32,14 +34,10 @@ const validatePWDID = (id_no) => {
 const ManageBilling = () => {
   const { user, userType, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  // eslint-disable-next-line no-unused-vars
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [loading, setLoading] = useState(true);
   const [billingRecords, setBillingRecords] = useState([]);
   const [unbilledAppointments, setUnbilledAppointments] = useState([]);
   const [stats, setStats] = useState({ totalRevenue: 0, totalPending: 0, totalPaid: 0, totalUnbilled: 0 });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -56,7 +54,6 @@ const ManageBilling = () => {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [allowsPartial, setAllowsPartial] = useState(false);
-  const [createModalMessage, setCreateModalMessage] = useState({ type: '', text: '' });
 
   const [createForm, setCreateForm] = useState({
     appointment_id: '',
@@ -122,7 +119,6 @@ const ManageBilling = () => {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    setError('');
     try {
       await autoUpdateExpiredConfirmed();
 
@@ -197,7 +193,7 @@ const ManageBilling = () => {
       });
     } catch (err) {
       console.error(err);
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -223,10 +219,8 @@ const ManageBilling = () => {
       remarks: ''
     });
     setAllowsPartial(false);
-    setCreateModalMessage({ type: '', text: '' });
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const { total_amount, discount_type, discount_id_no } = createForm;
     let discountAmount = 0;
@@ -240,7 +234,6 @@ const ManageBilling = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [createForm.total_amount, createForm.discount_type, createForm.discount_id_no]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const { total_amount, discount_type, discount_id_no } = editForm;
     let discountAmount = 0;
@@ -270,30 +263,29 @@ const ManageBilling = () => {
   const handleCreateBilling = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setCreateModalMessage({ type: '', text: '' });
 
     const { total_amount, discount, amount_paid, payment_method, reference_number, payment_date, remarks, appointment_id, patient_id, doctor_id, discount_type, discount_id_no } = createForm;
     const afterDiscount = total_amount - discount;
 
     if (payment_method !== 'cash' && !reference_number.trim()) {
-      setCreateModalMessage({ type: 'error', text: 'Reference number is required for this payment method.' });
+      toast.error('Reference number is required for this payment method.');
       setIsSubmitting(false);
       return;
     }
 
     const idError = validateDiscountId(discount_type, discount_id_no);
     if (idError) {
-      setCreateModalMessage({ type: 'error', text: idError });
+      toast.error(idError);
       setIsSubmitting(false);
       return;
     }
     if (amount_paid > afterDiscount) {
-      setCreateModalMessage({ type: 'error', text: `Amount paid cannot exceed amount after discount (${formatCurrency(afterDiscount)}).` });
+      toast.error(`Amount paid cannot exceed amount after discount (${formatCurrency(afterDiscount)}).`);
       setIsSubmitting(false);
       return;
     }
     if (!allowsPartial && amount_paid !== afterDiscount) {
-      setCreateModalMessage({ type: 'error', text: `This service requires full payment (${formatCurrency(afterDiscount)}).` });
+      toast.error(`This service requires full payment (${formatCurrency(afterDiscount)}).`);
       setIsSubmitting(false);
       return;
     }
@@ -306,7 +298,7 @@ const ManageBilling = () => {
         .eq('appointment_id', appointment_id)
         .maybeSingle();
       if (existing) {
-        setCreateModalMessage({ type: 'error', text: 'A billing record already exists for this appointment.' });
+        toast.error('A billing record already exists for this appointment.');
         setIsSubmitting(false);
         return;
       }
@@ -359,14 +351,14 @@ const ManageBilling = () => {
           .eq('appointment_id', appointment_id);
       }
 
-      setCreateModalMessage({ type: 'success', text: 'Billing record created successfully!' });
+      toast.success('Billing record created successfully!');
       setTimeout(() => {
         setShowCreateModal(false);
         resetCreateForm();
         fetchData();
       }, 2000);
     } catch (err) {
-      setCreateModalMessage({ type: 'error', text: err.message });
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -375,24 +367,24 @@ const ManageBilling = () => {
   const handleEditBilling = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
+
     const { billing_id, total_amount, discount, amount_paid, payment_method, reference_number, payment_date, remarks, discount_type, discount_id_no } = editForm;
     const afterDiscount = total_amount - discount;
 
     if (payment_method !== 'cash' && !reference_number.trim()) {
-      setError('Reference number is required for this payment method.');
+      toast.error('Reference number is required for this payment method.');
       setIsSubmitting(false);
       return;
     }
 
     const idError = validateDiscountId(discount_type, discount_id_no);
     if (idError) {
-      setError(idError);
+      toast.error(idError);
       setIsSubmitting(false);
       return;
     }
     if (amount_paid > afterDiscount) {
-      setError(`Amount paid cannot exceed amount after discount (${formatCurrency(afterDiscount)}).`);
+      toast.error(`Amount paid cannot exceed amount after discount (${formatCurrency(afterDiscount)}).`);
       setIsSubmitting(false);
       return;
     }
@@ -428,12 +420,11 @@ const ManageBilling = () => {
         const newStatus = apptTime <= now ? 'completed' : 'confirmed';
         await supabase.from('appointments').update({ status: newStatus }).eq('appointment_id', bill.appointment_id);
       }
-      setSuccess('Billing record updated successfully!');
+      toast.success('Billing record updated successfully!');
       setShowEditModal(false);
       fetchData();
-      setTimeout(() => setSuccess(''), 4000);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -442,25 +433,25 @@ const ManageBilling = () => {
   const handleRecordPayment = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
+
     const { billing_id, amount, payment_method, reference_number, remarks, current_balance } = paymentForm;
     if (amount <= 0) {
-      setError('Payment amount must be greater than 0.');
+      toast.error('Payment amount must be greater than 0.');
       setIsSubmitting(false);
       return;
     }
     if (amount > current_balance) {
-      setError(`Payment amount cannot exceed remaining balance (${formatCurrency(current_balance)}).`);
+      toast.error(`Payment amount cannot exceed remaining balance (${formatCurrency(current_balance)}).`);
       setIsSubmitting(false);
       return;
     }
     if (payment_method !== 'cash' && !reference_number.trim()) {
-      setError('Reference number is required for this payment method.');
+      toast.error('Reference number is required for this payment method.');
       setIsSubmitting(false);
       return;
     }
     if (!allowsPartial && amount !== current_balance) {
-      setError(`This service requires full payment. Please pay exact balance (${formatCurrency(current_balance)}).`);
+      toast.error(`This service requires full payment. Please pay exact balance (${formatCurrency(current_balance)}).`);
       setIsSubmitting(false);
       return;
     }
@@ -492,12 +483,11 @@ const ManageBilling = () => {
         const newStatus = apptTime <= now ? 'completed' : 'confirmed';
         await supabase.from('appointments').update({ status: newStatus }).eq('appointment_id', bill.appointment_id);
       }
-      setSuccess('Payment recorded successfully!');
+      toast.success('Payment recorded successfully!');
       setShowPaymentModal(false);
       fetchData();
-      setTimeout(() => setSuccess(''), 4000);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -511,11 +501,10 @@ const ManageBilling = () => {
         .update({ archived: true })
         .eq('billing_id', billingId);
       if (error) throw error;
-      setSuccess('Billing record archived successfully!');
+      toast.success('Billing record archived successfully!');
       fetchData();
-      setTimeout(() => setSuccess(''), 4000);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -527,16 +516,14 @@ const ManageBilling = () => {
         .update({ archived: false })
         .eq('billing_id', billingId);
       if (error) throw error;
-      setSuccess('Billing record restored successfully!');
+      toast.success('Billing record restored successfully!');
       fetchData();
-      setTimeout(() => setSuccess(''), 4000);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     }
   };
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
     await signOut();
     navigate('/login');
   };
@@ -603,9 +590,6 @@ const ManageBilling = () => {
             </div>
           </div>
         </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
 
         <div className="stats-grid">
           <div className="stat-card"><div className="stat-number">₱{stats.totalRevenue.toLocaleString()}</div><div className="stat-label">Total Billing</div></div>
@@ -721,8 +705,8 @@ const ManageBilling = () => {
                               </>
                             )}
                           </div>
-                        </td>
-                      </tr>
+                         </td>
+                       </tr>
                     );
                   })
                 )}
@@ -742,7 +726,6 @@ const ManageBilling = () => {
             </div>
             <form onSubmit={handleCreateBilling}>
               <div className="modal-billing-create-body">
-                {createModalMessage.text && <div className={`modal-billing-create-alert modal-billing-create-alert-${createModalMessage.type}`}><i className={`fas fa-${createModalMessage.type === 'success' ? 'check-circle' : 'exclamation-circle'}`}></i>{createModalMessage.text}</div>}
                 <div className="form-group"><label>Select Appointment *</label><select className="form-control" value={createForm.appointment_id} onChange={async (e) => {
                   const aptId = e.target.value;
                   const appointment = unbilledAppointments.find(a => a.appointment_id === parseInt(aptId));
@@ -916,6 +899,8 @@ const ManageBilling = () => {
           </div>
         </div>
       )}
+
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };

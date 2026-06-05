@@ -1,0 +1,446 @@
+.manage-patients-page .breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 25px;
+  background: white;
+  padding: 10px 20px;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  font-size: 0.9rem;
+}
+
+.manage-patients-page .separator {
+  color: #ccc;
+}
+
+.manage-patients-page .btn-back {
+  margin-left: auto;
+  background: #f0f2f5;
+  color: #354D70;
+  padding: 6px 14px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-size: 0.8rem;
+  transition: background 0.2s;
+}
+
+.manage-patients-page .btn-back:hover {
+  background: #e2e6ea;
+}
+
+.manage-patients-page .filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 30px;
+  align-items: center;
+}
+
+.manage-patients-page .filter-group.search {
+  flex: 2;
+  min-width: 200px;
+}
+
+.manage-patients-page .filter-group {
+  flex: 1;
+  min-width: 160px;
+}
+
+.manage-patients-page .btn-outline {
+  background: white;
+  border: 1px solid #ced4da;
+  color: #495057;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.manage-patients-page .btn-outline:hover {
+  background: #f8f9fa;
+  border-color: #354D70;
+}
+
+.manage-patients-page .patients-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.manage-patients-page .patient-card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: all 0.2s;
+  border: 1px solid #eef2f6;
+}
+
+.manage-patients-page .patient-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.manage-patients-page .patient-card-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.manage-patients-page .patient-avatar {
+  width: 55px;
+  height: 55px;
+  background: linear-gradient(135deg, #354D70, #4d83d4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: white;
+  flex-shrink: 0;
+}
+
+.manage-patients-page .patient-name {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1e2a3a;
+}
+
+.manage-patients-page .patient-email {
+  font-size: 0.75rem;
+  color: #6c757d;
+  word-break: break-word;
+}
+
+.manage-patients-page .patient-info {
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 15px;
+  color: #495057;
+}
+
+.manage-patients-page .patient-info i {
+  width: 20px;
+  color: #4d83d4;
+}
+
+.manage-patients-page .patient-stats {
+  display: flex;
+  justify-content: flex-start;
+  border-top: 1px solid #eef2f6;
+  padding-top: 12px;
+  margin-top: 5px;
+}
+
+.manage-patients-page .stat {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  background: #f8f9fa;
+  padding: 6px 12px;
+  border-radius: 30px;
+}
+
+.manage-patients-page .stat-number {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #354D70;
+}
+
+.manage-patients-page .stat-label {
+  font-size: 0.7rem;
+  color: #6c757d;
+  text-transform: uppercase;
+}
+
+.manage-patients-page .btn-view {
+  display: block;
+  text-align: center;
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 40px;
+  margin-top: 16px;
+  color: #354D70;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.manage-patients-page .btn-view:hover {
+  background: #e9ecef;
+}
+
+.manage-patients-page .patient-profile {
+  background: white;
+  border-radius: 20px;
+  padding: 20px 25px;
+  margin-bottom: 25px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+
+.manage-patients-page .profile-avatar {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #354D70, #4d83d4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  color: white;
+  flex-shrink: 0;
+}
+
+.manage-patients-page .profile-info {
+  flex: 2;
+}
+
+.manage-patients-page .profile-info h2 {
+  margin: 0 0 8px 0;
+  font-size: 1.4rem;
+}
+
+.manage-patients-page .contact-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 0.85rem;
+  color: #495057;
+}
+
+.manage-patients-page .contact-info i {
+  width: 20px;
+  color: #4d83d4;
+}
+
+.manage-patients-page .profile-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.manage-patients-page .stat-item {
+  background: #f8f9fa;
+  padding: 8px 16px;
+  border-radius: 30px;
+  text-align: center;
+  min-width: 70px;
+}
+
+.manage-patients-page .stat-item .stat-number {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #354D70;
+}
+
+.manage-patients-page .stat-item .stat-label {
+  font-size: 0.65rem;
+  color: #6c757d;
+}
+
+/* Compact history filters */
+.manage-patients-page .history-filters {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 25px;
+  background: white;
+  padding: 15px 20px;
+  border-radius: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.manage-patients-page .history-filters .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.manage-patients-page .history-filters label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+}
+
+.manage-patients-page .history-filters .form-control {
+  min-width: 160px;
+}
+
+.manage-patients-page .appointment-card-compact {
+  background: white;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border: 1px solid #eef2f6;
+  transition: box-shadow 0.2s;
+}
+
+.manage-patients-page .appointment-card-compact:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.manage-patients-page .appointment-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 12px;
+}
+
+.manage-patients-page .service-info {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.manage-patients-page .service-info strong {
+  font-size: 1rem;
+  color: #1e2a3a;
+}
+
+.manage-patients-page .service-info .price {
+  background: #e9f5e9;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2e7d32;
+}
+
+.manage-patients-page .datetime-info {
+  background: #f0f4f8;
+  padding: 4px 12px;
+  border-radius: 30px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #2c3e50;
+  min-width: 110px;
+}
+
+.manage-patients-page .datetime-info .date {
+  font-weight: 600;
+}
+
+.manage-patients-page .datetime-info .time {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.manage-patients-page .status-badge {
+  font-size: 0.7rem;
+  padding: 4px 12px;
+  border-radius: 30px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.manage-patients-page .status-pending { background: #fff3cd; color: #856404; }
+.manage-patients-page .status-approved { background: #d4edda; color: #155724; }
+.manage-patients-page .status-cancelled { background: #f8d7da; color: #721c24; }
+.manage-patients-page .status-completed { background: #d1ecf1; color: #0c5460; }
+
+.manage-patients-page .appointment-footer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eef2f6;
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.manage-patients-page .appointment-footer .booked-on i,
+.manage-patients-page .appointment-footer .remarks i {
+  margin-right: 5px;
+  color: #4d83d4;
+}
+
+.manage-patients-page .appointment-footer .remarks {
+  margin-top: 8px;
+  background: #fafbfc;
+  padding: 8px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
+
+/* Empty state */
+.manage-patients-page .empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 16px;
+}
+
+.manage-patients-page .empty-state i {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  opacity: 0.5;
+  color: #7f8c8d;
+}
+
+@media (max-width: 768px) {
+  .manage-patients-page .filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .manage-patients-page .filter-group,
+  .manage-patients-page .filter-group.search {
+    width: 100%;
+  }
+  .manage-patients-page .patient-profile {
+    flex-direction: column;
+    text-align: center;
+  }
+  .manage-patients-page .profile-stats {
+    justify-content: center;
+  }
+  .manage-patients-page .contact-info {
+    justify-content: center;
+  }
+  .manage-patients-page .history-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .manage-patients-page .appointment-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.admin-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 70vh;
+}
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #354D70;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

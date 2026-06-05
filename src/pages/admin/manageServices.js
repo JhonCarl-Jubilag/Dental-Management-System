@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
@@ -10,8 +12,6 @@ const ManageServices = () => {
   const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
@@ -24,83 +24,120 @@ const ManageServices = () => {
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  // Filters & pagination
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortBy, setSortBy] = useState('service_name');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const perPage = 5;
+  const searchTimeout = useRef(null);
+
+  const SUPER_ADMIN_EMAIL = 'jhoncarl.jubilag@cvsu.edu.ph';
+  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+
+  // Redirect if not admin
   useEffect(() => {
     if (!authLoading) {
-      const isSuperAdmin = user?.email === 'jhoncarl.jubilag@cvsu.edu.ph';
-      if (!user) {
-        navigate('/login');
-      } else if (userType !== 'admin' && !isSuperAdmin) {
-        navigate('/');
-      }
+      if (!user) navigate('/login');
+      else if (userType !== 'admin' && !isSuperAdmin) navigate('/');
     }
-  }, [user, userType, authLoading, navigate]);
+  }, [user, userType, authLoading, navigate, isSuperAdmin]);
 
-  useEffect(() => {
-    if (user && (userType === 'admin' || user?.email === 'jhoncarl.jubilag@cvsu.edu.ph')) {
-      fetchServices();
-    }
-  }, [user, userType]);
-
-  const fetchServices = async () => {
+  // Fetch services
+  const fetchServices = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .order('service_name');
+      let query = supabase.from('services').select('*', { count: 'exact' });
 
+      if (debouncedSearch) {
+        query = query.ilike('service_name', `%${debouncedSearch}%`);
+      }
+      if (statusFilter) {
+        query = query.eq('status', statusFilter);
+      }
+
+      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+
+      const from = (page - 1) * perPage;
+      const to = from + perPage - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
       if (error) throw error;
+
       setServices(data || []);
-      
-      const active = data?.filter(s => s.status === 'active').length || 0;
-      const inactive = data?.filter(s => s.status === 'inactive').length || 0;
-      setStats({ total: data?.length || 0, active, inactive });
-      
+      setTotalCount(count || 0);
+      setTotalPages(Math.ceil((count || 0) / perPage));
+
+      // Update stats
+      const { data: allData, error: statsError } = await supabase
+        .from('services')
+        .select('status');
+      if (!statsError && allData) {
+        const active = allData.filter(s => s.status === 'active').length;
+        const inactive = allData.filter(s => s.status === 'inactive').length;
+        setStats({ total: allData.length, active, inactive });
+      }
     } catch (err) {
-      console.error('Error fetching services:', err);
-      setError('Failed to load services');
+      console.error(err);
+      toast.error('Failed to load services');
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, statusFilter, sortBy, sortOrder, page]);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(searchTimeout.current);
+  }, [search]);
+
+  // Initial fetch and when dependencies change
+  useEffect(() => {
+    if (user && (userType === 'admin' || isSuperAdmin)) {
+      fetchServices();
+    }
+  }, [fetchServices, user, userType, isSuperAdmin]);
 
   const handleAddService = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
-    
     try {
       const { data: existing } = await supabase
         .from('services')
         .select('service_id')
         .eq('service_name', formData.service_name.trim())
         .maybeSingle();
-      
+
       if (existing) {
-        setError('A service with this name already exists.');
+        toast.error('A service with this name already exists.');
         setIsSubmitting(false);
         return;
       }
-      
-      const { error } = await supabase
-        .from('services')
-        .insert([{
-          service_name: formData.service_name.trim(),
-          description: formData.description.trim() || null,
-          price: parseFloat(formData.price),
-          status: 'active'
-        }]);
-      
+
+      const { error } = await supabase.from('services').insert([{
+        service_name: formData.service_name.trim(),
+        description: formData.description.trim() || null,
+        price: parseFloat(formData.price),
+        status: 'active'
+      }]);
+
       if (error) throw error;
-      
-      setSuccess('Service added successfully!');
+
+      toast.success('Service added successfully!');
       setShowAddModal(false);
       setFormData({ service_name: '', description: '', price: '' });
       fetchServices();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      console.error('Error adding service:', err);
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -109,8 +146,6 @@ const ManageServices = () => {
   const handleEditService = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
-    
     try {
       const { data: existing } = await supabase
         .from('services')
@@ -118,13 +153,13 @@ const ManageServices = () => {
         .eq('service_name', formData.service_name.trim())
         .neq('service_id', selectedService.service_id)
         .maybeSingle();
-      
+
       if (existing) {
-        setError('A service with this name already exists.');
+        toast.error('A service with this name already exists.');
         setIsSubmitting(false);
         return;
       }
-      
+
       const { error } = await supabase
         .from('services')
         .update({
@@ -134,88 +169,55 @@ const ManageServices = () => {
           status: formData.status
         })
         .eq('service_id', selectedService.service_id);
-      
+
       if (error) throw error;
-      
-      setSuccess('Service updated successfully!');
+
+      toast.success('Service updated successfully!');
       setShowEditModal(false);
       setSelectedService(null);
       setFormData({ service_name: '', description: '', price: '' });
       fetchServices();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      console.error('Error updating service:', err);
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleToggleStatus = async (service) => {
-    const newStatus = service.status === 'active' ? 'inactive' : 'active';
-    const confirmMsg = service.status === 'active' 
-      ? 'Are you sure you want to deactivate this service?'
-      : 'Are you sure you want to activate this service?';
-    
-    if (!window.confirm(confirmMsg)) return;
-    
+  const handleDeleteService = async (service) => {
+    if (!window.confirm('Are you sure you want to permanently delete this service? This action cannot be undone.')) return;
+
+    // Check if service has any appointments
+    const { count, error: countError } = await supabase
+      .from('appointments')
+      .select('*', { count: 'exact', head: true })
+      .eq('service_id', service.service_id);
+
+    if (countError) {
+      toast.error(countError.message);
+      return;
+    }
+
+    if (count > 0) {
+      toast.error('Cannot delete a service that has existing appointments. Deactivate it instead.');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('services')
-        .update({ status: newStatus })
+        .delete()
         .eq('service_id', service.service_id);
-      
       if (error) throw error;
-      
-      setSuccess(`Service ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully!`);
+      toast.success('Service deleted successfully!');
       fetchServices();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      console.error('Error toggling status:', err);
-      setError(err.message);
-    }
-  };
-
-  const handleDeleteService = async (service) => {
-    if (!window.confirm('Are you sure you want to delete this service? This action cannot be undone.')) return;
-    
-    try {
-      const { count, error: countError } = await supabase
-        .from('appointments')
-        .select('*', { count: 'exact', head: true })
-        .eq('service_id', service.service_id);
-      
-      if (countError) throw countError;
-      
-      if (count > 0) {
-        const { error } = await supabase
-          .from('services')
-          .update({ status: 'inactive' })
-          .eq('service_id', service.service_id);
-        
-        if (error) throw error;
-        setSuccess('Service deactivated (has existing appointments).');
-      } else {
-        const { error } = await supabase
-          .from('services')
-          .delete()
-          .eq('service_id', service.service_id);
-        
-        if (error) throw error;
-        setSuccess('Service deleted successfully!');
-      }
-      
-      fetchServices();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      console.error('Error deleting service:', err);
-      setError(err.message);
+      toast.error(err.message);
     }
   };
 
   const openAddModal = () => {
     setFormData({ service_name: '', description: '', price: '' });
-    setError('');
     setShowAddModal(true);
   };
 
@@ -227,8 +229,16 @@ const ManageServices = () => {
       price: service.price,
       status: service.status
     });
-    setError('');
     setShowEditModal(true);
+  };
+
+  const resetFilters = () => {
+    setSearch('');
+    setDebouncedSearch('');
+    setStatusFilter('');
+    setSortBy('service_name');
+    setSortOrder('asc');
+    setPage(1);
   };
 
   const handleLogout = async () => {
@@ -237,16 +247,15 @@ const ManageServices = () => {
     navigate('/login');
   };
 
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <div className="admin-loading">
         <div className="loading-spinner"></div>
-        <p>Loading...</p>
+        <p>Loading authentication...</p>
       </div>
     );
   }
 
-  const isSuperAdmin = user?.email === 'jhoncarl.jubilag@cvsu.edu.ph';
   if (!user || (userType !== 'admin' && !isSuperAdmin)) return null;
 
   const adminName = isSuperAdmin ? 'Super Admin' : (user?.email?.split('@')[0] || 'Admin');
@@ -256,13 +265,16 @@ const ManageServices = () => {
     <div className="admin-dashboard">
       <Sidebar onLogout={handleLogout} />
 
-      <div className="main-content">
+      <div className="main-content manage-services-page">
         <div className="dashboard-header">
           <div className="header-title">
             <h1>Manage Services</h1>
             <p className="welcome-message">Add, edit, or remove dental services offered by the clinic</p>
           </div>
           <div className="header-actions">
+            <button className="btn btn-primary" onClick={openAddModal}>
+              <i className="fas fa-plus"></i> Add New Service
+            </button>
             <div className="user-info">
               <div className="user-avatar">{adminInitial}</div>
               <div className="user-details">
@@ -273,107 +285,140 @@ const ManageServices = () => {
           </div>
         </div>
 
-        {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
+        {/* Stats Cards */}
+        <div className="stats-grid">
+          <div className="stat-card"><div className="stat-number">{stats.total}</div><div className="stat-label">Total Services</div></div>
+          <div className="stat-card stat-active"><div className="stat-number">{stats.active}</div><div className="stat-label">Active Services</div></div>
+          <div className="stat-card stat-inactive"><div className="stat-number">{stats.inactive}</div><div className="stat-label">Inactive Services</div></div>
+        </div>
 
-        <div className="services-grid">
-          <div className="card">
-            <div className="card-header">
-              <h3>All Services</h3>
-              <button className="btn btn-primary" onClick={openAddModal}>
-                <i className="fas fa-plus"></i> Add New Service
-              </button>
+        {/* Filters */}
+        <div className="filters">
+          <div className="filter-grid">
+            <div className="filter-group">
+              <label>Search</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search by service name..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
-            <div className="card-body">
-              <div className="services-list">
-                {services.length === 0 ? (
-                  <div className="empty-state">
-                    <i className="fas fa-tooth"></i>
-                    <p>No services found</p>
-                    <p style={{ marginTop: '10px', fontSize: '0.9rem' }}>Add your first service using the button above.</p>
-                  </div>
-                ) : (
-                  services.map(service => (
-                    <div key={service.service_id} className={`service-item ${service.status === 'inactive' ? 'inactive' : ''}`}>
-                      <div className="service-header">
-                        <div className="service-header-content">
-                          <div className="service-icon">🦷</div>
-                          <div className="service-info">
-                            <div className="service-title">{service.service_name}</div>
-                            <div className="service-price">{Number(service.price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>
-                          </div>
-                        </div>
-                        <span className={`status-badge status-${service.status}`}>
-                          {service.status === 'active' ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                      <div className="service-body">
-                        <div className="service-description">
-                          {service.description || 'No description provided.'}
-                        </div>
-                      </div>
-                      <div className="service-footer">
-                        <div className="service-meta">
-                          <strong>ID:</strong> {service.service_id} | 
-                          <strong> Status:</strong> {service.status === 'active' ? 'Active' : 'Inactive'}
-                        </div>
-                        <div className="service-actions">
-                          <button className="btn btn-warning btn-sm" onClick={() => openEditModal(service)}>
-                            <i className="fas fa-edit"></i> Edit
-                          </button>
-                          <button 
-                            className={`btn btn-sm ${service.status === 'active' ? 'btn-secondary' : 'btn-success'}`}
-                            onClick={() => handleToggleStatus(service)}
-                          >
-                            <i className={`fas fa-${service.status === 'active' ? 'ban' : 'check'}`}></i>
-                            {service.status === 'active' ? 'Deactivate' : 'Activate'}
-                          </button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleDeleteService(service)}>
-                            <i className="fas fa-trash"></i> Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+            <div className="filter-group">
+              <label>Status</label>
+              <select className="form-control" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </div>
-          </div>
-
-          <div className="card">
-            <div className="card-header">
-              <h3>Service Statistics</h3>
+            <div className="filter-group">
+              <label>Sort By</label>
+              <select className="form-control" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                <option value="service_name">Service Name</option>
+                <option value="price">Price</option>
+                <option value="created_at">Date Created</option>
+              </select>
             </div>
-            <div className="card-body">
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="stat-number">{stats.total}</div>
-                  <div className="stat-label">Total Services</div>
-                </div>
-                <div className="stat-card stat-active">
-                  <div className="stat-number">{stats.active}</div>
-                  <div className="stat-label">Active Services</div>
-                </div>
-                <div className="stat-card stat-inactive">
-                  <div className="stat-number">{stats.inactive}</div>
-                  <div className="stat-label">Inactive Services</div>
-                </div>
-              </div>
-              
-              <div className="quick-actions">
-                <h4>Quick Actions</h4>
-                <button className="btn btn-primary" onClick={openAddModal} style={{ width: '100%' }}>
-                  <i className="fas fa-plus"></i> Add New Service
-                </button>
-                <button className="btn btn-secondary" onClick={fetchServices} style={{ width: '100%' }}>
-                  <i className="fas fa-sync-alt"></i> Refresh List
-                </button>
-              </div>
+            <div className="filter-group">
+              <label>Order</label>
+              <select className="form-control" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+            </div>
+            <div className="filter-group">
+              <button className="btn btn-primary" onClick={fetchServices}>Apply</button>
+              <button className="btn btn-secondary" onClick={resetFilters}>Reset</button>
             </div>
           </div>
         </div>
+
+        {/* Services Table */}
+        <div className="table-container">
+          <div className="table-header">
+            <h3>Service List</h3>
+            <span>Showing {services.length} of {totalCount} service(s)</span>
+          </div>
+          <div className="table-responsive">
+            <table className="data-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '20%', padding: '12px 15px', textAlign: 'left' }}>Service Name</th>
+                  <th style={{ width: '45%', padding: '12px 15px', textAlign: 'left' }}>Description</th>
+                  <th style={{ width: '10%', padding: '12px 15px', textAlign: 'left' }}>Price</th>
+                  <th style={{ width: '10%', padding: '12px 15px', textAlign: 'center' }}>Status</th>
+                  <th style={{ width: '15%', padding: '12px 15px', textAlign: 'left' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>
+                      <div className="spinner-small"></div> Loading services...
+                    </td>
+                  </tr>
+                ) : services.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '60px', color: '#7f8c8d' }}>
+                      No services found
+                    </td>
+                  </tr>
+                ) : (
+                  services.map(service => (
+                    <tr key={service.service_id}>
+                      <td style={{ width: '20%', padding: '12px 15px', verticalAlign: 'middle' }}>
+                        <strong>{service.service_name}</strong>
+                      </td>
+                      <td style={{ width: '45%', padding: '12px 15px', verticalAlign: 'middle', wordBreak: 'break-word' }}>
+                        {service.description || '—'}
+                      </td>
+                      <td style={{ width: '10%', padding: '12px 15px', verticalAlign: 'middle' }}>
+                        ₱{Number(service.price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ width: '10%', padding: '12px 15px', textAlign: 'center', verticalAlign: 'middle' }}>
+                        <span className={`status-badge status-${service.status}`}>
+                          {service.status === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td style={{ width: '15%', padding: '12px 15px', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <button 
+                            className="btn btn-warning btn-sm" 
+                            onClick={() => openEditModal(service)}
+                            style={{ padding: '6px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                          >
+                            <i className="fas fa-edit"></i> Edit
+                          </button>
+                          {service.status === 'inactive' && (
+                            <button 
+                              className="btn btn-danger btn-sm" 
+                              onClick={() => handleDeleteService(service)}
+                              style={{ padding: '6px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                            >
+                              <i className="fas fa-trash"></i> Delete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button className="page-link" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</button>
+              <span className="page-info">Page {page} of {totalPages}</span>
+              <button className="page-link" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Add Modal */}
       {showAddModal && (
         <div className="modal active" onClick={(e) => e.target === e.currentTarget && setShowAddModal(false)}>
           <div className="modal-content">
@@ -385,37 +430,15 @@ const ManageServices = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label>Service Name *</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={formData.service_name}
-                    onChange={(e) => setFormData({ ...formData, service_name: e.target.value })}
-                    placeholder="e.g., Dental Checkup, Teeth Cleaning"
-                    required
-                  />
+                  <input type="text" className="form-control" value={formData.service_name} onChange={e => setFormData({ ...formData, service_name: e.target.value })} required />
                 </div>
                 <div className="form-group">
                   <label>Description</label>
-                  <textarea
-                    className="form-control"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Describe the service, procedure details, duration, etc."
-                    rows="4"
-                  />
+                  <textarea className="form-control" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows="4" />
                 </div>
                 <div className="form-group">
                   <label>Price (₱) *</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    placeholder="e.g., 500.00"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
+                  <input type="number" className="form-control" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} min="0" step="0.01" required />
                 </div>
               </div>
               <div className="modal-footer">
@@ -429,6 +452,7 @@ const ManageServices = () => {
         </div>
       )}
 
+      {/* Edit Modal */}
       {showEditModal && selectedService && (
         <div className="modal active" onClick={(e) => e.target === e.currentTarget && setShowEditModal(false)}>
           <div className="modal-content">
@@ -440,42 +464,19 @@ const ManageServices = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label>Service Name *</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={formData.service_name}
-                    onChange={(e) => setFormData({ ...formData, service_name: e.target.value })}
-                    required
-                  />
+                  <input type="text" className="form-control" value={formData.service_name} onChange={e => setFormData({ ...formData, service_name: e.target.value })} required />
                 </div>
                 <div className="form-group">
                   <label>Description</label>
-                  <textarea
-                    className="form-control"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows="4"
-                  />
+                  <textarea className="form-control" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows="4" />
                 </div>
                 <div className="form-group">
                   <label>Price (₱) *</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    min="0"
-                    step="0.01"
-                    required
-                  />
+                  <input type="number" className="form-control" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} min="0" step="0.01" required />
                 </div>
                 <div className="form-group">
                   <label>Status *</label>
-                  <select
-                    className="form-control"
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  >
+                  <select className="form-control" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
@@ -500,6 +501,20 @@ const ManageServices = () => {
           </div>
         </div>
       )}
+
+      {/* Toast Container */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   );
 };

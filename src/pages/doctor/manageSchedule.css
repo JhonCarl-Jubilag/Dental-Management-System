@@ -1,0 +1,334 @@
+.manage-schedule-page .schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+@media (max-width: 1024px) {
+  .manage-schedule-page .schedule-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.manage-schedule-page .card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+  border: 1px solid #eef2f6;
+}
+
+.manage-schedule-page .card:hover {
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.manage-schedule-page .card-header {
+  background: linear-gradient(135deg, #354D70, #4d83d4);
+  color: white;
+  padding: 18px 24px;
+}
+
+.manage-schedule-page .card-header h3 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.3rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.manage-schedule-page .card-body {
+  padding: 25px;
+}
+
+/* Form elements */
+.manage-schedule-page .form-group {
+  margin-bottom: 20px;
+}
+
+.manage-schedule-page .form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #2c3e50;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.manage-schedule-page .form-control {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  background: #fafbfc;
+}
+
+.manage-schedule-page .form-control:focus {
+  outline: none;
+  border-color: #4d83d4;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(77,131,212,0.1);
+}
+
+.manage-schedule-page .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.manage-schedule-page .form-hint {
+  font-size: 0.7rem;
+  color: #6c757d;
+  margin-top: 5px;
+  display: block;
+}
+
+/* Buttons – unified with dashboard */
+.manage-schedule-page .btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Montserrat', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.manage-schedule-page .btn-primary {
+  background: linear-gradient(135deg, #354D70, #4d83d4);
+  color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.manage-schedule-page .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(53,77,112,0.2);
+}
+
+.manage-schedule-page .btn-danger {
+  background: #e74c3c;
+  color: white;
+}
+
+.manage-schedule-page .btn-danger:hover {
+  background: #c0392b;
+  transform: translateY(-1px);
+}
+
+.manage-schedule-page .btn-warning {
+  background: #f39c12;
+  color: white;
+}
+
+.manage-schedule-page .btn-warning:hover {
+  background: #e67e22;
+  transform: translateY(-1px);
+}
+
+.manage-schedule-page .btn-success {
+  background: #27ae60;
+  color: white;
+}
+
+.manage-schedule-page .btn-success:hover {
+  background: #219a52;
+  transform: translateY(-1px);
+}
+
+.manage-schedule-page .btn-sm {
+  padding: 6px 14px;
+  font-size: 0.8rem;
+}
+
+/* Upcoming appointments list */
+.manage-schedule-page .appointments-list {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.manage-schedule-page .appointment-item {
+  padding: 15px;
+  border: 1px solid #eef2f6;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  background: #fafbfc;
+  transition: background 0.2s;
+}
+
+.manage-schedule-page .appointment-item:hover {
+  background: #f8f9fa;
+  border-color: #d4dcf0;
+}
+
+.manage-schedule-page .appointment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.manage-schedule-page .appointment-patient {
+  font-weight: 700;
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.manage-schedule-page .appointment-time {
+  font-size: 0.75rem;
+  background: #e9ecef;
+  padding: 4px 10px;
+  border-radius: 30px;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.manage-schedule-page .appointment-service {
+  font-size: 0.85rem;
+  color: #495057;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Status badges */
+.manage-schedule-page .status-badge {
+  padding: 4px 12px;
+  border-radius: 30px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.manage-schedule-page .status-active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.manage-schedule-page .status-pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.manage-schedule-page .status-inactive {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* Availability list */
+.manage-schedule-page .availability-list {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.manage-schedule-page .date-group {
+  margin-bottom: 25px;
+}
+
+.manage-schedule-page .date-heading {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #354D70;
+  border-left: 4px solid #4d83d4;
+  padding-left: 12px;
+}
+
+.manage-schedule-page .availability-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border: 1px solid #eef2f6;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  background: white;
+  transition: all 0.2s;
+}
+
+.manage-schedule-page .availability-item:hover {
+  background: #f8f9fa;
+  border-color: #d4dcf0;
+}
+
+.manage-schedule-page .availability-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.manage-schedule-page .time-range {
+  font-weight: 600;
+  color: #2c3e50;
+  background: #eef2fa;
+  padding: 5px 12px;
+  border-radius: 30px;
+  font-size: 0.9rem;
+}
+
+.manage-schedule-page .availability-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Empty state */
+.manage-schedule-page .empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #7f8c8d;
+}
+
+.manage-schedule-page .empty-state i {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  opacity: 0.6;
+  color: #7f8c8d;
+}
+
+.manage-schedule-page .helper-text {
+  font-size: 0.8rem;
+  margin-top: 8px;
+  color: #a0aec0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .manage-schedule-page .availability-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .manage-schedule-page .availability-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .manage-schedule-page .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .manage-schedule-page .appointment-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.manage-schedule-page .availability-list,
+.manage-schedule-page .date-group,
+.manage-schedule-page .date-heading,
+.manage-schedule-page .availability-info {
+  text-align: left !important;
+  justify-content: flex-start !important;
+}

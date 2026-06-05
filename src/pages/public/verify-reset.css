@@ -1,0 +1,117 @@
+/* verify-reset.css – reuse styles from forgot-password.css */
+.verify-reset-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #B4DDE1;
+}
+
+.verify-reset-container .container {
+  width: 100%;
+  max-width: 500px;
+}
+
+.verify-reset-container .form-wrapper {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  padding: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.verify-reset-container .form-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.verify-reset-container .form-header h1 {
+  color: #2c3e50;
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.verify-reset-container .verify-action {
+  text-align: center;
+}
+
+.verify-reset-container .verify-action p {
+  margin-bottom: 20px;
+  color: #2c3e50;
+}
+
+.verify-reset-container .btn-primary {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.verify-reset-container .btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+}
+
+.verify-reset-container .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.verify-reset-container .spinner-small {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.verify-reset-container .alert {
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.verify-reset-container .alert-error {
+  background-color: #fee;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
+.verify-reset-container .alert-success {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.verify-reset-container .form-footer {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #ecf0f1;
+  text-align: center;
+}
+
+.verify-reset-container .form-footer a {
+  color: #3498db;
+  text-decoration: none;
+  margin: 0 5px;
+}

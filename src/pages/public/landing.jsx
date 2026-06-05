@@ -4,6 +4,18 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import ClinicMap from '../../components/common/ClinicMap';
 import './landing.css';
+import DentalLogo from '../../assets/DentalLogo.png';
+
+import { 
+  ClipboardCheck,   
+  Sparkles,         
+  Activity,        
+  Scan,       
+  Layers,         
+  Baby,           
+  ShieldAlert,      
+  BriefcaseMedical  
+} from 'lucide-react';
 
 const Landing = () => {
   const { user, userType, userDetails, signOut } = useAuth();
@@ -24,39 +36,46 @@ const Landing = () => {
   ]);
   const [chatInput, setChatInput] = useState('');
 
-  // Service icons mapping
   const getServiceIcon = (serviceName) => {
-    const icons = {
-      'checkup': '🦷',
-      'cleaning': '✨',
-      'filling': '🔧',
-      'root canal': '🩺',
-      'extraction': '⚕️',
-      'whitening': '🌟',
-      'crown': '👑',
-      'bridge': '🌉',
-      'implant': '🦷',
-      'braces': '🦷',
-      'dentures': '👵',
-      'emergency': '🚑',
-      'pediatric': '👶',
-      'surgery': '🩹',
-      'xray': '📷',
-      'fluoride': '💧'
-    };
+    const name = serviceName.toLowerCase();
+
+    // Diagnostics & Prevention
+    if (name.includes('checkup')) return <ClipboardCheck size={42} className="text-blue-600" />;
+    if (name.includes('xray') || name.includes('x-ray')) return <Scan size={42} className="text-blue-600" />;
     
-    const lowercaseName = serviceName.toLowerCase();
-    for (const [keyword, icon] of Object.entries(icons)) {
-      if (lowercaseName.includes(keyword)) {
-        return icon;
-      }
+    // Cleaning & Esthetics
+    if (name.includes('cleaning') || name.includes('fluoride')) return <Sparkles size={42} className="text-blue-600" />;
+    if (name.includes('whitening')) return <Sparkles size={42} className="text-blue-500" />;
+    
+    // Restorative & Prosthodontics (Crowns, Bridges, Implants, Fillings)
+    if (
+      name.includes('crown') || 
+      name.includes('bridge') || 
+      name.includes('implant') || 
+      name.includes('filling') ||
+      name.includes('dentures') ||
+      name.includes('braces')
+    ) {
+      return <Layers size={42} className="text-blue-600" />;
     }
-    return '🦷'; // Default icon
+    
+    // Specialized & Surgical Care
+    if (name.includes('pediatric') || name.includes('child')) return <Baby size={42} className="text-blue-600" />;
+    if (name.includes('emergency')) return <ShieldAlert size={42} className="text-red-500" />;
+    if (
+      name.includes('surgery') || 
+      name.includes('extraction') || 
+      name.includes('root') || 
+      name.includes('rct')
+    ) {
+      return <Activity size={42} className="text-blue-600" />;
+    }
+    
+    return <BriefcaseMedical size={42} className="text-blue-600" />;
   };
 
   useEffect(() => {
     fetchServices();
-
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -76,7 +95,6 @@ const Landing = () => {
       if (data && data.length > 0) {
         setServices(data);
       } else {
-        // No services found, use fallback
         setServices(getFallbackServices());
       }
     } catch (error) {
@@ -88,7 +106,6 @@ const Landing = () => {
     }
   };
 
-  // Fallback services in case database is empty or error
   const getFallbackServices = () => {
     return [
       { 
@@ -148,10 +165,8 @@ const Landing = () => {
     ];
   };
 
-  // Get first 6 services for display
   const displayedServices = showAllServices ? services : services.slice(0, 6);
 
-  // Toggle functions
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
@@ -160,7 +175,6 @@ const Landing = () => {
     setUserDropdownOpen(!userDropdownOpen);
   };
 
-  // Chatbot functions
   const handleChatSubmit = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -185,63 +199,48 @@ const Landing = () => {
   const generateBotResponse = (userMessage) => {
     const lowerMessage = userMessage.toLowerCase();
     
-    // Clinic hours
     if (lowerMessage.includes('hour') || lowerMessage.includes('open') || lowerMessage.includes('time') || 
         lowerMessage.includes('when are you open') || lowerMessage.includes('clinic hour') || 
         lowerMessage.includes('operating hour')) {
       return "Our clinic is open Monday to Friday from 9:00 AM to 5:00 PM, and Saturdays from 10:00 AM to 5:00 PM. We're closed on Sundays and holidays. You can book appointments during these hours.";
     }
     
-    // Dental procedures/services
     if (lowerMessage.includes('procedure') || lowerMessage.includes('service') || lowerMessage.includes('treatment') ||
         lowerMessage.includes('what do you offer') || lowerMessage.includes('dental procedure') ||
-        lowerMessage.includes('common procedure') || lowerMessage.includes('offer')) {
-      
+        lowerMessage.includes('offer')) {
       const serviceList = services.slice(0, 5).map(s => s.service_name).join(', ');
-      return `We offer a comprehensive range of dental procedures including ${serviceList}, and more. You can view all our detailed services above. Each service includes professional care from our experienced dentists.`;
+      return `We offer a comprehensive range of dental procedures including ${serviceList}, and more. You can view all our detailed services above.`;
     }
     
-    // Price inquiries
     if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('how much') ||
-        lowerMessage.includes('expensive') || lowerMessage.includes('affordable') || lowerMessage.includes('payment')) {
-      
+        lowerMessage.includes('payment')) {
       for (const service of services) {
         if (lowerMessage.includes(service.service_name.toLowerCase())) {
-          return `${service.service_name} costs ₱${Number(service.price).toFixed(2)}. This covers the procedure and professional fee. Would you like to know about payment options or book an appointment?`;
+          return `${service.service_name} costs ₱${Number(service.price).toFixed(2)}. This covers the procedure and professional fee.`;
         }
       }
-      
-      return "Our service prices are listed above with each service. The exact cost may vary depending on your specific needs. We offer free consultations to provide accurate pricing and accept various payment methods including cash, credit cards, and insurance. Would you like information about a specific service's pricing?";
+      return "Our service prices are listed above with each service. We accept various payment methods including cash, credit cards, and insurance.";
     }
     
-    // Appointment-related questions
-    if (lowerMessage.includes('appointment') || lowerMessage.includes('book') || lowerMessage.includes('schedule') ||
-        lowerMessage.includes('make an appointment') || lowerMessage.includes('reschedule') ||
-        lowerMessage.includes('cancel appointment')) {
+    if (lowerMessage.includes('appointment') || lowerMessage.includes('book') || lowerMessage.includes('schedule')) {
       if (user && userType === 'patient') {
-        return "You can book an appointment by clicking any service card above, or go to the Book Appointment page from the navigation menu. You can also view, reschedule, or cancel appointments from your dashboard. Need help with a specific appointment?";
+        return "You can book an appointment by clicking any service card above, or go to the Book Appointment page from the navigation menu.";
       } else {
-        return "To book an appointment, please register for an account first. Once registered, you'll be able to book appointments directly from our services page. I'm available 24/7 to answer questions about our procedures and clinic hours while you decide.";
+        return "To book an appointment, please register for an account first. Once registered, you'll be able to book appointments directly.";
       }
     }
     
-    // Emergency
-    if (lowerMessage.includes('emergency') || lowerMessage.includes('pain') || lowerMessage.includes('hurt') ||
-        lowerMessage.includes('broken tooth') || lowerMessage.includes('bleeding') || lowerMessage.includes('swelling')) {
-      return "For dental emergencies (severe pain, trauma, swelling, or uncontrolled bleeding): Call our emergency line at (02) 1234-5678 immediately. We have emergency slots available during clinic hours. After hours, we can direct you to appropriate emergency dental services.";
+    if (lowerMessage.includes('emergency') || lowerMessage.includes('pain') || lowerMessage.includes('hurt') || lowerMessage.includes('bleeding')) {
+      return "For dental emergencies (severe pain, trauma, swelling, or uncontrolled bleeding): Call our emergency line at (02) 1234-5678 immediately.";
     }
     
-    // Location
-    if (lowerMessage.includes('where') || lowerMessage.includes('location') || lowerMessage.includes('address') ||
-        lowerMessage.includes('how to get there') || lowerMessage.includes('contact')) {
-      return "We're located at Tanzang Luma 2, Imus City, Cavite, in front of Lumina Mall. Phone: (02) 1234-5678. Email: info@fifthcuspclinic.com. We're accessible by public transportation with parking available.";
+    if (lowerMessage.includes('where') || lowerMessage.includes('location') || lowerMessage.includes('address')) {
+      return "We're located at Tanzang Luma 2, Imus City, Cavite, in front of Lumina Mall. Phone: (02) 1234-5678.";
     }
     
-    // Default response
-    return "Thank you for your message! As your 24/7 AI dental assistant, I can help with: clinic hours information, details about common dental procedures, post-treatment care instructions, appointment booking assistance, and answering frequently asked questions. What specific information would you like?";
+    return "Thank you for your message! I can help with clinic hours information, details about common dental procedures, price inquiries, and appointment booking assistance. What specific information would you like?";
   };
 
-  // Scroll to bottom when chat messages update
   useEffect(() => {
     const messagesContainer = document.getElementById('chatbot-messages');
     if (messagesContainer) {
@@ -249,30 +248,21 @@ const Landing = () => {
     }
   }, [chatMessages]);
 
-  // Logout function
   const handleLogout = async (e) => {
     e.preventDefault();
-    
-    // Set logging out state to true
     setIsLoggingOut(true);
-    
-    // Close dropdown
     setUserDropdownOpen(false);
-    
-    // Call signOut function
     await signOut();
-    
-    // Redirect to home page
     window.location.href = '/';
   };
 
   return (
     <div className="landing-page">
-      {/* Modern Navigation */}
+      {/*Navigation Bar*/}
       <nav className="modern-nav">
         <div className="nav-container">
           <Link to="/" className="logo">
-            <div className="logo-placeholder"></div>
+            <img src={DentalLogo} alt="Fifthcusp Dental Clinic Logo" className="logo-image" />
             <div className="logo-text-wrapper">
               <span className="logo-main-text">Fifthcusp</span>
               <span className="logo-sub-text">Dental Clinic</span>
@@ -307,21 +297,11 @@ const Landing = () => {
                   <Link to="/profile" onClick={() => setUserDropdownOpen(false)}>
                     <i className="fas fa-user"></i> My Profile
                   </Link>
-                  
-                  {/* Logout link with loading state */}
-                  <a 
-                    href="/" 
-                    onClick={handleLogout}
-                    className={isLoggingOut ? 'logging-out' : ''}
-                  >
+                  <a href="/" onClick={handleLogout} className={isLoggingOut ? 'logging-out' : ''}>
                     {isLoggingOut ? (
-                      <>
-                        <i className="fas fa-spinner fa-spin"></i> Logging out...
-                      </>
+                      <><i className="fas fa-spinner fa-spin"></i> Logging out...</>
                     ) : (
-                      <>
-                        <i className="fas fa-sign-out-alt"></i> Logout
-                      </>
+                      <><i className="fas fa-sign-out-alt"></i> Logout</>
                     )}
                   </a>
                 </div>
@@ -336,7 +316,6 @@ const Landing = () => {
         </div>
       </nav>
 
-      {/* Optional: Global loading overlay kapag naglo-logout */}
       {isLoggingOut && (
         <div className="logout-loading-overlay">
           <div className="logout-loading-content">
@@ -348,18 +327,21 @@ const Landing = () => {
 
       {/* Hero Section */}
       <header className="landing-header">
-        <div className="hero">
-          <h1>Your Smile is Our Priority</h1>
-          <p>Experience world-class dental care with our team of expert professionals</p>
-          <div className="cta-buttons">
-            {user && userType === 'patient' ? (
-              <Link to="/book-appointment" className="btn-landing btn-success">Book New Appointment</Link>
-            ) : (
-              <>
-                <Link to="/register" className="btn-landing btn-primary">Book Your Appointment</Link>
-                <a href="#services" className="btn-landing btn-secondary">View Our Services</a>
-              </>
-            )}
+        <div className="hero hero-with-bg">
+          <div className="hero-overlay"></div>
+          <div className="hero-content">
+            <h1>Your Smile is Our Priority</h1>
+            <p>Experience world-class dental care with our team of expert professionals</p>
+            <div className="cta-buttons">
+              {user && userType === 'patient' ? (
+                <Link to="/book-appointment" className="btn-landing btn-success">Book New Appointment</Link>
+              ) : (
+                <>
+                  <Link to="/register" className="btn-landing btn-primary">Book Your Appointment</Link>
+                  <a href="#services" className="btn-landing btn-secondary">View Our Services</a>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -405,7 +387,22 @@ const Landing = () => {
                       }
                     }}
                   >
-                    <div className="service-icon">{getServiceIcon(service.service_name)}</div>
+                    <div 
+                      className="service-icon" 
+                      style={{
+                        backgroundColor: '#eff6ff', 
+                        width: '120px', 
+                        height: '70px', 
+                        borderRadius: '1rem', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        margin: '0 auto 1.5rem auto'
+                      }}
+                    >
+                      {getServiceIcon(service.service_name)}
+                    </div>
+
                     <h3>{service.service_name}</h3>
                     <p className="service-description">
                       {service.description?.substring(0, 120) || 'Professional dental service'}
@@ -413,7 +410,7 @@ const Landing = () => {
                     </p>
                     
                     <div className="service-price">
-                      {Number(service.price).toLocaleString('en-PH', { 
+                      ₱{Number(service.price).toLocaleString('en-PH', { 
                         minimumFractionDigits: 2, 
                         maximumFractionDigits: 2 
                       })}
@@ -474,7 +471,7 @@ const Landing = () => {
           <div className="clinic-info">
             <div className="info-text">
               <h3>Why Choose Our Dental Clinic?</h3>
-              <p>We are dedicated to delivering the highest quality dental care using state-of-the-art technology and techniques. Our team of experienced professionals is committed to making your dental experience comfortable and stress-free.</p>
+              <p>We are dedicated to delivering the highest quality dental care using state-of-the-art technology and techniques.</p>
               
               <ul className="info-features">
                 <li>Experienced and caring dental professionals</li>
@@ -548,7 +545,7 @@ const Landing = () => {
           <div className="footer-content">
             <div className="footer-section">
               <h3>Fifthcusp Dental Clinic</h3>
-              <p>Providing quality dental care for a healthier, happier smile. Your oral health is our top priority.</p>
+              <p>Providing quality dental care for a healthier, happier smile.</p>
             </div>
             
             <div className="footer-section">

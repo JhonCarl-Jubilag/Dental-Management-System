@@ -132,51 +132,54 @@ export const AuthProvider = ({ children }) => {
 
   // Sign Up
   const signUp = async (email, password, userData) => {
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/verify-email`,
-          data: {
-            first_name: userData.first_name,
-            last_name: userData.last_name,
-            user_type: 'patient'
-          }
-        }
-      });
-
-      if (authError) throw authError;
-
-      if (authData.user) {
-        try {
-          const { error: dbError } = await supabase
-            .from('patients')
-            .insert([{
-              first_name: userData.first_name,
-              last_name: userData.last_name,
-              email: email,
-              address: userData.address,
-              contact_no: userData.contact_no,
-              birthday: userData.birthday,
-              age: calculateAge(userData.birthday),
-              email_verified: false,
-              status: 'active',
-              date_created: new Date().toISOString()
-            }]);
-
-          if (dbError) console.error('DB insert error:', dbError);
-        } catch (dbError) {
-          console.error('DB insert exception:', dbError);
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/verify-email`,
+        data: {
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          user_type: 'patient'
         }
       }
+    });
 
-      return { success: true, message: 'Registration successful! Please verify your email.', user: authData.user };
-    } catch (error) {
-      console.error('Sign up error:', error);
-      return { success: false, message: error.message };
+    if (authError) throw authError;
+
+    if (authData.session) {
+      await supabase.auth.signOut();
     }
-  };
+
+    if (authData.user) {
+      const { error: dbError } = await supabase
+        .from('patients')
+        .insert([{
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          email: email,
+          address: userData.address,
+          contact_no: userData.contact_no,
+          birthday: userData.birthday,
+          age: calculateAge(userData.birthday),
+          email_verified: false,
+          status: 'active',
+          date_created: new Date().toISOString()
+        }]);
+      if (dbError) console.error('DB insert error:', dbError);
+    }
+
+    return {
+      success: true,
+      message: 'Registration successful! Please check your email to verify your account.',
+      user: authData.user
+    };
+  } catch (error) {
+    console.error('Sign up error:', error);
+    return { success: false, message: error.message };
+  }
+};
 
   // Sign In
   const signIn = async (email, password) => {
@@ -286,10 +289,10 @@ export const AuthProvider = ({ children }) => {
   const forgotPassword = async (email) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
+        redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) throw error;
-      return { success: true, message: 'Password reset email sent.' };
+      return { success: true, message: 'Password reset instructions sent to your email.' };
     } catch (error) {
       return { success: false, message: error.message };
     }
@@ -300,7 +303,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      return { success: true, message: 'Password reset successfully.' };
+      return { success: true, message: 'Password reset successfully. You can now log in.' };
     } catch (error) {
       return { success: false, message: error.message };
     }

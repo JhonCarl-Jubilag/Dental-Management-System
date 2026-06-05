@@ -156,7 +156,7 @@
   color: var(--secondary-color);
   font-weight: 500;
   letter-spacing: 1px;
-  margin-left: -70px;
+  margin-left: -60px;
   margin-top: -10px;
 }
 .subtitle {
@@ -502,4 +502,137 @@
     min-width: auto;
     max-width: none;
   }
+}
+
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  padding-right: 45px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7f8c8d;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+}
+
+.password-toggle-btn:hover {
+  color: #3498db;
+  background-color: rgba(52, 152, 219, 0.1);
+}
+
+.password-toggle-btn:focus {
+  outline: none;
+  color: #3498db;
+}
+
+.password-toggle-btn svg {
+  stroke: currentColor;
+}
+
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  padding-right: 45px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7f8c8d;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+}
+
+.password-toggle-btn:hover {
+  color: #3498db;
+  background-color: rgba(52, 152, 219, 0.1);
+}
+
+.password-toggle-btn:focus {
+  outline: none;
+  color: #3498db;
+}
+
+.password-toggle-btn svg {
+  stroke: currentColor;
+  transition: all 0.2s ease;
+}
+
+.password-toggle-btn:active svg {
+  transform: scale(0.95);
+}
+
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  padding-right: 45px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7f8c8d;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+}
+
+.password-toggle-btn:hover {
+  color: #3498db;
+  background-color: rgba(52, 152, 219, 0.1);
+}
+
+.password-toggle-btn:focus {
+  outline: none;
+  color: #3498db;
+}
+
+.password-toggle-btn svg {
+  stroke: currentColor;
+  transition: all 0.2s ease;
+}
+
+.password-toggle-btn:active svg {
+  transform: scale(0.95);
 }

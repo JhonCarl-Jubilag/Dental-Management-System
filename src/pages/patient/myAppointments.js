@@ -630,143 +630,292 @@ const MyAppointments = () => {
       </div>
 
       {showEditModal && selectedAppointment && (
-        <div className="modal active" onClick={() => setShowEditModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header"><h3>Edit/Reschedule Appointment</h3><button className="modal-close" onClick={() => setShowEditModal(false)}>&times;</button></div>
-            <div className="modal-body">
-              <div className="form-group"><label>Current Appointment</label><p><strong>{formatDateTime(selectedAppointment.appointment_datetime)}</strong></p></div>
-              <div className="availability-calendar">
+        <div className="appointment-modal-overlay active" onClick={() => setShowEditModal(false)}>
+          <div className="appointment-modal-container" onClick={e => e.stopPropagation()}>
+            <div className="appointment-modal-header">
+              <h3>Edit/Reschedule Appointment</h3>
+              <button className="appointment-modal-close" onClick={() => setShowEditModal(false)}>&times;</button>
+            </div>
+            <div className="appointment-modal-body">
+              <div className="appointment-form-group">
+                <label>Current Appointment</label>
+                <p><strong>{formatDateTime(selectedAppointment.appointment_datetime)}</strong></p>
+              </div>
+              <div className="appointment-availability-section">
                 <h4><i className="fas fa-calendar-check"></i> Select New Date & Time</h4>
-                <div className="calendar-navigation">
-                  <button type="button" className="nav-btn" onClick={() => changeMonth(-1)}><i className="fas fa-chevron-left"></i> Prev</button>
-                  <div className="current-month">{new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}</div>
-                  <button type="button" className="nav-btn" onClick={() => changeMonth(1)}>Next <i className="fas fa-chevron-right"></i></button>
+                <div className="appointment-calendar-nav">
+                  <button type="button" className="appointment-nav-btn" onClick={() => changeMonth(-1)}>
+                    <i className="fas fa-chevron-left"></i> Prev
+                  </button>
+                  <div className="appointment-current-month">
+                    {new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  </div>
+                  <button type="button" className="appointment-nav-btn" onClick={() => changeMonth(1)}>
+                    Next <i className="fas fa-chevron-right"></i>
+                  </button>
                 </div>
-                <div className="calendar-grid">
-                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => <div key={day} className="calendar-header">{day}</div>)}
+                <div className="appointment-calendar-grid">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="appointment-calendar-header">{day}</div>
+                  ))}
                   {generateCalendar().map((day, idx) => day ? (
-                    <div key={idx} className={`calendar-day ${day.isAvailable ? 'available' : 'unavailable'} ${day.isToday ? 'today' : ''} ${day.isSelected ? 'selected' : ''}`} onClick={() => day.isAvailable && handleDateSelect(day.dateStr)}>
-                      <div className="day-number">{day.day}</div><div className="day-status">{day.isAvailable ? 'Available' : 'Unavailable'}</div>
+                    <div 
+                      key={idx} 
+                      className={`appointment-calendar-day ${day.isAvailable ? 'available' : 'unavailable'} ${day.isToday ? 'today' : ''} ${day.isSelected ? 'selected' : ''}`}
+                      onClick={() => day.isAvailable && handleDateSelect(day.dateStr)}
+                    >
+                      <div className="appointment-day-number">{day.day}</div>
+                      <div className="appointment-day-status">{day.isAvailable ? 'Available' : 'Unavailable'}</div>
                     </div>
-                  ) : <div key={idx} className="calendar-day unavailable"></div>)}
+                  ) : (
+                    <div key={idx} className="appointment-calendar-day unavailable"></div>
+                  ))}
                 </div>
                 {selectedDate && (
-                  <div className="time-slots-container">
+                  <div className="appointment-timeslots-section">
                     <h4>Available Time Slots for {formatDate(selectedDate)}</h4>
-                    {loadingTimeSlots ? <div className="loading-text">Loading time slots...</div> : availableTimeSlots.length === 0 ? <div className="availability-info">No available time slots for this date.</div> : (
-                      <div className="time-slots-grid">
-                        {availableTimeSlots.map(slot => <div key={slot.time} className={`time-slot ${selectedTime === slot.time ? 'selected' : ''}`} onClick={() => handleTimeSelect(slot)}>{slot.display}</div>)}
+                    {loadingTimeSlots ? (
+                      <div className="appointment-loading-text">Loading time slots...</div>
+                    ) : availableTimeSlots.length === 0 ? (
+                      <div className="appointment-no-slots">No available time slots for this date.</div>
+                    ) : (
+                      <div className="appointment-timeslots-grid">
+                        {availableTimeSlots.map(slot => (
+                          <div 
+                            key={slot.time} 
+                            className={`appointment-timeslot ${selectedTime === slot.time ? 'selected' : ''}`}
+                            onClick={() => handleTimeSelect(slot)}
+                          >
+                            {slot.display}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
                 )}
               </div>
-              <div className="form-group"><label>Reason for Rescheduling</label><textarea value={updateReason} onChange={e => setUpdateReason(e.target.value)} placeholder="Please provide a reason" rows="3" required /></div>
-              <div className="form-actions"><button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button><button className="btn btn-primary" onClick={handleReschedule} disabled={!newDateTime || !updateReason}>Reschedule Appointment</button></div>
+              <div className="appointment-form-group">
+                <label>Reason for Rescheduling</label>
+                <textarea 
+                  value={updateReason} 
+                  onChange={e => setUpdateReason(e.target.value)} 
+                  placeholder="Please provide a reason" 
+                  rows="3" 
+                  required 
+                />
+              </div>
+              <div className="appointment-form-actions">
+                <button className="appointment-btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button className="appointment-btn-primary" onClick={handleReschedule} disabled={!newDateTime || !updateReason}>
+                  Reschedule Appointment
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {showCancelModal && selectedAppointment && (
-        <div className="modal active" onClick={() => setShowCancelModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header"><h3>Cancel Appointment</h3><button className="modal-close" onClick={() => setShowCancelModal(false)}>&times;</button></div>
-            <div className="modal-body">
+        <div className="appointment-modal-overlay active" onClick={() => setShowCancelModal(false)}>
+          <div className="appointment-modal-container" onClick={e => e.stopPropagation()}>
+            <div className="appointment-modal-header">
+              <h3>Cancel Appointment</h3>
+              <button className="appointment-modal-close" onClick={() => setShowCancelModal(false)}>&times;</button>
+            </div>
+            <div className="appointment-modal-body">
               <p>Are you sure you want to cancel your appointment on <strong>{formatDateTime(selectedAppointment.appointment_datetime)}</strong>?</p>
-              <p className="warning-text"><i className="fas fa-exclamation-triangle"></i> This action cannot be undone.</p>
-              <div className="form-group"><label>Reason for Cancellation</label><textarea value={cancellationReason} onChange={e => setCancellationReason(e.target.value)} placeholder="Please provide a reason" rows="3" required /></div>
-              <div className="form-actions"><button className="btn btn-secondary" onClick={() => setShowCancelModal(false)}>No, Keep Appointment</button><button className="btn btn-danger" onClick={handleCancelAppointment} disabled={!cancellationReason}>Yes, Cancel Appointment</button></div>
+              <p className="appointment-warning-text">
+                <i className="fas fa-exclamation-triangle"></i> This action cannot be undone.
+              </p>
+              <div className="appointment-form-group">
+                <label>Reason for Cancellation</label>
+                <textarea 
+                  value={cancellationReason} 
+                  onChange={e => setCancellationReason(e.target.value)} 
+                  placeholder="Please provide a reason" 
+                  rows="3" 
+                  required 
+                />
+              </div>
+              <div className="appointment-form-actions">
+                <button className="appointment-btn-secondary" onClick={() => setShowCancelModal(false)}>No, Keep Appointment</button>
+                <button className="appointment-btn-danger" onClick={handleCancelAppointment} disabled={!cancellationReason}>
+                  Yes, Cancel Appointment
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {showRescheduleRequestModal && selectedAppointment && (
-        <div className="modal active" onClick={() => setShowRescheduleRequestModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header"><h3>Request Reschedule</h3><button className="modal-close" onClick={() => setShowRescheduleRequestModal(false)}>&times;</button></div>
-            <div className="modal-body">
+        <div className="appointment-modal-overlay active" onClick={() => setShowRescheduleRequestModal(false)}>
+          <div className="appointment-modal-container" onClick={e => e.stopPropagation()}>
+            <div className="appointment-modal-header">
+              <h3>Request Reschedule</h3>
+              <button className="appointment-modal-close" onClick={() => setShowRescheduleRequestModal(false)}>&times;</button>
+            </div>
+            <div className="appointment-modal-body">
               <p>Current appointment: <strong>{formatDateTime(selectedAppointment.appointment_datetime)}</strong></p>
-              <div className="availability-calendar">
+              <div className="appointment-availability-section">
                 <h4><i className="fas fa-calendar-check"></i> Select New Date & Time</h4>
-                <div className="calendar-navigation">
-                  <button type="button" className="nav-btn" onClick={() => changeMonth(-1)}><i className="fas fa-chevron-left"></i> Prev</button>
-                  <div className="current-month">{new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}</div>
-                  <button type="button" className="nav-btn" onClick={() => changeMonth(1)}>Next <i className="fas fa-chevron-right"></i></button>
+                <div className="appointment-calendar-nav">
+                  <button type="button" className="appointment-nav-btn" onClick={() => changeMonth(-1)}>
+                    <i className="fas fa-chevron-left"></i> Prev
+                  </button>
+                  <div className="appointment-current-month">
+                    {new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  </div>
+                  <button type="button" className="appointment-nav-btn" onClick={() => changeMonth(1)}>
+                    Next <i className="fas fa-chevron-right"></i>
+                  </button>
                 </div>
-                <div className="calendar-grid">
-                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => <div key={day} className="calendar-header">{day}</div>)}
+                <div className="appointment-calendar-grid">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="appointment-calendar-header">{day}</div>
+                  ))}
                   {generateCalendar().map((day, idx) => day ? (
-                    <div key={idx} className={`calendar-day ${day.isAvailable ? 'available' : 'unavailable'} ${day.isToday ? 'today' : ''} ${day.isSelected ? 'selected' : ''}`} onClick={() => day.isAvailable && (() => { setSelectedDate(day.dateStr); setSelectedTime(''); fetchAvailableTimeSlots(selectedAppointment.doctor_id, day.dateStr, serviceDuration); })()}>
-                      <div className="day-number">{day.day}</div><div className="day-status">{day.isAvailable ? 'Available' : 'Unavailable'}</div>
+                    <div 
+                      key={idx} 
+                      className={`appointment-calendar-day ${day.isAvailable ? 'available' : 'unavailable'} ${day.isToday ? 'today' : ''} ${day.isSelected ? 'selected' : ''}`}
+                      onClick={() => day.isAvailable && (() => { 
+                        setSelectedDate(day.dateStr); 
+                        setSelectedTime(''); 
+                        fetchAvailableTimeSlots(selectedAppointment.doctor_id, day.dateStr, serviceDuration); 
+                      })()}
+                    >
+                      <div className="appointment-day-number">{day.day}</div>
+                      <div className="appointment-day-status">{day.isAvailable ? 'Available' : 'Unavailable'}</div>
                     </div>
-                  ) : <div key={idx} className="calendar-day unavailable"></div>)}
+                  ) : (
+                    <div key={idx} className="appointment-calendar-day unavailable"></div>
+                  ))}
                 </div>
                 {selectedDate && (
-                  <div className="time-slots-container">
+                  <div className="appointment-timeslots-section">
                     <h4>Available Time Slots for {formatDate(selectedDate)}</h4>
-                    {loadingTimeSlots ? <div className="loading-text">Loading time slots...</div> : availableTimeSlots.length === 0 ? <div className="availability-info">No available time slots for this date.</div> : (
-                      <div className="time-slots-grid">
-                        {availableTimeSlots.map(slot => <div key={slot.time} className={`time-slot ${selectedTime === slot.time ? 'selected' : ''}`} onClick={() => { setSelectedTime(slot.time); setRequestNewDateTime(`${selectedDate}T${slot.time}`); }}>{slot.display}</div>)}
+                    {loadingTimeSlots ? (
+                      <div className="appointment-loading-text">Loading time slots...</div>
+                    ) : availableTimeSlots.length === 0 ? (
+                      <div className="appointment-no-slots">No available time slots for this date.</div>
+                    ) : (
+                      <div className="appointment-timeslots-grid">
+                        {availableTimeSlots.map(slot => (
+                          <div 
+                            key={slot.time} 
+                            className={`appointment-timeslot ${selectedTime === slot.time ? 'selected' : ''}`}
+                            onClick={() => { 
+                              setSelectedTime(slot.time); 
+                              setRequestNewDateTime(`${selectedDate}T${slot.time}`);
+                            }}
+                          >
+                            {slot.display}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
                 )}
               </div>
-              <div className="form-group"><label>Reason for Reschedule</label><textarea value={requestReason} onChange={e => setRequestReason(e.target.value)} placeholder="Please provide a reason" rows="3" required /></div>
-              <div className="form-actions"><button className="btn btn-secondary" onClick={() => setShowRescheduleRequestModal(false)}>Cancel</button><button className="btn btn-primary" onClick={submitRescheduleRequest} disabled={!requestNewDateTime || !requestReason}>Submit Request</button></div>
+              <div className="appointment-form-group">
+                <label>Reason for Reschedule</label>
+                <textarea 
+                  value={requestReason} 
+                  onChange={e => setRequestReason(e.target.value)} 
+                  placeholder="Please provide a reason" 
+                  rows="3" 
+                  required 
+                />
+              </div>
+              <div className="appointment-form-actions">
+                <button className="appointment-btn-secondary" onClick={() => setShowRescheduleRequestModal(false)}>Cancel</button>
+                <button className="appointment-btn-primary" onClick={submitRescheduleRequest} disabled={!requestNewDateTime || !requestReason}>
+                  Submit Request
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {showCancelRequestModal && selectedAppointment && (
-        <div className="modal active" onClick={() => setShowCancelRequestModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header"><h3>Request Cancellation</h3><button className="modal-close" onClick={() => setShowCancelRequestModal(false)}>&times;</button></div>
-            <div className="modal-body">
+        <div className="appointment-modal-overlay active" onClick={() => setShowCancelRequestModal(false)}>
+          <div className="appointment-modal-container" onClick={e => e.stopPropagation()}>
+            <div className="appointment-modal-header">
+              <h3>Request Cancellation</h3>
+              <button className="appointment-modal-close" onClick={() => setShowCancelRequestModal(false)}>&times;</button>
+            </div>
+            <div className="appointment-modal-body">
               <p>You are requesting to cancel your confirmed appointment on <strong>{formatDateTime(selectedAppointment.appointment_datetime)}</strong>.</p>
-              <p className="info-text"><i className="fas fa-info-circle"></i> This request requires approval from the doctor and admin.</p>
-              <div className="form-group"><label>Reason for Cancellation</label><textarea value={requestReason} onChange={e => setRequestReason(e.target.value)} placeholder="Please provide a reason" rows="3" required /></div>
-              <div className="form-actions"><button className="btn btn-secondary" onClick={() => setShowCancelRequestModal(false)}>Cancel</button><button className="btn btn-primary" onClick={submitCancelRequest} disabled={!requestReason}>Submit Request</button></div>
+              <p className="appointment-info-text">
+                <i className="fas fa-info-circle"></i> This request requires approval from the doctor and admin.
+              </p>
+              <div className="appointment-form-group">
+                <label>Reason for Cancellation</label>
+                <textarea 
+                  value={requestReason} 
+                  onChange={e => setRequestReason(e.target.value)} 
+                  placeholder="Please provide a reason" 
+                  rows="3" 
+                  required 
+                />
+              </div>
+              <div className="appointment-form-actions">
+                <button className="appointment-btn-secondary" onClick={() => setShowCancelRequestModal(false)}>Cancel</button>
+                <button className="appointment-btn-primary" onClick={submitCancelRequest} disabled={!requestReason}>
+                  Submit Request
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {showViewModal && selectedAppointment && (
-        <div className="modal active" onClick={() => setShowViewModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header"><h3>Appointment Details</h3><button className="modal-close" onClick={() => setShowViewModal(false)}>&times;</button></div>
-            <div className="modal-body">
-              <div className="details-grid">
-                <div className="detail-row"><strong>Service:</strong> {selectedAppointment.service_name}</div>
-                <div className="detail-row"><strong>Doctor:</strong> {selectedAppointment.doctor_name}</div>
-                <div className="detail-row"><strong>Specialization:</strong> {selectedAppointment.specialization || 'General Dentist'}</div>
-                <div className="detail-row"><strong>Date & Time:</strong> {formatDateTime(selectedAppointment.appointment_datetime)}</div>
-                <div className="detail-row"><strong>Status:</strong> <span className={`status-badge ${getAppointmentStatusClass(selectedAppointment.status)}`}>{selectedAppointment.status?.toUpperCase()}</span></div>
-                <div className="detail-row"><strong>Price:</strong> ₱{Number(selectedAppointment.service_price).toFixed(2)}</div>
-                {selectedAppointment.remarks && <div className="detail-row"><strong>Remarks:</strong> {selectedAppointment.remarks}</div>}
+        <div className="appointment-modal-overlay active" onClick={() => setShowViewModal(false)}>
+          <div className="appointment-modal-container" onClick={e => e.stopPropagation()}>
+            <div className="appointment-modal-header">
+              <h3>Appointment Details</h3>
+              <button className="appointment-modal-close" onClick={() => setShowViewModal(false)}>&times;</button>
+            </div>
+            <div className="appointment-modal-body">
+              <div className="appointment-details-grid">
+                <div className="appointment-detail-row"><strong>Service:</strong> {selectedAppointment.service_name}</div>
+                <div className="appointment-detail-row"><strong>Doctor:</strong> {selectedAppointment.doctor_name}</div>
+                <div className="appointment-detail-row"><strong>Specialization:</strong> {selectedAppointment.specialization || 'General Dentist'}</div>
+                <div className="appointment-detail-row"><strong>Date & Time:</strong> {formatDateTime(selectedAppointment.appointment_datetime)}</div>
+                <div className="appointment-detail-row"><strong>Status:</strong> <span className={`appointment-status-badge ${getAppointmentStatusClass(selectedAppointment.status)}`}>{selectedAppointment.status?.toUpperCase()}</span></div>
+                <div className="appointment-detail-row"><strong>Price:</strong> ₱{Number(selectedAppointment.service_price).toFixed(2)}</div>
+                {selectedAppointment.remarks && <div className="appointment-detail-row full-width"><strong>Remarks:</strong> {selectedAppointment.remarks}</div>}
                 {selectedAppointment.request_status === 'pending' && (
-                  <div className="detail-row"><strong>Request Status:</strong> Pending approval for {selectedAppointment.request_type === 'reschedule' ? 'reschedule' : 'cancellation'}</div>
+                  <div className="appointment-detail-row full-width"><strong>Request Status:</strong> Pending approval for {selectedAppointment.request_type === 'reschedule' ? 'reschedule' : 'cancellation'}</div>
                 )}
               </div>
-              <div className="modal-actions">
+              <div className="appointment-modal-actions">
                 {selectedAppointment.status === 'pending' && canEditAppointment(selectedAppointment) && (
-                  <button className="btn-edit" onClick={() => { setShowViewModal(false); openEditModal(selectedAppointment); }}><i className="fas fa-edit"></i> Edit/Reschedule</button>
+                  <button className="appointment-btn-edit" onClick={() => { setShowViewModal(false); openEditModal(selectedAppointment); }}>
+                    <i className="fas fa-edit"></i> Edit/Reschedule
+                  </button>
                 )}
                 {selectedAppointment.status === 'pending' && canCancelAppointment(selectedAppointment) && (
-                  <button className="btn-cancel" onClick={() => { setShowViewModal(false); openCancelModal(selectedAppointment); }}><i className="fas fa-times-circle"></i> Cancel Appointment</button>
+                  <button className="appointment-btn-cancel" onClick={() => { setShowViewModal(false); openCancelModal(selectedAppointment); }}>
+                    <i className="fas fa-times-circle"></i> Cancel Appointment
+                  </button>
                 )}
                 {selectedAppointment.status === 'confirmed' && canRequestReschedule(selectedAppointment) && (
-                  <button className="btn-edit" onClick={() => { setShowViewModal(false); openRescheduleRequestModal(selectedAppointment); }}><i className="fas fa-calendar-alt"></i> Request Reschedule</button>
+                  <button className="appointment-btn-edit" onClick={() => { setShowViewModal(false); openRescheduleRequestModal(selectedAppointment); }}>
+                    <i className="fas fa-calendar-alt"></i> Request Reschedule
+                  </button>
                 )}
                 {selectedAppointment.status === 'confirmed' && canRequestCancel(selectedAppointment) && (
-                  <button className="btn-request-cancel" onClick={() => { setShowViewModal(false); openCancelRequestModal(selectedAppointment); }}><i className="fas fa-calendar-times"></i> Request Cancellation</button>
+                  <button className="appointment-btn-request-cancel" onClick={() => { setShowViewModal(false); openCancelRequestModal(selectedAppointment); }}>
+                    <i className="fas fa-calendar-times"></i> Request Cancellation
+                  </button>
                 )}
                 {selectedAppointment.status === 'confirmed' && selectedAppointment.request_status === 'pending' && (
-                  <button className="btn-disabled" disabled><i className="fas fa-hourglass-half"></i> Request Pending</button>
+                  <button className="appointment-btn-disabled" disabled>
+                    <i className="fas fa-hourglass-half"></i> Request Pending
+                  </button>
                 )}
               </div>
             </div>
@@ -783,7 +932,7 @@ const MyAppointments = () => {
         </div>
       )}
 
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer position="bottom-right" autoClose={3000} />
     </div>
   );
 };

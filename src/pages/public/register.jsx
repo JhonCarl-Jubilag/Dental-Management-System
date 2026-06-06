@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import './register.css';
 
@@ -23,6 +21,12 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [generalError, setGeneralError] = useState('');
+  
+  // State for password visibility
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -91,6 +95,7 @@ const Register = () => {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
     setErrors(prev => ({ ...prev, [name]: '' }));
+    setGeneralError('');
   };
 
   const handleBlur = (field) => {
@@ -126,7 +131,7 @@ const Register = () => {
       });
 
       if (result.success) {
-        toast.success(result.message);
+        setSuccessMessage(result.message);
         setFormData({
           first_name: '',
           last_name: '',
@@ -143,7 +148,7 @@ const Register = () => {
           navigate('/login', { state: { message: 'Registration successful! Please verify your email before logging in.' } });
         }, 3000);
       } else {
-        toast.error(result.message);
+        setGeneralError(result.message);
       }
       
       setLoading(false);
@@ -184,163 +189,204 @@ const Register = () => {
             <p>Create your account to book appointments</p>
           </div>
           
-          <form onSubmit={handleSubmit} className="auth-form" id="registrationForm">
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="first_name">First Name</label>
-                <input
-                  type="text"
-                  id="first_name"
-                  name="first_name"
-                  value={formData.first_name}
-                  onChange={handleChange}
-                  onBlur={() => handleBlur('first_name')}
-                  className={touched.first_name && errors.first_name ? 'error' : ''}
-                  disabled={loading}
-                />
-                {touched.first_name && errors.first_name && <div className="validation-message error">{errors.first_name}</div>}
-              </div>
-              <div className="form-group">
-                <label htmlFor="last_name">Last Name</label>
-                <input
-                  type="text"
-                  id="last_name"
-                  name="last_name"
-                  value={formData.last_name}
-                  onChange={handleChange}
-                  onBlur={() => handleBlur('last_name')}
-                  className={touched.last_name && errors.last_name ? 'error' : ''}
-                  disabled={loading}
-                />
-                {touched.last_name && errors.last_name && <div className="validation-message error">{errors.last_name}</div>}
-              </div>
+          {generalError && <div className="alert alert-error">{generalError}</div>}
+          
+          {successMessage && (
+            <div className="alert alert-success">
+              {successMessage}
+              <p className="mt-2">
+                Redirecting to login page in a few seconds...
+              </p>
             </div>
-            
-            <div className="form-group">
-              <label htmlFor="email">Email Address</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                onBlur={() => handleBlur('email')}
-                className={touched.email && errors.email ? 'error' : ''}
-                disabled={loading}
-              />
-              {touched.email && errors.email && <div className="validation-message error">{errors.email}</div>}
-            </div>
-            
-            <div className="form-row">
+          )}
+          
+          {!successMessage && (
+            <form onSubmit={handleSubmit} className="auth-form" id="registrationForm">
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="first_name">First Name</label>
+                  <input
+                    type="text"
+                    id="first_name"
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                    onBlur={() => handleBlur('first_name')}
+                    className={touched.first_name && errors.first_name ? 'error' : ''}
+                    disabled={loading}
+                  />
+                  {touched.first_name && errors.first_name && <div className="validation-message error">{errors.first_name}</div>}
+                </div>
+                <div className="form-group">
+                  <label htmlFor="last_name">Last Name</label>
+                  <input
+                    type="text"
+                    id="last_name"
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                    onBlur={() => handleBlur('last_name')}
+                    className={touched.last_name && errors.last_name ? 'error' : ''}
+                    disabled={loading}
+                  />
+                  {touched.last_name && errors.last_name && <div className="validation-message error">{errors.last_name}</div>}
+                </div>
+              </div>
+              
               <div className="form-group">
-                <label htmlFor="password">Password</label>
+                <label htmlFor="email">Email Address</label>
                 <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={formData.password}
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
                   onChange={handleChange}
-                  onBlur={() => handleBlur('password')}
-                  className={touched.password && errors.password ? 'error' : ''}
+                  onBlur={() => handleBlur('email')}
+                  className={touched.email && errors.email ? 'error' : ''}
                   disabled={loading}
                 />
-                {formData.password && (
-                  <div className="password-strength">
-                    <div className={`strength-bar ${getPasswordStrength().class}`} style={{ width: `${(getPasswordStrength().strength / 5) * 100}%` }}></div>
-                    <span className="strength-text">{getPasswordStrength().text}</span>
+                {touched.email && errors.email && <div className="validation-message error">{errors.email}</div>}
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="password">Password</label>
+                  <div className="password-input-wrapper">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      id="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      onBlur={() => handleBlur('password')}
+                      className={touched.password && errors.password ? 'error' : ''}
+                      disabled={loading}
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle-btn"
+                      onClick={() => setShowPassword(!showPassword)}
+                      tabIndex="-1"
+                    >
+                      {showPassword ? (
+                        <svg className="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                          <line x1="3" y1="3" x2="21" y2="21" />
+                        </svg>
+                      ) : (
+                        <svg className="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
-                )}
-                {touched.password && errors.password && <div className="validation-message error">{errors.password}</div>}
+                  {formData.password && (
+                    <div className="password-strength">
+                      <div className={`strength-bar ${getPasswordStrength().class}`} style={{ width: `${(getPasswordStrength().strength / 5) * 100}%` }}></div>
+                      <span className="strength-text">{getPasswordStrength().text}</span>
+                    </div>
+                  )}
+                  {touched.password && errors.password && <div className="validation-message error">{errors.password}</div>}
+                </div>
+                <div className="form-group">
+                  <label htmlFor="confirm_password">Confirm Password</label>
+                  <div className="password-input-wrapper">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      id="confirm_password"
+                      name="confirm_password"
+                      value={formData.confirm_password}
+                      onChange={handleChange}
+                      onBlur={() => handleBlur('confirm_password')}
+                      className={touched.confirm_password && errors.confirm_password ? 'error' : ''}
+                      disabled={loading}
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle-btn"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      tabIndex="-1"
+                    >
+                      {showConfirmPassword ? (
+                        <svg className="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                          <line x1="3" y1="3" x2="21" y2="21" />
+                        </svg>
+                      ) : (
+                        <svg className="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  {touched.confirm_password && errors.confirm_password && <div className="validation-message error">{errors.confirm_password}</div>}
+                </div>
               </div>
+              
               <div className="form-group">
-                <label htmlFor="confirm_password">Confirm Password</label>
-                <input
-                  type="password"
-                  id="confirm_password"
-                  name="confirm_password"
-                  value={formData.confirm_password}
+                <label htmlFor="address">Address</label>
+                <textarea
+                  id="address"
+                  name="address"
+                  value={formData.address}
                   onChange={handleChange}
-                  onBlur={() => handleBlur('confirm_password')}
-                  className={touched.confirm_password && errors.confirm_password ? 'error' : ''}
+                  onBlur={() => handleBlur('address')}
+                  className={touched.address && errors.address ? 'error' : ''}
+                  rows="3"
                   disabled={loading}
                 />
-                {touched.confirm_password && errors.confirm_password && <div className="validation-message error">{errors.confirm_password}</div>}
+                {touched.address && errors.address && <div className="validation-message error">{errors.address}</div>}
               </div>
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="address">Address</label>
-              <textarea
-                id="address"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                onBlur={() => handleBlur('address')}
-                className={touched.address && errors.address ? 'error' : ''}
-                rows="3"
-                disabled={loading}
-              />
-              {touched.address && errors.address && <div className="validation-message error">{errors.address}</div>}
-            </div>
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="contact_no">Contact Number</label>
-                <input
-                  type="tel"
-                  id="contact_no"
-                  name="contact_no"
-                  value={formData.contact_no}
-                  onChange={handleChange}
-                  onBlur={() => handleBlur('contact_no')}
-                  placeholder="09123456789"
-                  className={touched.contact_no && errors.contact_no ? 'error' : ''}
-                  disabled={loading}
-                />
-                {touched.contact_no && errors.contact_no && <div className="validation-message error">{errors.contact_no}</div>}
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="contact_no">Contact Number</label>
+                  <input
+                    type="tel"
+                    id="contact_no"
+                    name="contact_no"
+                    value={formData.contact_no}
+                    onChange={handleChange}
+                    onBlur={() => handleBlur('contact_no')}
+                    placeholder="09123456789"
+                    className={touched.contact_no && errors.contact_no ? 'error' : ''}
+                    disabled={loading}
+                  />
+                  {touched.contact_no && errors.contact_no && <div className="validation-message error">{errors.contact_no}</div>}
+                </div>
+                <div className="form-group">
+                  <label htmlFor="birthday">Birthday</label>
+                  <input
+                    type="date"
+                    id="birthday"
+                    name="birthday"
+                    value={formData.birthday}
+                    onChange={handleChange}
+                    onBlur={() => handleBlur('birthday')}
+                    max={getMaxDate()}
+                    className={touched.birthday && errors.birthday ? 'error' : ''}
+                    disabled={loading}
+                  />
+                  {touched.birthday && errors.birthday && <div className="validation-message error">{errors.birthday}</div>}
+                </div>
               </div>
-              <div className="form-group">
-                <label htmlFor="birthday">Birthday</label>
-                <input
-                  type="date"
-                  id="birthday"
-                  name="birthday"
-                  value={formData.birthday}
-                  onChange={handleChange}
-                  onBlur={() => handleBlur('birthday')}
-                  max={getMaxDate()}
-                  className={touched.birthday && errors.birthday ? 'error' : ''}
-                  disabled={loading}
-                />
-                {touched.birthday && errors.birthday && <div className="validation-message error">{errors.birthday}</div>}
-              </div>
-            </div>
-            
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Registering...' : 'Register'}
-            </button>
-          </form>
+              
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? 'Registering...' : 'Register'}
+              </button>
+            </form>
+          )}
           
           <div className="form-footer">
             <p>Already have an account? <Link to="/login">Login here</Link></p>
             <p><Link to="/">Back to Clinic Homepage</Link></p>
           </div>
         </div>
-      </div>
-
-      {/* Toast Container */}
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
+      </div> 
     </div>
   );
 };

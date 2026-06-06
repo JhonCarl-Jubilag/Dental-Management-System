@@ -169,6 +169,32 @@
   color: #2980b9;
 }
 
+/* Alert styles */
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+.alert-error {
+  background-color: #fee;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
+.alert-success {
+  background-color: #eff8ff;
+  border: 1px solid #b8daff;
+  color: #155724;
+}
+
+.alert-link {
+  color: #155724;
+  text-decoration: underline;
+  margin: 0 5px;
+}
+
 .mt-2 {
   margin-top: 10px;
 }
@@ -241,6 +267,7 @@
   text-decoration: underline;
 }
 
+/* Responsive design */
 @media (max-width: 850px) {
   .container {
     max-width: 90%;
@@ -280,4 +307,48 @@
 @keyframes float {
   0% { transform: translateY(0); }
   100% { transform: translateY(-100vh); }
+}
+
+/* Password input wrapper for eye icon */
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  flex: 1;
+  padding-right: 40px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7f8c8d;
+  transition: color 0.3s ease;
+}
+
+.password-toggle-btn:hover {
+  color: #3498db;
+}
+
+.password-toggle-btn:focus {
+  outline: none;
+}
+
+.eye-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Adjust form group for password fields */
+.form-group .password-input-wrapper {
+  width: 100%;
 }

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import ClinicMap from '../../components/common/ClinicMap';
@@ -26,7 +28,7 @@ const Landing = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  
+
   // Chatbot state
   const [chatMessages, setChatMessages] = useState([
     {
@@ -100,6 +102,7 @@ const Landing = () => {
     } catch (error) {
       console.error('Error fetching services:', error);
       setError('Unable to load services. Showing sample services instead.');
+      toast.error('Unable to load services. Showing sample services instead.');
       setServices(getFallbackServices());
     } finally {
       setLoading(false);
@@ -383,7 +386,7 @@ const Landing = () => {
                       if (user && userType === 'patient') {
                         window.location.href = `/service/${service.service_id}`;
                       } else {
-                        alert('Please login or register to view service details and book appointments.');
+                        toast.info('Please login or register to view service details and book appointments.');
                       }
                     }}
                   >
@@ -585,6 +588,8 @@ const Landing = () => {
           </div>
         </div>
       </footer>
+
+      <ToastContainer position="bottom-right" autoClose={3000} />
     </div>
   );
 };

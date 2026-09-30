@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import './serviceDetail.css';
+import toothFillingVideo from '../../assets/videos/tooth-filling-animation.mp4';
 
 const ServiceDetails = () => {
   const { id } = useParams();
@@ -13,6 +14,9 @@ const ServiceDetails = () => {
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [videoError, setVideoError] = useState(false);
+  const animationDialogRef = useRef(null);
+  const animationVideoRef = useRef(null);
 
   useEffect(() => {
     if (!id) {
@@ -110,13 +114,38 @@ const ServiceDetails = () => {
 
   const durationText = formatDuration(service.duration_minutes);
   const doctorCount = doctors.length;
+  const hasFillingAnimation = service.service_name?.trim().toLowerCase() === 'tooth filling';
+
+  const closeAnimation = () => {
+    const video = animationVideoRef.current;
+    if (video) {
+      video.pause();
+      if (video.readyState > 0) video.currentTime = 0;
+    }
+  };
 
   return (
     <div className="service-details-container">
       <div className="service-details-wrapper">
         {/* Header Section */}
         <div className="service-header">
-          <h1 className="service-title">{service.service_name}</h1>
+          {hasFillingAnimation ? (
+            <div className="service-animation-heading">
+              <h1 className="service-title">{service.service_name}</h1>
+              <button
+                type="button"
+                className="service-animation-button"
+                aria-haspopup="dialog"
+                aria-controls="service-animation-dialog"
+                onClick={() => animationDialogRef.current?.showModal()}
+              >
+                <i className="fas fa-circle-play" aria-hidden="true"></i>
+                View 3D procedure
+              </button>
+            </div>
+          ) : (
+            <h1 className="service-title">{service.service_name}</h1>
+          )}
           <div className="service-badges">
             <span className="badge duration">
               <i className="far fa-clock"></i> {durationText}
@@ -130,6 +159,45 @@ const ServiceDetails = () => {
           </div>
           <p className="service-description">{service.description}</p>
         </div>
+
+        {hasFillingAnimation && (
+          <dialog
+            id="service-animation-dialog"
+            ref={animationDialogRef}
+            className="service-animation-dialog"
+            aria-labelledby="service-animation-title"
+            onClose={closeAnimation}
+          >
+            <div className="service-animation-dialog-header">
+              <h2 id="service-animation-title">Tooth filling — 3D procedure</h2>
+              <button
+                type="button"
+                className="service-animation-close"
+                aria-label="Close procedure video"
+                onClick={() => animationDialogRef.current?.close()}
+              >
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <video
+              ref={animationVideoRef}
+              className="service-animation-video"
+              src={toothFillingVideo}
+              controls
+              playsInline
+              preload="none"
+              aria-label="Tooth filling 3D procedure animation"
+              onError={() => setVideoError(true)}
+            >
+              Your browser does not support video playback.
+            </video>
+            {videoError && (
+              <p className="service-animation-error" role="alert">
+                The video could not be played. <a href={toothFillingVideo} target="_blank" rel="noopener noreferrer">Open the video directly</a>.
+              </p>
+            )}
+          </dialog>
+        )}
 
         <div className="service-content">
           {/* Main column */}

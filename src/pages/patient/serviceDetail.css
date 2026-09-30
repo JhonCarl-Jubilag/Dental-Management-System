@@ -85,6 +85,99 @@ body {
   margin-top: 8px;
 }
 
+.service-details-container .service-animation-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.service-details-container .service-animation-heading .service-title {
+  margin-bottom: 0;
+}
+
+.service-details-container .service-animation-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  border: 1px solid #d9e5f5;
+  border-radius: 24px;
+  background: #eef4fd;
+  color: #354d70;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.service-details-container .service-animation-button:hover {
+  background: #dfeafb;
+}
+
+.service-details-container .service-animation-button:focus-visible,
+.service-details-container .service-animation-close:focus-visible {
+  outline: 3px solid #4d83d4;
+  outline-offset: 3px;
+}
+
+.service-details-container .service-animation-dialog {
+  width: min(900px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: white;
+  color: #2c3e50;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+  overflow-y: auto;
+}
+
+.service-details-container .service-animation-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.service-details-container .service-animation-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.service-details-container .service-animation-dialog-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+
+.service-details-container .service-animation-close {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: #eef2f7;
+  color: #354d70;
+  font-size: 1.8rem;
+  cursor: pointer;
+}
+
+.service-details-container .service-animation-video {
+  display: block;
+  width: 100%;
+  max-height: 70dvh;
+  background: #111827;
+}
+
+.service-details-container .service-animation-error {
+  padding: 16px 20px;
+  line-height: 1.6;
+}
+
 /* Layout */
 .service-content {
   display: grid;

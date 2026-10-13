@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
+import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import './manageServices.css';
 
 const ManageServices = () => {
@@ -12,6 +13,8 @@ const ManageServices = () => {
   const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
@@ -50,6 +53,7 @@ const ManageServices = () => {
   // Fetch services
   const fetchServices = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       let query = supabase.from('services').select('*', { count: 'exact' });
 
@@ -82,7 +86,9 @@ const ManageServices = () => {
         const inactive = allData.filter(s => s.status === 'inactive').length;
         setStats({ total: allData.length, active, inactive });
       }
+      setHasLoaded(true);
     } catch (err) {
+      setLoadError(err);
       console.error(err);
       toast.error('Failed to load services');
     } finally {
@@ -284,6 +290,8 @@ const ManageServices = () => {
             </div>
           </div>
         </div>
+        <AdminDataRegion loading={loading} hasLoaded={hasLoaded} error={loadError} label="Services" onRetry={fetchServices}>
+
 
         {/* Stats Cards */}
         <div className="stats-grid">
@@ -353,13 +361,7 @@ const ManageServices = () => {
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>
-                      <div className="spinner-small"></div> Loading services...
-                    </td>
-                  </tr>
-                ) : services.length === 0 ? (
+                {services.length === 0 ? (
                   <tr>
                     <td colSpan="5" style={{ textAlign: 'center', padding: '60px', color: '#7f8c8d' }}>
                       No services found
@@ -416,6 +418,7 @@ const ManageServices = () => {
             </div>
           )}
         </div>
+        </AdminDataRegion>
       </div>
 
       {/* Add Modal */}

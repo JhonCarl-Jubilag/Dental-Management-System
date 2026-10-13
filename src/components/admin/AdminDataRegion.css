@@ -1,0 +1,33 @@
+.admin-dashboard .admin-data-region {
+  min-width: 0;
+}
+
+.admin-dashboard .admin-data-region__status,
+.admin-dashboard .admin-data-region__error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: #eef4fb;
+  color: #354d70;
+}
+
+.admin-dashboard .admin-data-region__error {
+  flex-wrap: wrap;
+  background: #fff3f3;
+  color: #a32b2b;
+}
+
+.admin-dashboard .admin-data-region__content {
+  display: block;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.admin-dashboard .admin-data-region__content:disabled button {
+  cursor: wait;
+}

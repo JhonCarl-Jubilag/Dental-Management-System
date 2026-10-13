@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
+import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import './dashboard.css';
 
 const AdminDashboard = () => {
@@ -10,6 +11,8 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -72,6 +75,7 @@ const AdminDashboard = () => {
   const fetchDashboardData = useCallback(async () => {
     if (!isMounted.current) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const [
         { count: totalPatients },
@@ -142,7 +146,10 @@ const AdminDashboard = () => {
         setRecentAppointments(appointments);
       }
 
+      setHasLoaded(true);
+
     } catch (error) {
+      setLoadError(error);
       console.error('Error fetching dashboard data:', error);
     } finally {
       if (isMounted.current) setLoading(false);
@@ -180,7 +187,7 @@ const AdminDashboard = () => {
     navigate('/login');
   };
 
-  if (authLoading || !authChecked) {
+  if (authLoading) {
     return (
       <div className="admin-loading">
         <div className="loading-spinner"></div>
@@ -189,14 +196,6 @@ const AdminDashboard = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="admin-loading">
-        <div className="loading-spinner"></div>
-        <p>Loading analytics...</p>
-      </div>
-    );
-  }
 
   if (!user || (userType !== 'admin' && !isSuperAdmin)) return null;
 
@@ -223,6 +222,8 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
+        <AdminDataRegion loading={loading} hasLoaded={hasLoaded} error={loadError} label="Analytics" onRetry={fetchDashboardData}>
+
 
         {/* KPI Cards */}
         <div className="kpi-grid">
@@ -365,6 +366,7 @@ const AdminDashboard = () => {
             </div>
           )}
         </div>
+        </AdminDataRegion>
       </div>
 
       {isLoggingOut && (

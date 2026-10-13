@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,7 +12,8 @@ import bg4 from '../../assets/bg4.jpg';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn, user, userType, signOut, loading: authLoading } = useAuth();
+  const location = useLocation();
+  const { signIn, user, userType, signOut, loading: authLoading, accountError } = useAuth();
   const [activeTab, setActiveTab] = useState('patient');
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({ email: '', password: '', general: '' });
@@ -20,6 +21,23 @@ const Login = () => {
   const [touched, setTouched] = useState({ email: false, password: false });
   const [redirecting, setRedirecting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const resetNotificationShown = useRef(false);
+
+  useEffect(() => {
+    if (!location.state?.passwordResetSuccessful || resetNotificationShown.current) return;
+    // Wait for the toast container to finish mounting, including StrictMode.
+    const notificationTimer = setTimeout(() => {
+      resetNotificationShown.current = true;
+      toast.success('Password updated successfully. Please log in with your new password.', {
+        toastId: 'password-reset-success',
+        position: 'bottom-right',
+        autoClose: 3000,
+      });
+      // Consume the message so returning to Login does not show it again.
+      navigate('/login', { replace: true, state: null });
+    }, 0);
+    return () => clearTimeout(notificationTimer);
+  }, [location.state, navigate]);
 
   useEffect(() => {
     console.log('Login - Auth state changed:', { 
@@ -111,6 +129,12 @@ const Login = () => {
     setLoading(true);
     const result = await signIn(formData.email, formData.password);
 
+    if (result.needsProfileCompletion) {
+      navigate('/register', { replace: true });
+      setLoading(false);
+      return;
+    }
+
     if (!result.success) {
       toast.error(result.message || 'Invalid email or password');
       setLoading(false);
@@ -166,6 +190,7 @@ const Login = () => {
             </div>
           )}
 
+          {accountError && <div className="alert alert-error" role="alert">{accountError}</div>}
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
               <label htmlFor="email">Email Address</label>

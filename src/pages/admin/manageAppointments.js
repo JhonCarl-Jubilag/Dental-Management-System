@@ -4,7 +4,10 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
+import { completeFinishedAppointments } from '../../services/appointmentCompletion';
+import { hasAppointmentEnded } from '../../utils/appointmentTiming';
 import Sidebar from '../../components/admin/Sidebar';
+import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import './manageAppointments.css';
 
 const ManageAppointments = () => {
@@ -12,6 +15,8 @@ const ManageAppointments = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [stats, setStats] = useState({ pending: 0, confirmed: 0, cancelled: 0, completed: 0 });
   const [doctors, setDoctors] = useState([]);
@@ -91,16 +96,12 @@ const ManageAppointments = () => {
       .select();
     if (!pendingError && pendingExpired) cancelledCount = pendingExpired.length;
 
-    const { data: confirmedExpired, error: confirmedError } = await supabase
-      .from('appointments')
-      .update({
-        status: 'completed',
-        remarks: `[System Auto-complete ${new Date().toLocaleString()}]: Appointment automatically marked as completed (scheduled time passed).`
-      })
-      .eq('status', 'confirmed')
-      .lt('appointment_datetime', now)
-      .select();
-    if (!confirmedError && confirmedExpired) completedCount = confirmedExpired.length;
+    try {
+      completedCount = await completeFinishedAppointments(supabase, new Date(now));
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not update finished appointments. Please reload to retry.');
+    }
 
     if (cancelledCount > 0 || completedCount > 0) {
       let msg = '';
@@ -129,6 +130,7 @@ const ManageAppointments = () => {
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       let query = supabase
         .from('appointments')
@@ -136,7 +138,7 @@ const ManageAppointments = () => {
           *,
           patients!inner (patient_id, first_name, last_name, email, contact_no),
           doctors!inner (doctor_id, first_name, last_name, specialization),
-          services!inner (service_name, price)
+          services!inner (service_name, price, duration_minutes)
         `)
         .order('appointment_datetime', { ascending: false });
 
@@ -151,7 +153,9 @@ const ManageAppointments = () => {
       const { data, error } = await query;
       if (error) throw error;
       setAppointments(data || []);
+      setHasLoaded(true);
     } catch (err) {
+      setLoadError(err);
       console.error(err);
       toast.error(err.message || 'Failed to load appointments');
     } finally {
@@ -200,9 +204,8 @@ const ManageAppointments = () => {
   };
 
   const handleMarkCompleted = async (appointment) => {
-    const apptTime = new Date(appointment.appointment_datetime);
-    if (apptTime > new Date()) {
-      toast.error('Cannot mark as completed – appointment time has not yet passed.');
+    if (!hasAppointmentEnded(appointment)) {
+      toast.error('Cannot mark as completed – the full service duration has not elapsed or is unavailable.');
       return;
     }
     if (!window.confirm('Mark this appointment as completed?')) return;
@@ -501,14 +504,6 @@ const ManageAppointments = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="admin-loading">
-        <div className="loading-spinner"></div>
-        <p>Loading appointments...</p>
-      </div>
-    );
-  }
 
   const isSuperAdmin = user?.email === 'jhoncarl.jubilag@cvsu.edu.ph';
   if (!user || (userType !== 'admin' && !isSuperAdmin)) return null;
@@ -537,6 +532,8 @@ const ManageAppointments = () => {
             </div>
           </div>
         </div>
+        <AdminDataRegion loading={loading} hasLoaded={hasLoaded} error={loadError} label="Appointments" onRetry={fetchAppointments}>
+
 
         <div className="stats-grid">
           <div className="stat-card"><div className="stat-number">{stats.pending}</div><div className="stat-label">Pending</div></div>
@@ -586,7 +583,7 @@ const ManageAppointments = () => {
                 const doctor = app.doctors;
                 const service = app.services;
                 const appointmentTime = new Date(app.appointment_datetime);
-                const canMarkCompleted = app.status === 'confirmed' && appointmentTime < new Date();
+                const canMarkCompleted = app.status === 'confirmed' && hasAppointmentEnded(app);
                 const showRescheduleRequest = app.status === 'confirmed' && app.request_status === 'pending' && app.request_type === 'reschedule';
                 const showCancelRequest = app.status === 'confirmed' && app.request_status === 'pending' && app.request_type === 'cancellation';
                 const statusClass = getStatusClass(app.status);
@@ -703,6 +700,7 @@ const ManageAppointments = () => {
             </>
           )}
         </div>
+        </AdminDataRegion>
       </div>
 
       {/* Modals (unchanged except no alerts inside) */}

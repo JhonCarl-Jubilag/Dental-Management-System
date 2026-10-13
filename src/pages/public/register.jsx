@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import './register.css';
 
 const Register = () => {
   const navigate = useNavigate();
-  const { signUp, user } = useAuth();
+  const { signUp, completeRegistration, user, userType, registrationIncomplete, loading: authLoading } = useAuth();
+  const completingRegistration = Boolean(user && registrationIncomplete);
+  const redirectTimer = useRef(null);
+  const prefilledAccount = useRef(null);
 
   const [formData, setFormData] = useState({
     first_name: '',
@@ -30,29 +33,42 @@ const Register = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (user && userType && !authLoading && !loading && !successMessage) {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, userType, authLoading, loading, successMessage, navigate]);
+
+  useEffect(() => () => clearTimeout(redirectTimer.current), []);
+  useEffect(() => {
+    if (!completingRegistration || prefilledAccount.current === user.id) return;
+    prefilledAccount.current = user.id;
+    const details = user.user_metadata?.registration_profile || user.user_metadata || {};
+    const text = value => typeof value === 'string' ? value : '';
+    setFormData(current => ({ ...current, email: user.email,
+      first_name: text(details.first_name), last_name: text(details.last_name),
+      address: text(details.address), contact_no: text(details.contact_no), birthday: text(details.birthday),
+    }));
+  }, [completingRegistration, user]);
 
   const getMaxDate = () => {
     const today = new Date();
     const maxDate = new Date(today.getFullYear() - 5, today.getMonth(), today.getDate());
-    return maxDate.toISOString().split('T')[0];
+    return `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
   };
 
   const validateField = (name, value) => {
     switch (name) {
       case 'first_name':
       case 'last_name':
-        if (!value) return 'This field is required';
-        if (value.length < 2) return 'Must be at least 2 characters';
+        if (!value.trim()) return 'This field is required';
+        if (value.trim().length < 2) return 'Must be at least 2 characters';
+        if (value.trim().length > 200) return 'Must be at most 200 characters';
         if (!/^[a-zA-Z\s]+$/.test(value)) return 'Only letters and spaces allowed';
         return '';
       case 'email':
         if (!value) return 'Email is required';
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) return 'Please enter a valid email address';
+        if (!emailRegex.test(value.trim()) || value.trim().length > 254) return 'Please enter a valid email address';
         return '';
       case 'password':
         if (!value) return 'Password is required';
@@ -72,12 +88,13 @@ const Register = () => {
       case 'birthday':
         if (!value) return 'Birthday is required';
         const selectedDate = new Date(value);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(selectedDate.getTime()) || selectedDate.toISOString().slice(0, 10) !== value) return 'Please enter a valid birthday';
         const minDate = new Date(getMaxDate());
         if (selectedDate > minDate) return 'You must be at least 5 years old';
         return '';
       case 'address':
         if (!value) return 'Address is required';
-        if (value.length < 5) return 'Please enter a valid address';
+        if (value.trim().length < 5 || value.trim().length > 2000) return 'Please enter a valid address';
         return '';
       default:
         return '';
@@ -106,8 +123,9 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     
-    const allFields = Object.keys(formData);
+    const allFields = Object.keys(formData).filter(field => !completingRegistration || !['password', 'confirm_password'].includes(field));
     const touchedFields = {};
     allFields.forEach(field => { touchedFields[field] = true; });
     setTouched(touchedFields);
@@ -121,37 +139,35 @@ const Register = () => {
 
     if (Object.keys(newErrors).length === 0) {
       setLoading(true);
-      
-      const result = await signUp(formData.email, formData.password, {
+      setGeneralError('');
+      const completing = completingRegistration;
+      const profile = {
         first_name: formData.first_name,
         last_name: formData.last_name,
         address: formData.address,
         contact_no: formData.contact_no,
         birthday: formData.birthday
-      });
-
-      if (result.success) {
-        setSuccessMessage(result.message);
-        setFormData({
-          first_name: '',
-          last_name: '',
-          email: '',
-          password: '',
-          confirm_password: '',
-          address: '',
-          contact_no: '',
-          birthday: ''
-        });
-        setTouched({});
-        
-        setTimeout(() => {
-          navigate('/login', { state: { message: 'Registration successful! Please verify your email before logging in.' } });
-        }, 3000);
-      } else {
-        setGeneralError(result.message);
+      };
+      try {
+        const result = completing ? await completeRegistration(profile) : await signUp(formData.email.trim().toLowerCase(), formData.password, profile);
+        if (result.success) {
+          setSuccessMessage(result.message);
+          setFormData({
+            first_name: '', last_name: '', email: '', password: '', confirm_password: '',
+            address: '', contact_no: '', birthday: '',
+          });
+          setTouched({});
+          redirectTimer.current = setTimeout(() => {
+            navigate(completing ? '/' : '/login', { state: { message: result.message } });
+          }, 3000);
+        } else {
+          setGeneralError(result.message);
+        }
+      } catch {
+        setGeneralError('Could not complete registration. Please try again.');
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     }
   };
 
@@ -185,8 +201,8 @@ const Register = () => {
       <div className="container">
         <div className="form-wrapper">
           <div className="form-header">
-            <h1>Patient Registration</h1>
-            <p>Create your account to book appointments</p>
+            <h1>{completingRegistration ? 'Complete Patient Registration' : 'Patient Registration'}</h1>
+            <p>{completingRegistration ? 'Complete your patient details to book appointments' : 'Create your account to book appointments'}</p>
           </div>
           
           {generalError && <div className="alert alert-error">{generalError}</div>}
@@ -195,7 +211,7 @@ const Register = () => {
             <div className="alert alert-success">
               {successMessage}
               <p className="mt-2">
-                Redirecting to login page in a few seconds...
+                Redirecting in a few seconds...
               </p>
             </div>
           )}
@@ -240,6 +256,7 @@ const Register = () => {
                   id="email"
                   name="email"
                   value={formData.email}
+                  readOnly={completingRegistration}
                   onChange={handleChange}
                   onBlur={() => handleBlur('email')}
                   className={touched.email && errors.email ? 'error' : ''}
@@ -248,7 +265,7 @@ const Register = () => {
                 {touched.email && errors.email && <div className="validation-message error">{errors.email}</div>}
               </div>
               
-              <div className="form-row">
+              {!completingRegistration && <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="password">Password</label>
                   <div className="password-input-wrapper">
@@ -325,7 +342,7 @@ const Register = () => {
                   </div>
                   {touched.confirm_password && errors.confirm_password && <div className="validation-message error">{errors.confirm_password}</div>}
                 </div>
-              </div>
+              </div>}
               
               <div className="form-group">
                 <label htmlFor="address">Address</label>
@@ -376,7 +393,7 @@ const Register = () => {
               </div>
               
               <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Registering...' : 'Register'}
+                {loading ? 'Saving...' : completingRegistration ? 'Complete Registration' : 'Register'}
               </button>
             </form>
           )}

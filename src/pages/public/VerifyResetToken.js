@@ -38,7 +38,7 @@ const VerifyResetToken = () => {
       setVerified(true);
       // Allow user to proceed manually or auto-redirect
       setTimeout(() => {
-        navigate('/reset-password');
+        navigate('/reset-password', { state: { passwordRecovery: true } });
       }, 1500);
     } catch (err) {
       console.error('Verification error:', err);

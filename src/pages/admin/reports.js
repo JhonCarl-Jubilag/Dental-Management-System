@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
+import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import {
@@ -42,7 +43,10 @@ const Reports = () => {
   const { user, userType, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+  const [displayedFilters, setDisplayedFilters] = useState(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
   // Report filters
@@ -455,6 +459,7 @@ const Reports = () => {
   // Main fetch depending on report type
   const fetchAllData = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       await fetchOverallStats();
       if (reportType === 'financial') {
@@ -466,13 +471,16 @@ const Reports = () => {
       } else if (reportType === 'doctors') {
         await fetchDoctorPerformanceReport();
       }
+      setDisplayedFilters({ reportType, startDate, endDate, doctorId });
+      setHasLoaded(true);
     } catch (err) {
+      setLoadError(err);
       console.error(err);
       toast.error('Error loading report data');
     } finally {
       setLoading(false);
     }
-  }, [reportType, fetchOverallStats, fetchFinancialReport, fetchAppointmentReport, fetchPatientReport, fetchDoctorPerformanceReport]);
+  }, [reportType, startDate, endDate, doctorId, fetchOverallStats, fetchFinancialReport, fetchAppointmentReport, fetchPatientReport, fetchDoctorPerformanceReport]);
 
   useEffect(() => {
     if (user && (userType === 'admin' || isSuperAdmin)) {
@@ -565,19 +573,6 @@ const Reports = () => {
   const chartOptions = { responsive: true, maintainAspectRatio: false };
   const barOptions = { ...chartOptions, scales: { y: { beginAtZero: true, ticks: { callback: (value) => formatCurrency(value) } } } };
 
-  if (loading) {
-    return (
-      <div className="admin-dashboard">
-        <Sidebar onLogout={handleLogout} />
-        <div className="main-content reports-page">
-          <div className="admin-loading">
-            <div className="loading-spinner"></div>
-            <p>Loading report data...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="admin-dashboard">
@@ -599,6 +594,8 @@ const Reports = () => {
             </div>
           </div>
         </div>
+        <AdminDataRegion loading={loading} hasLoaded={hasLoaded} error={loadError} label="Report data" onRetry={fetchAllData}>
+
 
         <div className="report-filters">
           <div className="filter-grid">
@@ -635,7 +632,7 @@ const Reports = () => {
             <button className="btn btn-primary" onClick={fetchAllData} disabled={loading}>
               {loading ? 'Loading...' : 'Generate Report'}
             </button>
-            <button className="btn btn-success" onClick={generatePDF} disabled={generatingPdf}>
+            <button className="btn btn-success" onClick={generatePDF} disabled={generatingPdf || loading || !hasLoaded || !!loadError}>
               {generatingPdf ? 'Generating PDF...' : '📄 Generate PDF'}
             </button>
             <button className="btn btn-secondary" onClick={handleResetFilters}>Reset Filters</button>
@@ -653,7 +650,7 @@ const Reports = () => {
           </div>
 
           {/* Financial Reports */}
-          {reportType === 'financial' && (
+          {displayedFilters?.reportType === 'financial' && (
             <div className="report-section">
               <div className="section-header"><h3>💰 Financial Summary</h3></div>
               <div className="section-body">
@@ -714,7 +711,7 @@ const Reports = () => {
           )}
 
           {/* Appointment Reports */}
-          {reportType === 'appointments' && (
+          {displayedFilters?.reportType === 'appointments' && (
             <div className="report-section">
               <div className="section-header"><h3>📅 Appointment Analysis</h3></div>
               <div className="section-body">
@@ -763,7 +760,7 @@ const Reports = () => {
           )}
 
           {/* Patient Reports */}
-          {reportType === 'patients' && (
+          {displayedFilters?.reportType === 'patients' && (
             <div className="report-section">
               <div className="section-header"><h3>👥 Patient Analytics</h3></div>
               <div className="section-body">
@@ -817,7 +814,7 @@ const Reports = () => {
           )}
 
           {/* Doctor Performance Reports */}
-          {reportType === 'doctors' && (
+          {displayedFilters?.reportType === 'doctors' && (
             <div className="report-section">
               <div className="section-header"><h3>👨‍⚕️ Doctor Performance</h3></div>
               <div className="section-body">
@@ -864,10 +861,11 @@ const Reports = () => {
           )}
 
           <div className="report-footer">
-            <p>Report generated on {new Date().toLocaleString()} | Period: {formatDate(startDate)} to {formatDate(endDate)} | {doctorId === 'all' ? 'All Doctors' : 'Doctor Filtered'}</p>
+            <p>Report generated on {new Date().toLocaleString()} | Period: {formatDate(displayedFilters?.startDate)} to {formatDate(displayedFilters?.endDate)} | {displayedFilters?.doctorId === 'all' ? 'All Doctors' : 'Doctor Filtered'}</p>
             <p>© {new Date().getFullYear()} Fifthcusp Dental Clinic. All rights reserved.</p>
           </div>
         </div>
+        </AdminDataRegion>
       </div>
 
       {isLoggingOut && <div className="logout-overlay"><div className="logout-content"><i className="fas fa-spinner fa-spin"></i><p>Logging out...</p></div></div>}

@@ -130,10 +130,10 @@ const ManagePatients = () => {
 
       const { data: appointments } = await query;
       setPatientAppointments(appointments || []);
-      const statsCount = { pending: 0, approved: 0, cancelled: 0, completed: 0 };
+      const statsCount = { pending: 0, confirmed: 0, cancelled: 0, completed: 0 };
       appointments?.forEach(a => {
         if (a.status === 'pending') statsCount.pending++;
-        else if (a.status === 'approved') statsCount.approved++;
+        else if (a.status === 'confirmed') statsCount.confirmed++;
         else if (a.status === 'cancelled') statsCount.cancelled++;
         else if (a.status === 'completed') statsCount.completed++;
       });
@@ -273,8 +273,8 @@ const ManagePatients = () => {
                     <div className="stat-label">Pending</div>
                   </div>
                   <div className="stat-item">
-                    <div className="stat-number">{patientStats.approved || 0}</div>
-                    <div className="stat-label">Approved</div>
+                    <div className="stat-number">{patientStats.confirmed || 0}</div>
+                    <div className="stat-label">Confirmed</div>
                   </div>
                   <div className="stat-item">
                     <div className="stat-number">{patientStats.completed || 0}</div>
@@ -294,7 +294,7 @@ const ManagePatients = () => {
                   <select className="form-control" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                     <option value="all">All</option>
                     <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
+                    <option value="confirmed">Confirmed</option>
                     <option value="cancelled">Cancelled</option>
                     <option value="completed">Completed</option>
                   </select>

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import './serviceDetail.css';
-import toothFillingVideo from '../../assets/videos/tooth-filling-animation.mp4';
+import serviceVideos from '../../assets/videos/serviceVideos';
 
 const ServiceDetails = () => {
   const { id } = useParams();
@@ -19,6 +20,7 @@ const ServiceDetails = () => {
   const animationVideoRef = useRef(null);
 
   useEffect(() => {
+    setVideoError(false);
     if (!id) {
         navigate('/');
         return;
@@ -83,7 +85,10 @@ const ServiceDetails = () => {
 
   const handleBookNow = () => {
     if (!user) {
-      navigate('/login', { state: { from: `/service/${id}` } });
+      toast.info('Please login or register to book appointments.', {
+        position: 'bottom-right',
+        autoClose: 3000,
+      });
     } else if (userType === 'patient') {
       navigate(`/book-appointment?service_id=${id}`);
     } else {
@@ -114,7 +119,7 @@ const ServiceDetails = () => {
 
   const durationText = formatDuration(service.duration_minutes);
   const doctorCount = doctors.length;
-  const hasFillingAnimation = service.service_name?.trim().toLowerCase() === 'tooth filling';
+  const serviceVideo = serviceVideos[service.service_id];
 
   const closeAnimation = () => {
     const video = animationVideoRef.current;
@@ -129,7 +134,7 @@ const ServiceDetails = () => {
       <div className="service-details-wrapper">
         {/* Header Section */}
         <div className="service-header">
-          {hasFillingAnimation ? (
+          {serviceVideo ? (
             <div className="service-animation-heading">
               <h1 className="service-title">{service.service_name}</h1>
               <button
@@ -160,7 +165,7 @@ const ServiceDetails = () => {
           <p className="service-description">{service.description}</p>
         </div>
 
-        {hasFillingAnimation && (
+        {serviceVideo && (
           <dialog
             id="service-animation-dialog"
             ref={animationDialogRef}
@@ -169,7 +174,7 @@ const ServiceDetails = () => {
             onClose={closeAnimation}
           >
             <div className="service-animation-dialog-header">
-              <h2 id="service-animation-title">Tooth filling — 3D procedure</h2>
+              <h2 id="service-animation-title">{service.service_name} — 3D procedure</h2>
               <button
                 type="button"
                 className="service-animation-close"
@@ -182,18 +187,19 @@ const ServiceDetails = () => {
             <video
               ref={animationVideoRef}
               className="service-animation-video"
-              src={toothFillingVideo}
+              key={serviceVideo}
+              src={serviceVideo}
               controls
               playsInline
               preload="none"
-              aria-label="Tooth filling 3D procedure animation"
+              aria-label={`${service.service_name} 3D procedure animation`}
               onError={() => setVideoError(true)}
             >
               Your browser does not support video playback.
             </video>
             {videoError && (
               <p className="service-animation-error" role="alert">
-                The video could not be played. <a href={toothFillingVideo} target="_blank" rel="noopener noreferrer">Open the video directly</a>.
+                The video could not be played. <a href={serviceVideo} target="_blank" rel="noopener noreferrer">Open the video directly</a>.
               </p>
             )}
           </dialog>
@@ -267,7 +273,7 @@ const ServiceDetails = () => {
                 </div>
               </div>
               <button className="btn-book" onClick={handleBookNow}>
-                <i className="fas fa-calendar-plus"></i> {user && userType === 'patient' ? 'Book appointment' : 'Login to book'}
+                <i className="fas fa-calendar-plus"></i> Book appointment
               </button>
               <Link to="/" className="btn-back-small">
                 <i className="fas fa-arrow-left"></i> Back to services

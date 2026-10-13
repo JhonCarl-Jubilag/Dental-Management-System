@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
+import { hasAppointmentEnded } from '../../utils/appointmentTiming';
 import DoctorSidebar from '../../components/doctor/Sidebar';
 import './manageAppointments.css';
 
@@ -123,7 +124,7 @@ const ManageAppointments = () => {
         .select(`
           *,
           patients!inner (patient_id, first_name, last_name, email, contact_no, birthday),
-          services!inner (service_name, price, description)
+          services!inner (service_name, price, description, duration_minutes)
         `)
         .eq('doctor_id', userDetails.doctor_id)
         .order('appointment_datetime', { ascending: false });
@@ -196,9 +197,8 @@ const ManageAppointments = () => {
   };
 
   const handleMarkCompleted = async (appointment) => {
-    const apptTime = new Date(appointment.appointment_datetime);
-    if (apptTime > new Date()) {
-      setError('Cannot mark as completed – appointment time has not yet passed.');
+    if (!hasAppointmentEnded(appointment)) {
+      setError('Cannot mark as completed – the full service duration has not elapsed or is unavailable.');
       return;
     }
     if (!window.confirm('Mark this appointment as completed?')) return;
@@ -587,7 +587,7 @@ const ManageAppointments = () => {
                 const patient = app.patients;
                 const service = app.services;
                 const appointmentTime = new Date(app.appointment_datetime);
-                const canMarkCompleted = app.status === 'confirmed' && appointmentTime < new Date();
+                const canMarkCompleted = app.status === 'confirmed' && hasAppointmentEnded(app);
                 const remarks = app.remarks || '';
                 const remarksLower = remarks.toLowerCase();
                 const hasRescheduleRequest = app.status === 'confirmed' && remarksLower.includes('reschedule requested');

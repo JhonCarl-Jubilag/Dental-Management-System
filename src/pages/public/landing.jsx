@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { toast, ToastContainer } from 'react-toastify';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 const Landing = () => {
+  const navigate = useNavigate();
   const { user, userType, userDetails, signOut } = useAuth();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -382,12 +383,11 @@ const Landing = () => {
                   <div 
                     className="service-card" 
                     key={service.service_id}
-                    onClick={() => {
-                      if (user && userType === 'patient') {
-                        window.location.href = `/service/${service.service_id}`;
-                      } else {
-                        toast.info('Please login or register to view service details and book appointments.');
-                      }
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => navigate(`/service/${service.service_id}`)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') navigate(`/service/${service.service_id}`);
                     }}
                   >
                     <div 
@@ -429,11 +429,7 @@ const Landing = () => {
                     </div>
                     
                     <div className="service-action">
-                      {user && userType === 'patient' ? (
-                        <>Book Now <i className="fas fa-calendar-check"></i></>
-                      ) : (
-                        <>View Details <i className="fas fa-arrow-right"></i></>
-                      )}
+                      View Details <i className="fas fa-arrow-right"></i>
                     </div>
                   </div>
                 ))}
@@ -589,7 +585,6 @@ const Landing = () => {
         </div>
       </footer>
 
-      <ToastContainer position="bottom-right" autoClose={3000} />
     </div>
   );
 };

@@ -5,13 +5,32 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
+import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import './manageDoctors.css';
+
+const manageDoctorAccount = async (body) => {
+  const { data, error } = await supabase.functions.invoke('manage-doctor-account', { body });
+  if (error) {
+    let message = error.message;
+    if (error.context?.json) {
+      try {
+        const details = await error.context.json();
+        message = details.error || message;
+      } catch { /* Keep the original error if no JSON response was returned. */ }
+    }
+    throw new Error(message);
+  }
+  if (!data?.success) throw new Error(data?.error || 'The account request did not complete.');
+  return data;
+};
 
 const ManageDoctors = () => {
   const { user, userType, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [doctors, setDoctors] = useState([]);
   const [allServices, setAllServices] = useState([]);
   const [specializations, setSpecializations] = useState([]);
@@ -54,9 +73,7 @@ const ManageDoctors = () => {
     service_ids: []
   });
   const [resetForm, setResetForm] = useState({
-    doctor_id: '',
-    new_password: '',
-    confirm_password: ''
+    doctor_id: ''
   });
   const [availabilityForm, setAvailabilityForm] = useState({
     doctor_id: '',
@@ -101,6 +118,7 @@ const ManageDoctors = () => {
   const fetchData = useCallback(async () => {
     if (!user || (userType !== 'admin' && !isSuperAdmin)) return;
     setLoading(true);
+    setLoadError(null);
 
     try {
       // 1. Fetch all active services
@@ -149,6 +167,7 @@ const ManageDoctors = () => {
         setActiveDoctors(0);
         setSpecializations([]);
         setAvailabilityCounts({});
+        setHasLoaded(true);
         setLoading(false);
         return;
       }
@@ -221,7 +240,10 @@ const ManageDoctors = () => {
       const uniqueSpecs = [...new Set(doctorsList.map(d => d.specialization).filter(Boolean))];
       setSpecializations(uniqueSpecs);
 
+      setHasLoaded(true);
+
     } catch (err) {
+      setLoadError(err);
       console.error('Error fetching doctors:', err);
       toast.error(err.message);
     } finally {
@@ -257,34 +279,18 @@ const ManageDoctors = () => {
     }
 
     try {
-      const { data: doctorData, error: doctorError } = await supabase
-        .from('doctors')
-        .insert([{
-          first_name: addForm.first_name,
-          last_name: addForm.last_name,
-          email: addForm.email,
-          password: 'managed_by_supabase_auth',
-          specialization: addForm.specialization || null,
-          contact_no: addForm.contact_no || null,
-          status: 'active'
-        }])
-        .select()
-        .single();
-      if (doctorError) throw doctorError;
+      await manageDoctorAccount({
+        action: 'create',
+        first_name: addForm.first_name,
+        last_name: addForm.last_name,
+        email: addForm.email,
+        password: addForm.password,
+        specialization: addForm.specialization,
+        contact_no: addForm.contact_no,
+        service_ids: addForm.service_ids,
+      });
 
-      if (addForm.service_ids.length > 0) {
-        const servicesToInsert = addForm.service_ids.map(service_id => ({
-          doctor_id: doctorData.doctor_id,
-          service_id,
-          status: 'active'
-        }));
-        const { error: servicesError } = await supabase
-          .from('doctor_services')
-          .insert(servicesToInsert);
-        if (servicesError) throw servicesError;
-      }
-
-      toast.success('Doctor added successfully!');
+      toast.success('Doctor and login account created successfully! Use Staff Login to sign in.');
       setShowAddModal(false);
       setAddForm({
         first_name: '', last_name: '', email: '', password: '', confirm_password: '',
@@ -301,15 +307,28 @@ const ManageDoctors = () => {
 
   const handleEditDoctor = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
+    let emailChanged = false;
 
     try {
+      const email = editForm.email.trim().toLowerCase();
+      if (email !== editForm.original_email.trim().toLowerCase()) {
+        if (!isSuperAdmin) throw new Error('Only the super admin can change login emails.');
+        const result = await manageDoctorAccount({
+          action: 'change_email', doctor_id: editForm.doctor_id,
+          new_email: email, expected_email: editForm.original_email,
+        });
+        emailChanged = true;
+        setEditForm(form => ({ ...form, email: result.email, original_email: result.email }));
+        setDoctors(current => current.map(doctor => doctor.doctor_id === editForm.doctor_id
+          ? { ...doctor, email: result.email } : doctor));
+      }
       const { error: updateError } = await supabase
         .from('doctors')
         .update({
           first_name: editForm.first_name,
           last_name: editForm.last_name,
-          email: editForm.email,
           specialization: editForm.specialization || null,
           contact_no: editForm.contact_no || null,
           status: editForm.status
@@ -335,12 +354,12 @@ const ManageDoctors = () => {
         if (insertError) throw insertError;
       }
 
-      toast.success('Doctor updated successfully!');
+      toast.success(emailChanged ? 'Doctor updated successfully! Use the new email with the existing password.' : 'Doctor updated successfully!');
       setShowEditModal(false);
       fetchData();
     } catch (err) {
       console.error('Error updating doctor:', err);
-      toast.error(err.message);
+      toast.error(emailChanged ? `Login email updated, but the other changes could not be saved: ${err.message}` : err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -350,23 +369,11 @@ const ManageDoctors = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    if (resetForm.new_password !== resetForm.confirm_password) {
-      toast.error('Passwords do not match');
-      setIsSubmitting(false);
-      return;
-    }
-    if (resetForm.new_password.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
-      // In a real implementation, you would call Supabase Auth admin API to reset password
-      // For now we simulate success
-      toast.success('Password reset request sent. The doctor will receive an email to set a new password.');
+      const result = await manageDoctorAccount({ action: 'send_reset_email', doctor_id: resetForm.doctor_id });
+      toast.success(result.message);
       setShowResetPasswordModal(false);
-      setResetForm({ doctor_id: '', new_password: '', confirm_password: '' });
+      setResetForm({ doctor_id: '' });
     } catch (err) {
       console.error('Error resetting password:', err);
       toast.error(err.message);
@@ -438,6 +445,7 @@ const ManageDoctors = () => {
       first_name: doctor.first_name,
       last_name: doctor.last_name,
       email: doctor.email,
+      original_email: doctor.email,
       specialization: doctor.specialization || '',
       contact_no: doctor.contact_no || '',
       status: doctor.status,
@@ -447,7 +455,7 @@ const ManageDoctors = () => {
   };
 
   const openResetPasswordModal = (doctorId) => {
-    setResetForm({ doctor_id: doctorId, new_password: '', confirm_password: '' });
+    setResetForm({ doctor_id: doctorId });
     setShowResetPasswordModal(true);
   };
 
@@ -468,7 +476,7 @@ const ManageDoctors = () => {
     navigate('/login');
   };
 
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <div className="admin-loading">
         <div className="loading-spinner"></div>
@@ -489,7 +497,7 @@ const ManageDoctors = () => {
             <p className="welcome-message">Add, edit, and manage dental doctors and their services</p>
           </div>
           <div className="header-actions">
-            <button className="btn btn-primary" onClick={openAddModal}>
+            <button className="btn btn-primary" disabled={loading || !hasLoaded} onClick={openAddModal}>
               <i className="fas fa-plus"></i> Add New Doctor
             </button>
             <div className="user-info">
@@ -501,6 +509,8 @@ const ManageDoctors = () => {
             </div>
           </div>
         </div>
+        <AdminDataRegion loading={loading} hasLoaded={hasLoaded} error={loadError} label="Doctors" onRetry={fetchData}>
+
 
         {/* Stats Grid */}
         <div className="stats-grid">
@@ -577,13 +587,7 @@ const ManageDoctors = () => {
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="5" className="loading-placeholder">
-                      <div className="spinner-small"></div> Loading doctors...
-                    </td>
-                  </tr>
-                ) : doctors.length === 0 ? (
+                {doctors.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="empty-state">
                       <div>👨‍⚕️</div>
@@ -668,6 +672,7 @@ const ManageDoctors = () => {
             </div>
           )}
         </div>
+        </AdminDataRegion>
       </div>
 
       {/* Add Modal */}
@@ -766,7 +771,8 @@ const ManageDoctors = () => {
                 </div>
                 <div className="form-group">
                   <label>Email *</label>
-                  <input type="email" className="form-control" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} required />
+                  <input type="email" className="form-control" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} readOnly={!isSuperAdmin} disabled={isSubmitting} maxLength={254} required />
+                  <small>{isSuperAdmin ? 'Changing this email changes the login address. The password stays the same.' : 'Only the super admin can change the login email.'}</small>
                 </div>
                 <div className="form-group">
                   <label>Specialization</label>
@@ -825,19 +831,12 @@ const ManageDoctors = () => {
             </div>
             <form onSubmit={handleResetPassword}>
               <div className="modal-body">
-                <div className="form-group">
-                  <label>New Password *</label>
-                  <input type="password" className="form-control" value={resetForm.new_password} onChange={e => setResetForm({...resetForm, new_password: e.target.value})} required />
-                  <small>Minimum 6 characters</small>
-                </div>
-                <div className="form-group">
-                  <label>Confirm Password *</label>
-                  <input type="password" className="form-control" value={resetForm.confirm_password} onChange={e => setResetForm({...resetForm, confirm_password: e.target.value})} required />
-                </div>
+                <p>Send a password reset email to <strong>{doctors.find(doctor => doctor.doctor_id === resetForm.doctor_id)?.email}</strong>?</p>
+                <p>The doctor will use the email link to choose their own new password.</p>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowResetPasswordModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Resetting...' : 'Reset Password'}</button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : 'Send Reset Email'}</button>
               </div>
             </form>
           </div>

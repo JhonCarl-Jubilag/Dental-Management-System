@@ -1,0 +1,11 @@
+[functions.manage-doctor-account]
+verify_jwt = true
+entrypoint = './functions/manage-doctor-account/index.js'
+
+[functions.manage-patient-account]
+verify_jwt = true
+entrypoint = './functions/manage-patient-account/index.js'
+
+[functions.recover-patient-registration]
+verify_jwt = true
+entrypoint = './functions/recover-patient-registration/index.js'

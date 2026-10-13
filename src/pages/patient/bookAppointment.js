@@ -186,7 +186,7 @@ const BookAppointment = () => {
         .lt('appointment_datetime', `${date} 23:59:59`);
       if (apptError) throw apptError;
 
-      const activeStatuses = ['pending', 'approved'];
+      const activeStatuses = ['pending', 'confirmed'];
       const existingApps = allAppointments.filter(apt =>
         activeStatuses.includes(apt.status?.toLowerCase())
       );
@@ -290,7 +290,7 @@ const BookAppointment = () => {
 
       const slotStart = new Date(appointmentDateTime);
       const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
-      const activeStatuses = ['pending', 'approved'];
+      const activeStatuses = ['pending', 'confirmed'];
       const overlapping = allOnDate.filter(apt => {
         if (!activeStatuses.includes(apt.status?.toLowerCase())) return false;
         const aptStart = new Date(apt.appointment_datetime);

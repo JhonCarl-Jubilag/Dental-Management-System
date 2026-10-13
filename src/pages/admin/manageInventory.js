@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
+import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import './manageInventory.css';
 
 const ManageInventory = () => {
@@ -12,6 +13,8 @@ const ManageInventory = () => {
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [inventory, setInventory] = useState([]);
 
   // Filters & Pagination
@@ -109,6 +112,7 @@ const ManageInventory = () => {
 
   const fetchInventory = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       let query = supabase
         .from('inventory')
@@ -136,7 +140,9 @@ const ManageInventory = () => {
       setInventory(data || []);
       setTotalCount(count || 0);
       setTotalPages(Math.ceil((count || 0) / perPage));
+      setHasLoaded(true);
     } catch (err) {
+      setLoadError(err);
       toast.error(err.message);
     } finally {
       setLoading(false);
@@ -290,6 +296,8 @@ const ManageInventory = () => {
             </div>
           </div>
         </div>
+        <AdminDataRegion loading={loading} hasLoaded={hasLoaded} error={loadError} label="Inventory" onRetry={fetchInventory}>
+
 
         <div className="stats-grid">
           <div className="stat-card">
@@ -360,9 +368,7 @@ const ManageInventory = () => {
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
-                  <tr><td colSpan="9" className="loading-placeholder"><div className="spinner-small"></div></td></tr>
-                ) : inventory.length === 0 ? (
+                {inventory.length === 0 ? (
                   <tr><td colSpan="9" className="empty-state">No inventory items found</td></tr>
                 ) : (
                   inventory.map(item => {
@@ -397,6 +403,7 @@ const ManageInventory = () => {
             </div>
           )}
         </div>
+        </AdminDataRegion>
       </div>
 
       {/* Add Modal */}

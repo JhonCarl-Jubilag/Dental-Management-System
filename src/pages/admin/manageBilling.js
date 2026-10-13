@@ -4,7 +4,9 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
+import { completeFinishedAppointments, completePaidAppointment } from '../../services/appointmentCompletion';
 import Sidebar from '../../components/admin/Sidebar';
+import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import './manageBilling.css';
 
 const validateSeniorID = (id_no) => {
@@ -35,6 +37,8 @@ const ManageBilling = () => {
   const { user, userType, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [billingRecords, setBillingRecords] = useState([]);
   const [unbilledAppointments, setUnbilledAppointments] = useState([]);
   const [stats, setStats] = useState({ totalRevenue: 0, totalPending: 0, totalPaid: 0, totalUnbilled: 0 });
@@ -105,20 +109,15 @@ const ManageBilling = () => {
   const formatCurrency = (amount) => `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
   const autoUpdateExpiredConfirmed = useCallback(async () => {
-    const now = new Date().toISOString();
-    const { data, error } = await supabase
-      .from('appointments')
-      .update({ status: 'completed', updated_at: new Date().toISOString() })
-      .eq('status', 'confirmed')
-      .lt('appointment_datetime', now)
-      .select();
-    if (!error && data?.length) {
-      console.log(`${data.length} expired confirmed appointment(s) marked as completed.`);
+    const completedCount = await completeFinishedAppointments(supabase);
+    if (completedCount) {
+      console.log(`${completedCount} finished confirmed appointment(s) marked as completed.`);
     }
   }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       await autoUpdateExpiredConfirmed();
 
@@ -191,7 +190,9 @@ const ManageBilling = () => {
         totalPaid,
         totalUnbilled: unbilled?.length || 0
       });
+      setHasLoaded(true);
     } catch (err) {
+      setLoadError(err);
       console.error(err);
       toast.error(err.message);
     } finally {
@@ -333,18 +334,10 @@ const ManageBilling = () => {
       if (insertError) throw insertError;
 
       if (balance <= 0 && amount_paid > 0) {
-        const { data: appt } = await supabase
-          .from('appointments')
-          .select('appointment_datetime')
-          .eq('appointment_id', appointment_id)
-          .single();
-        const apptTime = new Date(appt.appointment_datetime);
-        const now = new Date();
-        const newStatus = apptTime <= now ? 'completed' : 'confirmed';
-        await supabase.from('appointments').update({ status: newStatus }).eq('appointment_id', appointment_id);
-        const statusNote = newStatus === 'completed'
-          ? `\n\n[Status Update]: Appointment marked as COMPLETED (Full payment received & appointment time has passed)`
-          : `\n\n[Status Note]: Full payment received but appointment is scheduled for future - Status remains CONFIRMED`;
+        const completed = await completePaidAppointment(supabase, appointment_id);
+        const statusNote = completed
+          ? `\n\n[Status Update]: Appointment marked as COMPLETED (Full payment received & full service duration elapsed)`
+          : `\n\n[Status Note]: Full payment received. Appointment status retained unless the full service duration has elapsed.`;
         await supabase
           .from('billing')
           .update({ remarks: finalRemarks + statusNote })
@@ -414,11 +407,7 @@ const ManageBilling = () => {
 
       if (balance <= 0 && amount_paid > 0) {
         const { data: bill } = await supabase.from('billing').select('appointment_id').eq('billing_id', billing_id).single();
-        const { data: appt } = await supabase.from('appointments').select('appointment_datetime').eq('appointment_id', bill.appointment_id).single();
-        const apptTime = new Date(appt.appointment_datetime);
-        const now = new Date();
-        const newStatus = apptTime <= now ? 'completed' : 'confirmed';
-        await supabase.from('appointments').update({ status: newStatus }).eq('appointment_id', bill.appointment_id);
+        await completePaidAppointment(supabase, bill.appointment_id);
       }
       toast.success('Billing record updated successfully!');
       setShowEditModal(false);
@@ -477,11 +466,7 @@ const ManageBilling = () => {
       if (updateError) throw updateError;
 
       if (newBalance <= 0) {
-        const { data: appt } = await supabase.from('appointments').select('appointment_datetime').eq('appointment_id', bill.appointment_id).single();
-        const apptTime = new Date(appt.appointment_datetime);
-        const now = new Date();
-        const newStatus = apptTime <= now ? 'completed' : 'confirmed';
-        await supabase.from('appointments').update({ status: newStatus }).eq('appointment_id', bill.appointment_id);
+        await completePaidAppointment(supabase, bill.appointment_id);
       }
       toast.success('Payment recorded successfully!');
       setShowPaymentModal(false);
@@ -548,7 +533,7 @@ const ManageBilling = () => {
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <div className="admin-loading">
         <div className="loading-spinner"></div>
@@ -572,11 +557,12 @@ const ManageBilling = () => {
             <p className="welcome-message">Manage payments, discounts, and invoices</p>
           </div>
           <div className="header-actions">
-            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+            <button className="btn btn-primary" disabled={loading || !hasLoaded} onClick={() => setShowCreateModal(true)}>
               <i className="fas fa-plus"></i> Create Bill
             </button>
             <button 
               className={`btn ${showArchived ? 'btn-warning' : 'btn-info'}`} 
+              disabled={loading}
               onClick={() => setShowArchived(!showArchived)}
             >
               {showArchived ? 'Hide Archives' : 'Show Archives'}
@@ -590,6 +576,8 @@ const ManageBilling = () => {
             </div>
           </div>
         </div>
+        <AdminDataRegion loading={loading} hasLoaded={hasLoaded} error={loadError} label="Billing records" onRetry={fetchData}>
+
 
         <div className="stats-grid">
           <div className="stat-card"><div className="stat-number">₱{stats.totalRevenue.toLocaleString()}</div><div className="stat-label">Total Billing</div></div>
@@ -714,6 +702,7 @@ const ManageBilling = () => {
             </table>
           </div>
         </div>
+        </AdminDataRegion>
       </div>
 
       {/* CREATE BILLING MODAL */}

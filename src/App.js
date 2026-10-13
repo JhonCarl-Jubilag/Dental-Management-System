@@ -39,7 +39,10 @@ import DoctorManageAppointments from './pages/doctor/manageAppointments';
 import ManageSchedule from './pages/doctor/manageSchedule';
 
 const ProtectedRoute = ({ children, allowedUserType }) => {
-  const { user, userType, loading } = useAuth();
+  const { user, userType, loading, registrationIncomplete, accountError } = useAuth();
+
+  if (user && registrationIncomplete) return <Navigate to="/register" replace />;
+  if (accountError && !loading) return <Navigate to="/login" replace />;
 
   if (loading || (user && !userType)) {
     return (

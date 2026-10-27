@@ -16,9 +16,9 @@ const ClinicMap = () => {
   const markerRef = useRef(null);
 
   const clinicLocation = {
-    lat: 14.422362871132027,
-    lng: 120.94216321698855,
-    address: 'Tanzang Luma 2, Imus City, Cavite'
+    lat: 14.419364603769948,
+    lng: 120.9369070449141, 
+    address: '150 Sara St. Sarah Subdivision, Bayan Luma 3 Imus City, Cavite'
   };
 
   useEffect(() => {
@@ -57,10 +57,10 @@ const ClinicMap = () => {
       // Add popup
       markerRef.current.bindPopup(`
         <div class="map-popup">
-          <h3>Fifthcusp Dental Clinic</h3>
+          <h3>Diolata Dental Clinic</h3>
           <p><i class="fas fa-map-marker-alt"></i> ${clinicLocation.address}</p>
-          <p><i class="fas fa-phone"></i> (02) 1234-5678</p>
-          <p><i class="fas fa-clock"></i> Mon-Fri: 8AM-6PM, Sat: 9AM-2PM</p>
+          <p><i class="fas fa-phone"></i> 046-4723054 / 0930-482-0352</p>
+          <p><i class="fas fa-clock"></i> Mon-Sat: 9AM-6PM, Sun: Closed</p>
           <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(clinicLocation.address)}" 
              target="_blank" 
              rel="noopener noreferrer"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -8,6 +8,20 @@ import { completeFinishedAppointments, completePaidAppointment } from '../../ser
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import './manageBilling.css';
+
+const billingSnapshotFields = ['appointment_id', 'total_amount', 'discount', 'discount_id_no',
+  'amount_paid', 'balance', 'payment_method', 'reference_number', 'payment_date', 'remarks', 'archived'];
+
+// Each filter is checked by the database in the same statement as the update.
+// An edit or payment based on an older row must not replace newer billing data.
+const matchBillingSnapshot = (query, record) => billingSnapshotFields.reduce((filtered, field) =>
+  record[field] == null ? filtered.is(field, null) : filtered.eq(field, record[field]), query);
+
+const toCents = value => {
+  if (value == null || value === '' || !Number.isFinite(Number(value)) || Number(value) < 0) return null;
+  const cents = Math.round((Number(value) + Number.EPSILON) * 100);
+  return Number.isSafeInteger(cents) && cents >= 0 ? cents : null;
+};
 
 const validateSeniorID = (id_no) => {
   const cleaned = id_no.replace(/\D/g, '');
@@ -57,6 +71,9 @@ const ManageBilling = () => {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const billingWriteInProgress = useRef(false);
+  const editSnapshot = useRef(null);
+  const paymentSnapshot = useRef(null);
   const [allowsPartial, setAllowsPartial] = useState(false);
 
   const [createForm, setCreateForm] = useState({
@@ -263,10 +280,18 @@ const ManageBilling = () => {
 
   const handleCreateBilling = async (e) => {
     e.preventDefault();
+    if (billingWriteInProgress.current || isSubmitting) return;
     setIsSubmitting(true);
 
-    const { total_amount, discount, amount_paid, payment_method, reference_number, payment_date, remarks, appointment_id, patient_id, doctor_id, discount_type, discount_id_no } = createForm;
-    const afterDiscount = total_amount - discount;
+    const { total_amount: rawTotal, discount: rawDiscount, amount_paid: rawPaid, payment_method, reference_number, payment_date, remarks, appointment_id, patient_id, doctor_id, discount_type, discount_id_no } = createForm;
+    const totalCents = toCents(rawTotal), discountCents = toCents(rawDiscount), paidCents = toCents(rawPaid);
+    if (totalCents == null || discountCents == null || paidCents == null || discountCents > totalCents || paidCents > totalCents - discountCents) {
+      toast.error('Enter valid amounts. Discount and payment cannot exceed the bill total.');
+      setIsSubmitting(false);
+      return;
+    }
+    const total_amount = totalCents / 100, discount = discountCents / 100, amount_paid = paidCents / 100;
+    const afterDiscount = (totalCents - discountCents) / 100;
 
     if (payment_method !== 'cash' && !reference_number.trim()) {
       toast.error('Reference number is required for this payment method.');
@@ -290,14 +315,16 @@ const ManageBilling = () => {
       setIsSubmitting(false);
       return;
     }
-    const balance = afterDiscount - amount_paid;
+    const balance = (totalCents - discountCents - paidCents) / 100;
 
+    billingWriteInProgress.current = true;
     try {
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('billing')
         .select('billing_id')
         .eq('appointment_id', appointment_id)
         .maybeSingle();
+      if (existingError) throw existingError;
       if (existing) {
         toast.error('A billing record already exists for this appointment.');
         setIsSubmitting(false);
@@ -333,147 +360,154 @@ const ManageBilling = () => {
         });
       if (insertError) throw insertError;
 
-      if (balance <= 0 && amount_paid > 0) {
-        const completed = await completePaidAppointment(supabase, appointment_id);
-        const statusNote = completed
-          ? `\n\n[Status Update]: Appointment marked as COMPLETED (Full payment received & full service duration elapsed)`
-          : `\n\n[Status Note]: Full payment received. Appointment status retained unless the full service duration has elapsed.`;
-        await supabase
-          .from('billing')
-          .update({ remarks: finalRemarks + statusNote })
-          .eq('appointment_id', appointment_id);
-      }
-
-      toast.success('Billing record created successfully!');
-      setTimeout(() => {
-        setShowCreateModal(false);
-        resetCreateForm();
-        fetchData();
-      }, 2000);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleEditBilling = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    const { billing_id, total_amount, discount, amount_paid, payment_method, reference_number, payment_date, remarks, discount_type, discount_id_no } = editForm;
-    const afterDiscount = total_amount - discount;
-
-    if (payment_method !== 'cash' && !reference_number.trim()) {
-      toast.error('Reference number is required for this payment method.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    const idError = validateDiscountId(discount_type, discount_id_no);
-    if (idError) {
-      toast.error(idError);
-      setIsSubmitting(false);
-      return;
-    }
-    if (amount_paid > afterDiscount) {
-      toast.error(`Amount paid cannot exceed amount after discount (${formatCurrency(afterDiscount)}).`);
-      setIsSubmitting(false);
-      return;
-    }
-    const balance = afterDiscount - amount_paid;
-
-    let newRemarks = remarks;
-    if (discount_type === 'senior') newRemarks = `[Discount Applied]: Senior Citizen (20%) - ₱${discount.toFixed(2)} | ID: ${discount_id_no}\n${remarks}`;
-    else if (discount_type === 'pwd') newRemarks = `[Discount Applied]: PWD (20%) - ₱${discount.toFixed(2)} | ID: ${discount_id_no}\n${remarks}`;
-    else if (discount_type === 'manual') newRemarks = `[Discount Applied]: Manual Discount - ₱${discount.toFixed(2)}\n${remarks}`;
-
-    try {
-      const { error: updateError } = await supabase
-        .from('billing')
-        .update({
-          total_amount,
-          discount,
-          discount_id_no: discount_type !== 'none' ? discount_id_no : null,
-          amount_paid,
-          balance,
-          payment_method,
-          reference_number: payment_method !== 'cash' ? reference_number : null,
-          payment_date,
-          remarks: newRemarks
-        })
-        .eq('billing_id', billing_id);
-      if (updateError) throw updateError;
-
-      if (balance <= 0 && amount_paid > 0) {
-        const { data: bill } = await supabase.from('billing').select('appointment_id').eq('billing_id', billing_id).single();
-        await completePaidAppointment(supabase, bill.appointment_id);
-      }
-      toast.success('Billing record updated successfully!');
-      setShowEditModal(false);
+      setShowCreateModal(false);
+      resetCreateForm();
+      await notifySavedBill({ appointment_id }, balance <= 0 && amount_paid > 0, 'Billing record created successfully!');
       fetchData();
     } catch (err) {
       toast.error(err.message);
     } finally {
+      billingWriteInProgress.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
+  const notifySavedBill = async (bill, fullyPaid, successMessage) => {
+    if (fullyPaid) {
+      try {
+        await completePaidAppointment(supabase, bill.appointment_id);
+      } catch {
+        toast.warn(successMessage + ' Appointment status could not be refreshed. Do not record the payment again; reload to retry the status update.');
+        return;
+      }
+    }
+    toast.success(successMessage);
+  };
+
+  const handleEditBilling = async (e) => {
+    e.preventDefault();
+    if (billingWriteInProgress.current || isSubmitting) return;
+    const { billing_id, total_amount, discount, amount_paid, payment_method, reference_number,
+      payment_date, remarks, discount_type, discount_id_no } = editForm;
+    const totalCents = toCents(total_amount), discountCents = toCents(discount), paidCents = toCents(amount_paid);
+    if (totalCents == null || discountCents == null || paidCents == null || discountCents > totalCents || paidCents > totalCents - discountCents) {
+      toast.error('Enter valid amounts. Discount and payment cannot exceed the bill total.');
+      return;
+    }
+    if (payment_method !== 'cash' && !reference_number.trim()) {
+      toast.error('Reference number is required for this payment method.');
+      return;
+    }
+    const idError = validateDiscountId(discount_type, discount_id_no);
+    if (idError) { toast.error(idError); return; }
+    if (!editSnapshot.current || editSnapshot.current.billing_id !== billing_id) {
+      toast.error('Close and reopen this bill before saving changes.');
+      return;
+    }
+    const balance = (totalCents - discountCents - paidCents) / 100;
+    let newRemarks = remarks || '';
+    if (discount_type === 'senior') newRemarks = '[Discount Applied]: Senior Citizen (20%) - ₱' + (discountCents / 100).toFixed(2) + ' | ID: ' + discount_id_no + '\n' + newRemarks;
+    else if (discount_type === 'pwd') newRemarks = '[Discount Applied]: PWD (20%) - ₱' + (discountCents / 100).toFixed(2) + ' | ID: ' + discount_id_no + '\n' + newRemarks;
+    else if (discount_type === 'manual') newRemarks = '[Discount Applied]: Manual Discount - ₱' + (discountCents / 100).toFixed(2) + '\n' + newRemarks;
+
+    billingWriteInProgress.current = true;
+    setIsSubmitting(true);
+    let writeStarted = false;
+    try {
+      writeStarted = true;
+      const { data: savedBill, error } = await matchBillingSnapshot(supabase.from('billing')
+        .update({ total_amount: totalCents / 100, discount: discountCents / 100,
+          discount_id_no: discount_type !== 'none' ? discount_id_no : null,
+          amount_paid: paidCents / 100, balance, payment_method,
+          reference_number: payment_method !== 'cash' ? reference_number.trim() : null,
+          payment_date, remarks: newRemarks })
+        .eq('billing_id', billing_id), editSnapshot.current)
+        .select('billing_id, appointment_id').maybeSingle();
+      if (error) {
+        if (!error.code || error.code === '57014') throw new Error('Save result could not be confirmed. Check the billing record before trying again.');
+        writeStarted = false;
+        throw error;
+      }
+      writeStarted = false;
+      if (!savedBill) throw new Error('This bill changed or is no longer available. Close and reopen it to review the latest details. Your edits were not saved.');
+      editSnapshot.current = null;
+      setShowEditModal(false);
+      await notifySavedBill(savedBill, balance === 0 && paidCents > 0, 'Billing record updated successfully!');
+      fetchData();
+    } catch (err) {
+      toast.error(err.message || 'Could not update the billing record.');
+      if (writeStarted) { setShowEditModal(false); editSnapshot.current = null; }
+      fetchData();
+    } finally {
+      billingWriteInProgress.current = false;
       setIsSubmitting(false);
     }
   };
 
   const handleRecordPayment = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    const { billing_id, amount, payment_method, reference_number, remarks, current_balance } = paymentForm;
-    if (amount <= 0) {
-      toast.error('Payment amount must be greater than 0.');
-      setIsSubmitting(false);
-      return;
-    }
-    if (amount > current_balance) {
-      toast.error(`Payment amount cannot exceed remaining balance (${formatCurrency(current_balance)}).`);
-      setIsSubmitting(false);
+    if (billingWriteInProgress.current || isSubmitting) return;
+    const { billing_id, amount, payment_method, reference_number, remarks } = paymentForm;
+    const amountCents = toCents(amount);
+    if (amountCents == null || amountCents <= 0) {
+      toast.error('Payment amount must be greater than 0 and a valid monetary amount.');
       return;
     }
     if (payment_method !== 'cash' && !reference_number.trim()) {
       toast.error('Reference number is required for this payment method.');
-      setIsSubmitting(false);
       return;
     }
-    if (!allowsPartial && amount !== current_balance) {
-      toast.error(`This service requires full payment. Please pay exact balance (${formatCurrency(current_balance)}).`);
-      setIsSubmitting(false);
+    if (!paymentSnapshot.current || paymentSnapshot.current.billing_id !== billing_id) {
+      toast.error('Close and reopen this payment form before saving.');
       return;
     }
-
+    billingWriteInProgress.current = true;
+    setIsSubmitting(true);
+    let writeStarted = false;
     try {
-      const { data: bill } = await supabase.from('billing').select('amount_paid, balance, remarks, appointment_id, payment_method').eq('billing_id', billing_id).single();
-      const newAmountPaid = bill.amount_paid + amount;
-      const newBalance = bill.balance - amount;
-      const refNote = payment_method !== 'cash' ? ` Ref: ${reference_number}` : '';
-      const paymentRecord = `\n\n[Payment ${new Date().toLocaleString()}]: ₱${amount.toFixed(2)} via ${payment_method}${refNote}${remarks ? ` - ${remarks}` : ''}`;
-      const newRemarks = bill.remarks + paymentRecord;
-      const { error: updateError } = await supabase
-        .from('billing')
-        .update({
-          amount_paid: newAmountPaid,
-          balance: newBalance,
-          payment_method,
-          reference_number: payment_method !== 'cash' ? reference_number : null,
+      const { data: bill, error: readError } = await supabase.from('billing')
+        .select('*, appointments(services(price))').eq('billing_id', billing_id).single();
+      if (readError) throw readError;
+      if (!bill || bill.archived) throw new Error('This bill is unavailable or archived. Reload the billing list.');
+      const unchanged = billingSnapshotFields.every(field =>
+        (bill[field] ?? null) === (paymentSnapshot.current[field] ?? null));
+      if (!unchanged) throw new Error('This bill changed since you opened it. Close and reopen the payment form to review the latest balance. No payment was recorded.');
+      const balanceCents = toCents(bill.balance), paidCents = toCents(bill.amount_paid);
+      if (balanceCents == null || paidCents == null) throw new Error('The bill has invalid amounts. Review it before recording a payment.');
+      if (amountCents > balanceCents) throw new Error('Payment cannot exceed the latest balance (' + formatCurrency(balanceCents / 100) + ').');
+      const price = bill.appointments?.services?.price;
+      if (price == null || !Number.isFinite(Number(price)) || Number(price) < 0) throw new Error('Could not verify this service. Reload before recording a payment.');
+      if (Number(price) < 3000 && amountCents !== balanceCents) throw new Error('This service requires full payment. Pay the latest balance (' + formatCurrency(balanceCents / 100) + ').');
+      const newPaidCents = paidCents + amountCents;
+      if (!Number.isSafeInteger(newPaidCents)) throw new Error('Payment exceeds the supported amount.');
+      const newBalance = (balanceCents - amountCents) / 100;
+      const refNote = payment_method !== 'cash' ? ' Ref: ' + reference_number.trim() : '';
+      const paymentRecord = '\n\n[Payment ' + new Date().toLocaleString() + ']: ₱' + (amountCents / 100).toFixed(2) + ' via ' + payment_method + refNote + (remarks ? ' - ' + remarks : '');
+      writeStarted = true;
+      const { data: savedBill, error: updateError } = await matchBillingSnapshot(supabase.from('billing')
+        .update({ amount_paid: newPaidCents / 100, balance: newBalance, payment_method,
+          reference_number: payment_method !== 'cash' ? reference_number.trim() : null,
           payment_date: new Date().toISOString().split('T')[0],
-          remarks: newRemarks
-        })
-        .eq('billing_id', billing_id);
-      if (updateError) throw updateError;
-
-      if (newBalance <= 0) {
-        await completePaidAppointment(supabase, bill.appointment_id);
+          remarks: (bill.remarks || '') + paymentRecord })
+        .eq('billing_id', billing_id), bill)
+        .select('billing_id, appointment_id').maybeSingle();
+      if (updateError) {
+        if (!updateError.code || updateError.code === '57014') throw new Error('Payment result could not be confirmed. Check the billing record before trying again.');
+        writeStarted = false;
+        throw updateError;
       }
-      toast.success('Payment recorded successfully!');
+      writeStarted = false;
+      if (!savedBill) throw new Error('This bill changed while the payment was being saved. Close and reopen the form to review it. No payment was recorded.');
+      paymentSnapshot.current = null;
       setShowPaymentModal(false);
+      await notifySavedBill(savedBill, newBalance === 0, 'Payment recorded successfully!');
       fetchData();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(writeStarted ? 'Payment result could not be confirmed. Check the billing record before trying again.' : err.message || 'Could not record the payment.');
+      if (writeStarted) { setShowPaymentModal(false); paymentSnapshot.current = null; }
+      fetchData();
     } finally {
+      billingWriteInProgress.current = false;
       setIsSubmitting(false);
     }
   };
@@ -557,7 +591,7 @@ const ManageBilling = () => {
             <p className="welcome-message">Manage payments, discounts, and invoices</p>
           </div>
           <div className="header-actions">
-            <button className="btn btn-primary" disabled={loading || !hasLoaded} onClick={() => setShowCreateModal(true)}>
+            <button className="btn btn-primary" disabled={loading || !hasLoaded || isSubmitting} onClick={() => setShowCreateModal(true)}>
               <i className="fas fa-plus"></i> Create Bill
             </button>
             <button 
@@ -589,7 +623,7 @@ const ManageBilling = () => {
         {stats.totalUnbilled > 0 && !showArchived && (
           <div className="unbilled-alert">
             <div><i className="fas fa-exclamation-triangle"></i> You have {stats.totalUnbilled} confirmed/completed appointment(s) without billing.</div>
-            <button className="btn btn-warning" onClick={() => setShowCreateModal(true)}>Create Bills Now</button>
+            <button className="btn btn-warning" disabled={isSubmitting} onClick={() => setShowCreateModal(true)}>Create Bills Now</button>
           </div>
         )}
 
@@ -653,7 +687,8 @@ const ManageBilling = () => {
                             ) : (
                               <>
                                 {record.balance > 0 && (
-                                  <button className="btn btn-success btn-sm" onClick={() => {
+                                  <button className="btn btn-success btn-sm" disabled={isSubmitting} onClick={() => {
+                                    paymentSnapshot.current = { ...record };
                                     setPaymentForm({
                                       billing_id: record.billing_id,
                                       amount: 0,
@@ -666,7 +701,8 @@ const ManageBilling = () => {
                                     setShowPaymentModal(true);
                                   }}>Pay</button>
                                 )}
-                                <button className="btn btn-warning btn-sm" onClick={() => {
+                                <button className="btn btn-warning btn-sm" disabled={isSubmitting} onClick={() => {
+                                  editSnapshot.current = { ...record };
                                   let discType = 'none';
                                   const remarks = (record.remarks || '').toLowerCase();
                                   if (record.discount_id_no) {
@@ -707,15 +743,15 @@ const ManageBilling = () => {
 
       {/* CREATE BILLING MODAL */}
       {showCreateModal && (
-        <div className="modal-billing-create active" onClick={e => e.target === e.currentTarget && setShowCreateModal(false)}>
+        <div className="modal-billing-create active" onClick={e => e.target === e.currentTarget && !isSubmitting && setShowCreateModal(false)}>
           <div className="modal-billing-create-content modal-billing-create-lg">
             <div className="modal-billing-create-header">
               <h3>Create New Billing</h3>
-              <button className="modal-billing-create-close" onClick={() => setShowCreateModal(false)}>&times;</button>
+              <button className="modal-billing-create-close" disabled={isSubmitting} onClick={() => setShowCreateModal(false)}>&times;</button>
             </div>
             <form onSubmit={handleCreateBilling}>
               <div className="modal-billing-create-body">
-                <div className="form-group"><label>Select Appointment *</label><select className="form-control" value={createForm.appointment_id} onChange={async (e) => {
+                <div className="form-group"><label>Select Appointment *</label><select disabled={isSubmitting} className="form-control" value={createForm.appointment_id} onChange={async (e) => {
                   const aptId = e.target.value;
                   const appointment = unbilledAppointments.find(a => a.appointment_id === parseInt(aptId));
                   if (appointment) {
@@ -727,13 +763,13 @@ const ManageBilling = () => {
                 <div className="form-group"><label>Service</label><input type="text" className="form-control" value={createForm.service_name} readOnly disabled /></div>
                 <div className="form-row">
                   <div className="form-group"><label>Total Amount (₱)</label><input type="number" className="form-control" value={createForm.total_amount} readOnly disabled /></div>
-                  <div className="form-group"><label>Discount Type</label><select className="form-control" value={createForm.discount_type} onChange={e => setCreateForm({ ...createForm, discount_type: e.target.value })}><option value="none">No Discount</option><option value="senior">Senior Citizen (20%)</option><option value="pwd">PWD (20%)</option><option value="manual">Manual Discount</option></select></div>
+                  <div className="form-group"><label>Discount Type</label><select disabled={isSubmitting} className="form-control" value={createForm.discount_type} onChange={e => setCreateForm({ ...createForm, discount_type: e.target.value })}><option value="none">No Discount</option><option value="senior">Senior Citizen (20%)</option><option value="pwd">PWD (20%)</option><option value="manual">Manual Discount</option></select></div>
                 </div>
-                {createForm.discount_type !== 'none' && (<div className="form-group"><label>{createForm.discount_type === 'manual' ? 'Discount Amount (₱)' : 'ID Number *'}</label><input type={createForm.discount_type === 'manual' ? 'number' : 'text'} className="form-control" value={createForm.discount_id_no} onChange={e => setCreateForm({ ...createForm, discount_id_no: e.target.value })} placeholder={createForm.discount_type === 'manual' ? 'Enter amount' : 'Enter ID number'} required /></div>)}
+                {createForm.discount_type !== 'none' && (<div className="form-group"><label>{createForm.discount_type === 'manual' ? 'Discount Amount (₱)' : 'ID Number *'}</label><input disabled={isSubmitting} type={createForm.discount_type === 'manual' ? 'number' : 'text'} className="form-control" value={createForm.discount_id_no} onChange={e => setCreateForm({ ...createForm, discount_id_no: e.target.value })} placeholder={createForm.discount_type === 'manual' ? 'Enter amount' : 'Enter ID number'} required /></div>)}
                 <div className="discount-summary"><strong>Amount after discount:</strong> ₱{(createForm.total_amount - createForm.discount).toFixed(2)} {createForm.discount > 0 && <span>(Discount: ₱{createForm.discount.toFixed(2)})</span>}</div>
                 <div className="form-row">
-                  <div className="form-group"><label>Amount Paid (₱)</label><input type="number" className="form-control" value={createForm.amount_paid} onChange={e => setCreateForm({ ...createForm, amount_paid: parseFloat(e.target.value) || 0 })} step="0.01" min="0" /></div>
-                  <div className="form-group"><label>Payment Method</label><select className="form-control" value={createForm.payment_method} onChange={e => setCreateForm({ ...createForm, payment_method: e.target.value })}>
+                  <div className="form-group"><label>Amount Paid (₱)</label><input disabled={isSubmitting} type="number" className="form-control" value={createForm.amount_paid} onChange={e => setCreateForm({ ...createForm, amount_paid: parseFloat(e.target.value) || 0 })} step="0.01" min="0" /></div>
+                  <div className="form-group"><label>Payment Method</label><select disabled={isSubmitting} className="form-control" value={createForm.payment_method} onChange={e => setCreateForm({ ...createForm, payment_method: e.target.value })}>
                     <option value="cash">Cash</option>
                     <option value="gcash">GCash</option>
                     <option value="maya">Maya</option>
@@ -741,13 +777,13 @@ const ManageBilling = () => {
                   </select></div>
                 </div>
                 {createForm.payment_method !== 'cash' && (
-                  <div className="form-group"><label>Reference Number *</label><input type="text" className="form-control" value={createForm.reference_number} onChange={e => setCreateForm({ ...createForm, reference_number: e.target.value })} placeholder="e.g., GCash transaction ID, bank reference" required /></div>
+                  <div className="form-group"><label>Reference Number *</label><input disabled={isSubmitting} type="text" className="form-control" value={createForm.reference_number} onChange={e => setCreateForm({ ...createForm, reference_number: e.target.value })} placeholder="e.g., GCash transaction ID, bank reference" required /></div>
                 )}
-                <div className="form-group"><label>Payment Date</label><input type="date" className="form-control" value={createForm.payment_date} onChange={e => setCreateForm({ ...createForm, payment_date: e.target.value })} /></div>
-                <div className="form-group"><label>Remarks</label><textarea className="form-control" rows="3" value={createForm.remarks} onChange={e => setCreateForm({ ...createForm, remarks: e.target.value })}></textarea></div>
+                <div className="form-group"><label>Payment Date</label><input disabled={isSubmitting} type="date" className="form-control" value={createForm.payment_date} onChange={e => setCreateForm({ ...createForm, payment_date: e.target.value })} /></div>
+                <div className="form-group"><label>Remarks</label><textarea disabled={isSubmitting} className="form-control" rows="3" value={createForm.remarks} onChange={e => setCreateForm({ ...createForm, remarks: e.target.value })}></textarea></div>
               </div>
               <div className="modal-billing-create-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                <button type="button" className="btn btn-secondary" disabled={isSubmitting} onClick={() => setShowCreateModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Creating...' : 'Create Bill'}</button>
               </div>
             </form>
@@ -757,27 +793,27 @@ const ManageBilling = () => {
 
       {/* EDIT BILLING MODAL */}
       {showEditModal && (
-        <div className="modal active" onClick={e => e.target === e.currentTarget && setShowEditModal(false)}>
+        <div className="modal active" onClick={e => e.target === e.currentTarget && !isSubmitting && setShowEditModal(false)}>
           <div className="modal-content modal-lg">
-            <div className="modal-header"><h3>Edit Billing Record</h3><button className="modal-close" onClick={() => setShowEditModal(false)}>&times;</button></div>
+            <div className="modal-header"><h3>Edit Billing Record</h3><button className="modal-close" disabled={isSubmitting} onClick={() => setShowEditModal(false)}>&times;</button></div>
             <form onSubmit={handleEditBilling}>
               <div className="modal-body">
-                <div className="form-row"><div className="form-group"><label>Total Amount (₱)</label><input type="number" className="form-control" value={editForm.total_amount} onChange={e => setEditForm({ ...editForm, total_amount: parseFloat(e.target.value) || 0 })} required /></div><div className="form-group"><label>Discount Type</label><select className="form-control" value={editForm.discount_type} onChange={e => setEditForm({ ...editForm, discount_type: e.target.value })}><option value="none">No Discount</option><option value="senior">Senior Citizen (20%)</option><option value="pwd">PWD (20%)</option><option value="manual">Manual Discount</option></select></div></div>
-                {editForm.discount_type !== 'none' && (<div className="form-group"><label>{editForm.discount_type === 'manual' ? 'Discount Amount (₱)' : 'ID Number *'}</label><input type={editForm.discount_type === 'manual' ? 'number' : 'text'} className="form-control" value={editForm.discount_id_no} onChange={e => setEditForm({ ...editForm, discount_id_no: e.target.value })} placeholder={editForm.discount_type === 'manual' ? 'Enter amount' : 'Enter ID number'} required /></div>)}
+                <div className="form-row"><div className="form-group"><label>Total Amount (₱)</label><input disabled={isSubmitting} type="number" className="form-control" value={editForm.total_amount} onChange={e => setEditForm({ ...editForm, total_amount: parseFloat(e.target.value) || 0 })} required /></div><div className="form-group"><label>Discount Type</label><select disabled={isSubmitting} className="form-control" value={editForm.discount_type} onChange={e => setEditForm({ ...editForm, discount_type: e.target.value })}><option value="none">No Discount</option><option value="senior">Senior Citizen (20%)</option><option value="pwd">PWD (20%)</option><option value="manual">Manual Discount</option></select></div></div>
+                {editForm.discount_type !== 'none' && (<div className="form-group"><label>{editForm.discount_type === 'manual' ? 'Discount Amount (₱)' : 'ID Number *'}</label><input disabled={isSubmitting} type={editForm.discount_type === 'manual' ? 'number' : 'text'} className="form-control" value={editForm.discount_id_no} onChange={e => setEditForm({ ...editForm, discount_id_no: e.target.value })} placeholder={editForm.discount_type === 'manual' ? 'Enter amount' : 'Enter ID number'} required /></div>)}
                 <div className="discount-summary"><strong>Amount after discount:</strong> ₱{(editForm.total_amount - editForm.discount).toFixed(2)} {editForm.discount > 0 && <span>(Discount: ₱{editForm.discount.toFixed(2)})</span>}</div>
-                <div className="form-row"><div className="form-group"><label>Amount Paid (₱)</label><input type="number" className="form-control" value={editForm.amount_paid} onChange={e => setEditForm({ ...editForm, amount_paid: parseFloat(e.target.value) || 0 })} step="0.01" min="0" /></div><div className="form-group"><label>Payment Method</label><select className="form-control" value={editForm.payment_method} onChange={e => setEditForm({ ...editForm, payment_method: e.target.value })}>
+                <div className="form-row"><div className="form-group"><label>Amount Paid (₱)</label><input disabled={isSubmitting} type="number" className="form-control" value={editForm.amount_paid} onChange={e => setEditForm({ ...editForm, amount_paid: parseFloat(e.target.value) || 0 })} step="0.01" min="0" /></div><div className="form-group"><label>Payment Method</label><select disabled={isSubmitting} className="form-control" value={editForm.payment_method} onChange={e => setEditForm({ ...editForm, payment_method: e.target.value })}>
                   <option value="cash">Cash</option>
                   <option value="gcash">GCash</option>
                   <option value="maya">Maya</option>
                   <option value="other">Other e-Bank</option>
                 </select></div></div>
                 {editForm.payment_method !== 'cash' && (
-                  <div className="form-group"><label>Reference Number *</label><input type="text" className="form-control" value={editForm.reference_number} onChange={e => setEditForm({ ...editForm, reference_number: e.target.value })} placeholder="Transaction reference number" required /></div>
+                  <div className="form-group"><label>Reference Number *</label><input disabled={isSubmitting} type="text" className="form-control" value={editForm.reference_number} onChange={e => setEditForm({ ...editForm, reference_number: e.target.value })} placeholder="Transaction reference number" required /></div>
                 )}
-                <div className="form-group"><label>Payment Date</label><input type="date" className="form-control" value={editForm.payment_date} onChange={e => setEditForm({ ...editForm, payment_date: e.target.value })} /></div>
-                <div className="form-group"><label>Remarks</label><textarea className="form-control" rows="3" value={editForm.remarks} onChange={e => setEditForm({ ...editForm, remarks: e.target.value })}></textarea></div>
+                <div className="form-group"><label>Payment Date</label><input disabled={isSubmitting} type="date" className="form-control" value={editForm.payment_date} onChange={e => setEditForm({ ...editForm, payment_date: e.target.value })} /></div>
+                <div className="form-group"><label>Remarks</label><textarea disabled={isSubmitting} className="form-control" rows="3" value={editForm.remarks} onChange={e => setEditForm({ ...editForm, remarks: e.target.value })}></textarea></div>
               </div>
-              <div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Update Bill'}</button></div>
+              <div className="modal-footer"><button type="button" className="btn btn-secondary" disabled={isSubmitting} onClick={() => setShowEditModal(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Update Bill'}</button></div>
             </form>
           </div>
         </div>
@@ -785,25 +821,25 @@ const ManageBilling = () => {
 
       {/* PAYMENT MODAL */}
       {showPaymentModal && (
-        <div className="modal active" onClick={e => e.target === e.currentTarget && setShowPaymentModal(false)}>
+        <div className="modal active" onClick={e => e.target === e.currentTarget && !isSubmitting && setShowPaymentModal(false)}>
           <div className="modal-content">
-            <div className="modal-header"><h3>Record Payment</h3><button className="modal-close" onClick={() => setShowPaymentModal(false)}>&times;</button></div>
+            <div className="modal-header"><h3>Record Payment</h3><button className="modal-close" disabled={isSubmitting} onClick={() => setShowPaymentModal(false)}>&times;</button></div>
             <form onSubmit={handleRecordPayment}>
               <div className="modal-body">
                 <div className="form-group"><label>Current Balance</label><div className="balance-display">{formatCurrency(paymentForm.current_balance)}</div></div>
-                <div className="form-group"><label>Payment Amount (₱)</label><input type="number" className="form-control" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} step="0.01" min="0" required /></div>
-                <div className="form-group"><label>Payment Method</label><select className="form-control" value={paymentForm.payment_method} onChange={e => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}>
+                <div className="form-group"><label>Payment Amount (₱)</label><input disabled={isSubmitting} type="number" className="form-control" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} step="0.01" min="0" required /></div>
+                <div className="form-group"><label>Payment Method</label><select disabled={isSubmitting} className="form-control" value={paymentForm.payment_method} onChange={e => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}>
                   <option value="cash">Cash</option>
                   <option value="gcash">GCash</option>
                   <option value="maya">Maya</option>
                   <option value="other">Other e-Bank</option>
                 </select></div>
                 {paymentForm.payment_method !== 'cash' && (
-                  <div className="form-group"><label>Reference Number *</label><input type="text" className="form-control" value={paymentForm.reference_number} onChange={e => setPaymentForm({ ...paymentForm, reference_number: e.target.value })} placeholder="Transaction reference number" required /></div>
+                  <div className="form-group"><label>Reference Number *</label><input disabled={isSubmitting} type="text" className="form-control" value={paymentForm.reference_number} onChange={e => setPaymentForm({ ...paymentForm, reference_number: e.target.value })} placeholder="Transaction reference number" required /></div>
                 )}
-                <div className="form-group"><label>Remarks</label><textarea className="form-control" rows="2" value={paymentForm.remarks} onChange={e => setPaymentForm({ ...paymentForm, remarks: e.target.value })}></textarea></div>
+                <div className="form-group"><label>Remarks</label><textarea disabled={isSubmitting} className="form-control" rows="2" value={paymentForm.remarks} onChange={e => setPaymentForm({ ...paymentForm, remarks: e.target.value })}></textarea></div>
               </div>
-              <div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={() => setShowPaymentModal(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Processing...' : 'Record Payment'}</button></div>
+              <div className="modal-footer"><button type="button" className="btn btn-secondary" disabled={isSubmitting} onClick={() => setShowPaymentModal(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Processing...' : 'Record Payment'}</button></div>
             </form>
           </div>
         </div>

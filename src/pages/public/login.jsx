@@ -10,18 +10,39 @@ import bg2 from '../../assets/bg2.jpg';
 import bg3 from '../../assets/bg3.jpg';
 import bg4 from '../../assets/bg4.jpg';
 
+const roleDestinations = {
+  admin: '/admin/dashboard',
+  doctor: '/doctor/dashboard',
+  patient: '/',
+};
+
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, user, userType, signOut, loading: authLoading, accountError } = useAuth();
-  const [activeTab, setActiveTab] = useState('patient');
+  const { signIn, user, userType, registrationIncomplete, loading: authLoading, accountError } = useAuth();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({ email: '', password: '', general: '' });
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
-  const [redirecting, setRedirecting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const resetNotificationShown = useRef(false);
+  const verificationNotificationShown = useRef(false);
+  const loginRequestInProgress = useRef(false);
+  const isBusy = loading || authLoading;
+  const roleError = user && userType && !Object.hasOwn(roleDestinations, userType)
+    ? 'Your account does not have a supported role. Please contact the clinic.' : '';
+
+  useEffect(() => {
+    if (!location.state?.emailVerified || verificationNotificationShown.current) return;
+    const timer = setTimeout(() => {
+      verificationNotificationShown.current = true;
+      toast.success('Email confirmed successfully! Your account is ready. Please log in.', {
+        toastId: 'email-verification-success', position: 'bottom-right', autoClose: 3000,
+      });
+      navigate('/login', { replace: true, state: null });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [location.state, navigate]);
 
   useEffect(() => {
     if (!location.state?.passwordResetSuccessful || resetNotificationShown.current) return;
@@ -40,57 +61,20 @@ const Login = () => {
   }, [location.state, navigate]);
 
   useEffect(() => {
-    console.log('Login - Auth state changed:', { 
-      user: user?.email, 
-      userType, 
-      activeTab, 
-      authLoading,
-      redirecting 
-    });
-    
-    if (redirecting) return;
-    
-    if (user && userType && !authLoading) {
-      setRedirecting(true);
-      
-      if (activeTab === 'staff') {
-        if (userType === 'admin') {
-          console.log('Redirecting admin to /admin/dashboard');
-          setTimeout(() => {
-            navigate('/admin/dashboard', { replace: true });
-          }, 100);
-        } else if (userType === 'doctor') {
-          console.log('Redirecting doctor to /doctor/dashboard');
-          setTimeout(() => {
-            navigate('/doctor/dashboard', { replace: true });
-          }, 100);
-        } else {
-          signOut();
-          toast.error('Patient accounts cannot access staff area. Please use the Patient Login tab.');
-          setLoading(false);
-          setRedirecting(false);
-        }
-      } 
-      else if (activeTab === 'patient') {
-        if (userType === 'patient') {
-          console.log('Redirecting patient to home page');
-          setTimeout(() => {
-            navigate('/', { replace: true });
-          }, 100);
-        } else {
-          signOut();
-          toast.error('Staff accounts cannot access patient area. Please use the Staff Login tab.');
-          setLoading(false);
-          setRedirecting(false);
-        }
-      }
+    // Wait for authentication and profile lookup before choosing a destination.
+    if (authLoading || loading || !user) return;
+    if (registrationIncomplete) {
+      navigate('/register', { replace: true });
+      return;
     }
-  }, [user, userType, activeTab, navigate, signOut, authLoading, redirecting]);
+    if (accountError || !Object.hasOwn(roleDestinations, userType)) return;
+    navigate(roleDestinations[userType], { replace: true });
+  }, [user, userType, authLoading, loading, registrationIncomplete, accountError, navigate]);
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) return 'Email is required';
-    if (!emailRegex.test(email)) return 'Please enter a valid email address';
+    if (!email.trim()) return 'Email is required';
+    if (!emailRegex.test(email.trim())) return 'Please enter a valid email address';
     return '';
   };
 
@@ -118,25 +102,28 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loginRequestInProgress.current || isBusy) return;
     setTouched({ email: true, password: true });
-
     const emailError = validateEmail(formData.email);
     const passwordError = validatePassword(formData.password);
     setErrors({ email: emailError, password: passwordError, general: '' });
-
     if (emailError || passwordError) return;
 
+    loginRequestInProgress.current = true;
     setLoading(true);
-    const result = await signIn(formData.email, formData.password);
-
-    if (result.needsProfileCompletion) {
-      navigate('/register', { replace: true });
-      setLoading(false);
-      return;
-    }
-
-    if (!result.success) {
-      toast.error(result.message || 'Invalid email or password');
+    try {
+      const result = await signIn(formData.email.trim(), formData.password);
+      if (result.needsProfileCompletion) {
+        navigate('/register', { replace: true });
+      } else if (!result.success) {
+        toast.error(result.message || 'Invalid email or password');
+      }
+      // Successful login updates the authenticated role in AuthContext;
+      // the effect above selects its destination after this request finishes.
+    } catch {
+      toast.error('Could not log in. Please try again.');
+    } finally {
+      loginRequestInProgress.current = false;
       setLoading(false);
     }
   };
@@ -163,34 +150,10 @@ const Login = () => {
                 <span className="logo-sub-name">Dental Clinic</span>
               </div>
             </div>
-            <p className="subtitle">Access your dental clinic account</p>
+            <p className="subtitle">Sign in to your FifthCusp account</p>
           </div>
 
-          <div className="login-tabs">
-            <button 
-              className={`tab-btn ${activeTab === 'patient' ? 'active' : ''}`}
-              onClick={() => setActiveTab('patient')}
-              type="button"
-            >
-              <i className="fas fa-user"></i> Patient Login
-            </button>
-            <button 
-              className={`tab-btn ${activeTab === 'staff' ? 'active' : ''}`}
-              onClick={() => setActiveTab('staff')}
-              type="button"
-            >
-              <i className="fas fa-user-md"></i> Staff Login
-            </button>
-          </div>
-
-          {activeTab === 'staff' && (
-            <div className="alert alert-info">
-              <i className="fas fa-info-circle"></i>
-              For doctors and administrators only. Use your clinic email and password.
-            </div>
-          )}
-
-          {accountError && <div className="alert alert-error" role="alert">{accountError}</div>}
+          {(accountError || roleError) && <div className="alert alert-error" role="alert">{accountError || roleError}</div>}
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
               <label htmlFor="email">Email Address</label>
@@ -202,8 +165,9 @@ const Login = () => {
                 onChange={handleChange}
                 onBlur={() => handleBlur('email')}
                 className={touched.email && errors.email ? 'error' : ''}
-                disabled={loading}
-                placeholder={activeTab === 'patient' ? "patient@example.com" : "staff@clinic.com"}
+                disabled={isBusy}
+                placeholder="Enter your email address"
+                autoComplete="username"
               />
               {touched.email && errors.email && (
                 <div className="validation-message error">{errors.email}</div>
@@ -217,17 +181,19 @@ const Login = () => {
                   type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
+                  autoComplete="current-password"
                   value={formData.password}
                   onChange={handleChange}
                   onBlur={() => handleBlur('password')}
                   className={touched.password && errors.password ? 'error' : ''}
-                  disabled={loading}
+                  disabled={isBusy}
                 />
                 <button
                   type="button"
                   className="password-toggle-btn"
                   onClick={() => setShowPassword(!showPassword)}
-                  tabIndex="-1"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  disabled={isBusy}
                 >
                   {showPassword ? (
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -250,16 +216,16 @@ const Login = () => {
             <button 
               type="submit" 
               className="btn btn-primary"
-              disabled={loading}
+              disabled={isBusy}
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? 'Logging in...' : authLoading ? 'Checking account...' : 'Login'}
             </button>
           </form>
 
           <div className="form-footer">
             <p><Link to="/forgot-password">Forgot your password?</Link></p>
             <p className="footer-text">
-              Don't have an account? <Link to="/register">Register here</Link>
+              New patient? <Link to="/register">Create an account</Link>
             </p>
             <p><Link to="/">Back to Clinic Homepage</Link></p>
           </div>

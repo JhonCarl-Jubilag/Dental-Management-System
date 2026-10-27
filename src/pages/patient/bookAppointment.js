@@ -3,7 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../services/supabase';
+import { supabase, doctorProfileFields } from '../../services/supabase';
 import './bookAppointment.css';
 import DentalLogo from '../../assets/DentalLogo.png';
 
@@ -93,7 +93,7 @@ const BookAppointment = () => {
         const doctorIds = docServices.map(ds => ds.doctor_id);
         const { data: doctorsData, error: docsError } = await supabase
           .from('doctors')
-          .select('*')
+          .select(doctorProfileFields)
           .in('doctor_id', doctorIds)
           .eq('status', 'active');
         if (docsError) throw docsError;

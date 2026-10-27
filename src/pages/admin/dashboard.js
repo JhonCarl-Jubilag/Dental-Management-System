@@ -93,7 +93,7 @@ const AdminDashboard = () => {
         revenueGrowthResult
       ] = await Promise.all([
         supabase.from('patients').select('*', { count: 'exact', head: true }),
-        supabase.from('doctors').select('*', { count: 'exact', head: true }),
+        supabase.from('doctors').select('doctor_id', { count: 'exact', head: true }),
         supabase.from('appointments').select('*', { count: 'exact', head: true }),
         supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('appointment_datetime', new Date().toISOString().split('T')[0]),
         supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'pending'),

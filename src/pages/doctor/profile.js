@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../services/supabase';
+import { supabase, doctorProfileFields } from '../../services/supabase';
 import DoctorSidebar from '../../components/doctor/Sidebar';
 import './profile.css';
 
@@ -49,7 +49,7 @@ const DoctorProfile = () => {
       try {
         const { data, error } = await supabase
           .from('doctors')
-          .select('*')
+          .select(doctorProfileFields)
           .eq('doctor_id', userDetails.doctor_id)
           .single();
         if (error) throw error;
@@ -158,7 +158,7 @@ const DoctorProfile = () => {
       
       const { data: fresh } = await supabase
         .from('doctors')
-        .select('*')
+        .select(doctorProfileFields)
         .eq('doctor_id', doctorData.doctor_id)
         .single();
       if (fresh) setDoctorData(fresh);

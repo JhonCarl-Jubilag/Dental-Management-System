@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '../services/supabase';
+import { supabase, doctorProfileFields } from '../services/supabase';
 
 const AuthContext = createContext({});
 
@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
     if (profileRequests.current.has(key)) return profileRequests.current.get(key);
     const request = (async () => {
       const records = await Promise.all(['patients', 'doctors', 'admin'].map(async table => {
-        const { data, error } = await supabase.from(table).select('*')
+        const { data, error } = await supabase.from(table).select(table === 'doctors' ? doctorProfileFields : '*')
           .ilike('email', emailPattern(account.email)).maybeSingle();
         if (error) throw new Error('Could not load your account profile. Please try logging in again.');
         return data ? { type: table === 'patients' ? 'patient' : table === 'doctors' ? 'doctor' : 'admin', details: data } : null;
@@ -75,6 +75,10 @@ export const AuthProvider = ({ children }) => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (isMounted.current) {
+        if (window.location.pathname === '/verify-email') {
+          setLoading(false);
+          return;
+        }
         currentIdentity.current = identityKey(session?.user);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -88,6 +92,7 @@ export const AuthProvider = ({ children }) => {
       (_event, session) => {
         if (isMounted.current) {
           if (signingUpRef.current) return;
+          if (window.location.pathname === '/verify-email' && session) return;
           currentIdentity.current = identityKey(session?.user);
           setUser(session?.user ?? null);
         }

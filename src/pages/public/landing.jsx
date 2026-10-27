@@ -561,7 +561,7 @@ const Landing = () => {
                   </>
                 ) : (
                   <>
-                    <li><Link to="/login">Patient Login</Link></li>
+                    <li><Link to="/login">Login</Link></li>
                     <li><Link to="/register">Register</Link></li>
                   </>
                 )}

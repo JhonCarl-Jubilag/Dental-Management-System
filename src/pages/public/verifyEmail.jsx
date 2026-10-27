@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../../services/supabase';
+import { supabase, emailConfirmationCallback } from '../../services/supabase';
+import DentalLogo from '../../assets/DentalLogo.png';
 import './verify.css';
 
 const VerifyEmail = () => {
@@ -9,99 +10,78 @@ const VerifyEmail = () => {
   const [message, setMessage] = useState('Verifying your email...');
   const [countdown, setCountdown] = useState(5);
 
+  const verificationRequest = useRef(null);
+
   useEffect(() => {
-    const verifyEmail = async () => {
-      try {
-        // Get token from URL hash (Supabase sends token in hash)
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        const type = hashParams.get('type');
-
-        console.log('Verification params:', { type, hasAccessToken: !!accessToken });
-
-        if (type === 'signup' || type === 'email_verification') {
-          if (accessToken) {
-            // Set the session using the token (this logs the user in temporarily)
-            const { error: sessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken || ''
-            });
-            if (sessionError) throw sessionError;
-
-            // Get the user to confirm email
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
-            if (userError) throw userError;
-
-            if (user && user.email_confirmed_at) {
-              // Update email_verified in patients table
-              const { error: updateError } = await supabase
-                .from('patients')
-                .update({ email_verified: true })
-                .eq('email', user.email);
-              if (updateError) {
-                console.error('Error updating patient record:', updateError);
-              } else {
-                console.log('Patient email_verified updated to true');
-              }
-
-              // Sign out immediately to prevent auto-login
-              await supabase.auth.signOut();
-
-              setStatus('success');
-              setMessage('Email verified successfully! Your account is now active.');
-
-              // Redirect to login after 2 seconds
-              setTimeout(() => {
-                navigate('/login', { 
-                  replace: true, 
-                  state: { message: 'Email verified successfully! You can now log in.' } 
-                });
-              }, 2000);
-            } else {
-              throw new Error('Email not confirmed yet');
-            }
-          } else {
-            throw new Error('No access token found');
-          }
-        } else {
-          throw new Error('Invalid verification type');
+    let active = true;
+    // Share one request across StrictMode's effect replay: signing out twice
+    // could otherwise turn a successful verification into a missing-session error.
+    if (!verificationRequest.current) {
+      verificationRequest.current = (async () => {
+        if (emailConfirmationCallback.error) {
+          throw new Error('This confirmation link is invalid or expired. Please request a new confirmation email.');
         }
-      } catch (error) {
-        console.error('Verification error:', error);
-        setStatus('error');
-        setMessage(error.message || 'Invalid or expired verification link. Please request a new verification email.');
-      }
-    };
-
-    verifyEmail();
-  }, [navigate]);
+        if (!emailConfirmationCallback.received) {
+          throw new Error('Open the confirmation link from your registration email to verify your account.');
+        }
+        // Auth initializes the callback session itself, including consuming tokens.
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session) throw new Error('This confirmation link is invalid or expired. Please request a new confirmation email.');
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user?.email_confirmed_at) throw new Error('Your email has not been confirmed. Please use the confirmation link in your email.');
+        // Patient verification is synchronized by signIn. No profile write is
+        // required here, so a database failure cannot hide confirmed Auth status.
+        const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
+        if (signOutError) throw new Error('Email confirmed, but automatic sign-out failed. Refresh this page and try again before logging in.');
+      })();
+    }
+    verificationRequest.current.then(() => {
+      if (!active) return;
+      setStatus('success');
+      setMessage('Email confirmed successfully! Your account is ready. Please log in.');
+    }).catch(error => {
+      if (!active) return;
+      setStatus('error');
+      setMessage(error.message || 'Could not verify your email. Please try again.');
+    });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
-    if (status === 'success' && countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
+    if (status !== 'success') return;
+    if (countdown === 0) {
+      navigate('/login', { replace: true, state: { emailVerified: true } });
+      return;
     }
-  }, [status, countdown]);
+    const timer = setTimeout(() => setCountdown(current => current - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [status, countdown, navigate]);
 
   const handleRedirect = () => {
-    navigate('/login', { replace: true, state: { message: 'Please log in to continue.' } });
+    navigate('/login', { replace: true, state: { emailVerified: true } });
   };
 
   return (
     <div className="verify-container">
-      <div className="verify-background"></div>
+      <div className="verify-background" aria-hidden="true"></div>
       <div className="verify-content">
         <div className="verify-card">
+          <Link to="/" className="verify-brand" aria-label="Fifthcusp Dental Clinic homepage">
+            <img src={DentalLogo} alt="" />
+            <span><strong>Fifthcusp</strong><small>Dental Clinic</small></span>
+          </Link>
           <div className="verify-header">
-            <div className={`verify-icon ${status}`}>
+            <div className={`verify-icon ${status}`} aria-hidden="true">
               {status === 'verifying' && <i className="fas fa-spinner fa-spin"></i>}
               {status === 'success' && <i className="fas fa-check-circle"></i>}
               {status === 'error' && <i className="fas fa-exclamation-circle"></i>}
             </div>
-            <h2>Email Verification</h2>
+            <p className="verify-eyebrow">Email verification</p>
+            <h1>{status === 'success' ? "You're all set!" : status === 'error' ? 'Unable to verify email' : 'Confirming your email'}</h1>
           </div>
-          <div className={`verify-status verify-${status}`}>
+          <div className={`verify-status verify-${status}`} role={status === 'error' ? 'alert' : 'status'} aria-live="polite">
             <p className="verify-message">{message}</p>
             {status === 'verifying' && (
               <div className="verifying-progress">
@@ -112,12 +92,12 @@ const VerifyEmail = () => {
             {status === 'success' && (
               <div className="success-content">
                 <div className="success-details">
-                  <p><i className="fas fa-check"></i> Your account is now active</p>
-                  <p><i className="fas fa-check"></i> You can now login to your account</p>
+                  <p><i className="fas fa-check" aria-hidden="true"></i> Email address confirmed</p>
+                  <p><i className="fas fa-check" aria-hidden="true"></i> Ready to log in to your account</p>
                 </div>
                 <div className="success-actions">
                   <button onClick={handleRedirect} className="verify-btn verify-btn-primary">
-                    <i className="fas fa-sign-in-alt"></i> Go to Login Now
+                    Continue to Login <i className="fas fa-arrow-right" aria-hidden="true"></i>
                   </button>
                   <p className="redirect-message">Redirecting in <span className="countdown">{countdown}</span> seconds...</p>
                 </div>
@@ -132,20 +112,13 @@ const VerifyEmail = () => {
                 <Link to="/login" className="verify-btn verify-btn-primary">
                   <i className="fas fa-sign-in-alt"></i> Go to Login
                 </Link>
-                <Link to="/resend-verification" className="verify-btn verify-btn-secondary">
-                  <i className="fas fa-envelope"></i> Resend Verification Email
-                </Link>
+
               </div>
             )}
           </div>
-          {status === 'success' && (
-            <div className="verify-footer">
-              <p className="footer-note">
-                <i className="fas fa-info-circle"></i> 
-                You will be automatically redirected to the login page.
-              </p>
-            </div>
-          )}
+          <div className="verify-footer">
+            <Link to="/" className="verify-home-link"><i className="fas fa-arrow-left" aria-hidden="true"></i> Back to clinic homepage</Link>
+          </div>
         </div>
       </div>
     </div>

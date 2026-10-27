@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../services/supabase';
+import { supabase, doctorProfileFields } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import './manageDoctors.css';
@@ -133,7 +133,7 @@ const ManageDoctors = () => {
       // 2. Build doctors query
       let doctorsQuery = supabase
         .from('doctors')
-        .select('*', { count: 'exact' });
+        .select(doctorProfileFields, { count: 'exact' });
 
       if (debouncedSearch) {
         doctorsQuery = doctorsQuery.or(
@@ -290,7 +290,7 @@ const ManageDoctors = () => {
         service_ids: addForm.service_ids,
       });
 
-      toast.success('Doctor and login account created successfully! Use Staff Login to sign in.');
+      toast.success('Doctor and login account created successfully! Use the login page to sign in.');
       setShowAddModal(false);
       setAddForm({
         first_name: '', last_name: '', email: '', password: '', confirm_password: '',

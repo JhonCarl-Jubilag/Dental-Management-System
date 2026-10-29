@@ -1,10 +1,13 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import DentalLogo from '../../assets/DentalLogo.png';
+import { useAuth } from '../../contexts/AuthContext';
+import { roleLabel } from '../../utils/accessControl';
 
 
 const Sidebar = ({ onLogout }) => {
   const location = useLocation();
+  const { userType } = useAuth();
   
   const isActive = (path) => location.pathname === path;
 
@@ -19,7 +22,7 @@ const Sidebar = ({ onLogout }) => {
           />
           <div className="logo-text">
             <h2>Fifthcusp</h2>
-            <p>Admin Portal</p>
+            <p>{roleLabel(userType)}</p>
           </div>
       </div>
   </div>

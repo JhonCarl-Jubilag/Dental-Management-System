@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.105.1';
 import { changeAccountEmail } from '../_shared/changeAccountEmail.js';
+import { requireClinicAccount } from '../_shared/clinicAccess.js';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -61,13 +62,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: userError } = await client.auth.getUser(authorization.slice(7));
     if (userError || !user?.email || !user.email_confirmed_at) throw new RequestError('Please log in again.', 401);
     // Use the verified identity and protected admin records for authorization.
-    const { data: admin, error: adminError } = await client.from('admin')
-      .select('admin_id, status').ilike('email', emailPattern(user.email)).maybeSingle();
-    if (adminError) throw new RequestError('Could not verify administrator access.', 500);
-    const isSuperAdmin = user.email.toLowerCase() === 'jhoncarl.jubilag@cvsu.edu.ph';
-    if ((!admin || admin.status !== 'active') && !isSuperAdmin) {
-      throw new RequestError('Only active administrators can manage patient accounts.', 403);
-    }
+    const { isOwner: isSuperAdmin } = await requireClinicAccount(client, user, RequestError);
 
     let body;
     try { body = await req.json(); } catch { throw new RequestError('Invalid request body.'); }
@@ -130,7 +125,7 @@ Deno.serve(async (req) => {
     const contact = optionalText(body.contact_no, 'Contact number', 50);
     const address = optionalText(body.address, 'Address', 2000);
     const { birthday, age } = birthDetails(body.birthday);
-    // Email-based role lookup must never assign an existing staff account to a patient.
+    // Reject duplicate clinic/provider/patient profiles during the transition.
     for (const table of ['patients', 'doctors', 'admin']) {
       const { data, error } = await client.from(table).select('email').ilike('email', emailPattern(email)).limit(1);
       if (error) throw new RequestError('Could not check for existing accounts.', 500);
@@ -143,7 +138,7 @@ Deno.serve(async (req) => {
     if (authError || !auth.user) throw new RequestError(authError?.message || 'Could not create the login account.');
     createdUserId = auth.user.id;
     const { data: patient, error: profileError } = await client.from('patients').insert({
-      first_name: firstName, last_name: lastName, email,
+      first_name: firstName, last_name: lastName, email, auth_user_id: createdUserId,
       contact_no: contact, address, birthday, age, email_verified: true, status: 'active',
     }).select('patient_id').single();
     if (profileError || !patient) throw new RequestError('Could not create the patient profile.', 500);

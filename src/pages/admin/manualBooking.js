@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
+import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
 import './manualBooking.css';
@@ -33,9 +34,8 @@ const ManualBooking = () => {
   // Redirect if not admin
   useEffect(() => {
     if (!authLoading) {
-      const isSuperAdmin = user?.email === 'jhoncarl.jubilag@cvsu.edu.ph';
       if (!user) navigate('/login');
-      else if (userType !== 'admin' && !isSuperAdmin) navigate('/');
+      else if (!isClinicUser(userType)) navigate('/');
     }
   }, [user, userType, authLoading, navigate]);
 
@@ -313,8 +313,8 @@ const ManualBooking = () => {
 
   if (authLoading) return <div className="admin-loading"><div className="loading-spinner"></div><p>Loading...</p></div>;
 
-  const isSuperAdmin = user?.email === 'jhoncarl.jubilag@cvsu.edu.ph';
-  if (!user || (userType !== 'admin' && !isSuperAdmin)) return null;
+  const isSuperAdmin = isOwner(userType);
+  if (!user || (!isClinicUser(userType))) return null;
   const adminName = isSuperAdmin ? 'Super Admin' : user?.email?.split('@')[0] || 'Admin';
 
   return (
@@ -331,7 +331,7 @@ const ManualBooking = () => {
               <div className="user-avatar">{adminName.charAt(0).toUpperCase()}</div>
               <div className="user-details">
                 <div className="user-name">{adminName}</div>
-                <div className="user-role">Administrator</div>
+                <div className="user-role">{roleLabel(userType)}</div>
               </div>
             </div>
           </div>

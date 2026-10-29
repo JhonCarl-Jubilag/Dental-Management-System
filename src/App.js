@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import './App.css';
+import { isClinicUser } from './utils/accessControl';
 
 // Public Pages
 import Landing from './pages/public/landing';
@@ -57,10 +58,8 @@ const ProtectedRoute = ({ children, allowedUserType }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedUserType && userType !== allowedUserType) {
-    if (user.email === 'jhoncarl.jubilag@cvsu.edu.ph' && allowedUserType === 'admin') {
-      return children;
-    }
+  const permitted = allowedUserType === 'admin' ? isClinicUser(userType) : userType === allowedUserType;
+  if (allowedUserType && !permitted) {
     return <Navigate to="/" replace />;
   }
 

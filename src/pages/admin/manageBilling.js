@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
+import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import { completeFinishedAppointments, completePaidAppointment } from '../../services/appointmentCompletion';
 import Sidebar from '../../components/admin/Sidebar';
@@ -112,14 +113,12 @@ const ManageBilling = () => {
     remarks: '',
     current_balance: 0
   });
-
-  const SUPER_ADMIN_EMAIL = 'jhoncarl.jubilag@cvsu.edu.ph';
-  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+  const isSuperAdmin = isOwner(userType);
 
   useEffect(() => {
     if (!authLoading) {
       if (!user) navigate('/login');
-      else if (userType !== 'admin' && !isSuperAdmin) navigate('/');
+      else if (!isClinicUser(userType)) navigate('/');
     }
   }, [user, userType, authLoading, navigate, isSuperAdmin]);
 
@@ -575,7 +574,7 @@ const ManageBilling = () => {
     );
   }
 
-  if (!user || (userType !== 'admin' && !isSuperAdmin)) return null;
+  if (!user || (!isClinicUser(userType))) return null;
 
   const adminName = isSuperAdmin ? 'Super Admin' : (user?.email?.split('@')[0] || 'Admin');
   const adminInitial = adminName.charAt(0).toUpperCase();
@@ -605,7 +604,7 @@ const ManageBilling = () => {
               <div className="user-avatar">{adminInitial}</div>
               <div className="user-details">
                 <div className="user-name">{adminName}</div>
-                <div className="user-role">System Administrator</div>
+                <div className="user-role">{roleLabel(userType)}</div>
               </div>
             </div>
           </div>

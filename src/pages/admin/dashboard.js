@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
@@ -37,9 +38,7 @@ const AdminDashboard = () => {
 
   const [recentAppointments, setRecentAppointments] = useState([]);
   const isMounted = useRef(true);
-
-  const SUPER_ADMIN_EMAIL = 'jhoncarl.jubilag@cvsu.edu.ph';
-  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+  const isSuperAdmin = isOwner(userType);
 
   const totalPages = Math.ceil(recentAppointments.length / itemsPerPage);
   const paginatedAppointments = recentAppointments.slice(
@@ -64,7 +63,7 @@ const AdminDashboard = () => {
     if (!authLoading && !authChecked) {
       if (!user) {
         navigate('/login', { replace: true });
-      } else if (userType !== 'admin' && !isSuperAdmin) {
+      } else if (!isClinicUser(userType)) {
         navigate('/', { replace: true });
       } else {
         setAuthChecked(true);
@@ -176,7 +175,7 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (authChecked && user && (userType === 'admin' || isSuperAdmin)) {
+    if (authChecked && user && (isClinicUser(userType))) {
       fetchDashboardData();
     }
   }, [authChecked, user, userType, isSuperAdmin, fetchDashboardData]);
@@ -197,7 +196,7 @@ const AdminDashboard = () => {
   }
 
 
-  if (!user || (userType !== 'admin' && !isSuperAdmin)) return null;
+  if (!user || (!isClinicUser(userType))) return null;
 
   const adminName = isSuperAdmin ? 'Super Admin' : (user?.email?.split('@')[0] || 'Admin');
   const adminInitial = adminName.charAt(0).toUpperCase();
@@ -217,7 +216,7 @@ const AdminDashboard = () => {
               <div className="user-avatar">{adminInitial}</div>
               <div className="user-details">
                 <div className="user-name">{adminName}</div>
-                <div className="user-role">System Administrator</div>
+                <div className="user-role">{roleLabel(userType)}</div>
               </div>
             </div>
           </div>

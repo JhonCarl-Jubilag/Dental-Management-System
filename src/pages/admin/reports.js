@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
+import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
@@ -87,7 +88,7 @@ const Reports = () => {
     satisfaction: [],
   });
 
-  const isSuperAdmin = user?.email === 'jhoncarl.jubilag@cvsu.edu.ph';
+  const isSuperAdmin = isOwner(userType);
 
   const reportContentRef = useRef(null);
 
@@ -95,7 +96,7 @@ const Reports = () => {
   useEffect(() => {
     if (!authLoading) {
       if (!user) navigate('/login');
-      else if (userType !== 'admin' && !isSuperAdmin) navigate('/');
+      else if (!isClinicUser(userType)) navigate('/');
     }
   }, [user, userType, authLoading, navigate, isSuperAdmin]);
 
@@ -483,7 +484,7 @@ const Reports = () => {
   }, [reportType, startDate, endDate, doctorId, fetchOverallStats, fetchFinancialReport, fetchAppointmentReport, fetchPatientReport, fetchDoctorPerformanceReport]);
 
   useEffect(() => {
-    if (user && (userType === 'admin' || isSuperAdmin)) {
+    if (user && (isClinicUser(userType))) {
       fetchAllData();
     }
   }, [fetchAllData, user, userType, isSuperAdmin]);
@@ -565,7 +566,7 @@ const Reports = () => {
     );
   }
 
-  if (!user || (userType !== 'admin' && !isSuperAdmin)) return null;
+  if (!user || (!isClinicUser(userType))) return null;
 
   const adminName = isSuperAdmin ? 'Super Admin' : (user?.email?.split('@')[0] || 'Admin');
   const adminInitial = adminName.charAt(0).toUpperCase();
@@ -589,7 +590,7 @@ const Reports = () => {
               <div className="user-avatar">{adminInitial}</div>
               <div className="user-details">
                 <div className="user-name">{adminName}</div>
-                <div className="user-role">Reports Administrator</div>
+                <div className="user-role">{roleLabel(userType)}</div>
               </div>
             </div>
           </div>

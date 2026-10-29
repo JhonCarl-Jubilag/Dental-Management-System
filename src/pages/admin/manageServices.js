@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
+import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
@@ -38,15 +39,13 @@ const ManageServices = () => {
   const [totalCount, setTotalCount] = useState(0);
   const perPage = 5;
   const searchTimeout = useRef(null);
-
-  const SUPER_ADMIN_EMAIL = 'jhoncarl.jubilag@cvsu.edu.ph';
-  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+  const isSuperAdmin = isOwner(userType);
 
   // Redirect if not admin
   useEffect(() => {
     if (!authLoading) {
       if (!user) navigate('/login');
-      else if (userType !== 'admin' && !isSuperAdmin) navigate('/');
+      else if (!isClinicUser(userType)) navigate('/');
     }
   }, [user, userType, authLoading, navigate, isSuperAdmin]);
 
@@ -108,7 +107,7 @@ const ManageServices = () => {
 
   // Initial fetch and when dependencies change
   useEffect(() => {
-    if (user && (userType === 'admin' || isSuperAdmin)) {
+    if (user && (isClinicUser(userType))) {
       fetchServices();
     }
   }, [fetchServices, user, userType, isSuperAdmin]);
@@ -262,7 +261,7 @@ const ManageServices = () => {
     );
   }
 
-  if (!user || (userType !== 'admin' && !isSuperAdmin)) return null;
+  if (!user || (!isClinicUser(userType))) return null;
 
   const adminName = isSuperAdmin ? 'Super Admin' : (user?.email?.split('@')[0] || 'Admin');
   const adminInitial = adminName.charAt(0).toUpperCase();
@@ -285,7 +284,7 @@ const ManageServices = () => {
               <div className="user-avatar">{adminInitial}</div>
               <div className="user-details">
                 <div className="user-name">{adminName}</div>
-                <div className="user-role">System Administrator</div>
+                <div className="user-role">{roleLabel(userType)}</div>
               </div>
             </div>
           </div>

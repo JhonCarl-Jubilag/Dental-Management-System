@@ -1,11 +1,11 @@
 import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
-import { supabase, doctorProfileFields } from '../services/supabase';
+import { supabase } from '../services/supabase';
+import { roleDestinations } from '../utils/accessControl';
 
 const AuthContext = createContext({});
 
 export const useAuth = () => useContext(AuthContext);
 
-const emailPattern = email => email.replace(/[\\%_]/g, '\\$&');
 const identityKey = account => account ? `${account.id}:${account.email}` : null;
 const recoverPatientRegistration = async (profile) => {
   const { data, error } = await supabase.functions.invoke('recover-patient-registration', {
@@ -39,17 +39,15 @@ export const AuthProvider = ({ children }) => {
     const key = identityKey(account);
     if (profileRequests.current.has(key)) return profileRequests.current.get(key);
     const request = (async () => {
-      const records = await Promise.all(['patients', 'doctors', 'admin'].map(async table => {
-        const { data, error } = await supabase.from(table).select(table === 'doctors' ? doctorProfileFields : '*')
-          .ilike('email', emailPattern(account.email)).maybeSingle();
-        if (error) throw new Error('Could not load your account profile. Please try logging in again.');
-        return data ? { type: table === 'patients' ? 'patient' : table === 'doctors' ? 'doctor' : 'admin', details: data } : null;
-      }));
-      const matches = records.filter(Boolean);
-      if (matches.length > 1) throw new Error('Your email is assigned to multiple profiles. Please contact the clinic.');
-      if (matches.length) return matches[0];
-      if (account.email.toLowerCase() === 'jhoncarl.jubilag@cvsu.edu.ph') {
-        return { type: 'admin', details: { email: account.email, first_name: 'Super', last_name: 'Admin' } };
+      const { data, error } = await supabase.rpc('get_account_profile');
+      if (error) throw new Error(error.code === 'PGRST202'
+        ? 'The clinic account update has not been installed. Please contact the clinic.'
+        : error.message || 'Could not load your account profile. Please try logging in again.');
+      if (data) {
+        if (!Object.hasOwn(roleDestinations, data.role) || !data.profile || data.profile.status !== 'active') {
+          throw new Error('Your account is inactive or has an unsupported role. Please contact the clinic.');
+        }
+        return { type: data.role, details: data.profile };
       }
       if (currentIdentity.current !== key) throw new Error('Your login session changed. Please try again.');
       return recoverPatientRegistration();
@@ -229,13 +227,6 @@ export const AuthProvider = ({ children }) => {
       setUserType(profile.type);
       setUserDetails(profile.details);
       setRegistrationIncomplete(false);
-      try {
-        if (profile.type === 'patient') {
-          await supabase.from('patients').update({ email_verified: true }).eq('patient_id', profile.details.patient_id);
-        }
-      } catch (updateErr) {
-        console.warn('Update email_verified error:', updateErr);
-      }
       return { success: true, data };
     } catch (error) {
       if (error.code === 'profile_details_required' && currentIdentity.current === identityKey(account)) {

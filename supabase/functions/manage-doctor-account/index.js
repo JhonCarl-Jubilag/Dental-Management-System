@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.105.1';
 import { changeAccountEmail } from '../_shared/changeAccountEmail.js';
+import { requireClinicAccount } from '../_shared/clinicAccess.js';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -38,13 +39,7 @@ Deno.serve(async (req) => {
 
     // Authorization comes from the verified Auth identity and protected admin
     // records, never from editable user_metadata or a role supplied by the form.
-    const { data: admin, error: adminError } = await client.from('admin')
-      .select('admin_id, status').ilike('email', emailPattern(user.email)).maybeSingle();
-    if (adminError) throw new RequestError('Could not verify administrator access.', 500);
-    const isSuperAdmin = user.email.toLowerCase() === 'jhoncarl.jubilag@cvsu.edu.ph';
-    if ((!admin || admin.status !== 'active') && !isSuperAdmin) {
-      throw new RequestError('Only active administrators can manage doctor accounts.', 403);
-    }
+    const { isOwner: isSuperAdmin } = await requireClinicAccount(client, user, RequestError);
 
     let body;
     try { body = await req.json(); } catch { throw new RequestError('Invalid request body.'); }

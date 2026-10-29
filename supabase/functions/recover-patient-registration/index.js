@@ -63,7 +63,10 @@ Deno.serve(async req => {
       throw new RequestError('Verify your email and log in before completing registration.', 401);
     }
     const email = user.email.trim().toLowerCase();
-    if (email === 'jhoncarl.jubilag@cvsu.edu.ph') throw new RequestError('Staff accounts cannot create a patient profile here.', 403);
+    const { data: clinicAccount, error: clinicError } = await client.from('admin')
+      .select('admin_id').eq('auth_user_id', user.id).maybeSingle();
+    if (clinicError) throw new RequestError('Could not verify the account profile.', 500);
+    if (clinicAccount) throw new RequestError('Clinic accounts cannot create a patient profile here.', 403);
     // Eligibility is checked against protected profiles. Metadata supplies form
     // values only; editable user_type/role claims never authorize staff access.
     for (const table of ['doctors', 'admin']) {
@@ -72,9 +75,31 @@ Deno.serve(async req => {
       if (data?.length) throw new RequestError('Staff accounts cannot create a patient profile here.', 403);
     }
     const readPatient = async () => {
-      const { data, error } = await client.from('patients').select(fields).ilike('email', emailPattern(email)).maybeSingle();
+      const patientFields = `${fields}, auth_user_id`;
+      let { data, error } = await client.from('patients').select(patientFields).eq('auth_user_id', user.id).maybeSingle();
       if (error) throw new RequestError('Could not read the patient profile.', 500);
+      if (!data) {
+        const result = await client.from('patients').select(patientFields).ilike('email', emailPattern(email)).maybeSingle();
+        if (result.error) throw new RequestError('Could not read the patient profile.', 500);
+        data = result.data;
+      }
       if (data && data.status !== 'active') throw new RequestError('This patient account is inactive. Contact the clinic.', 403);
+      if (data?.auth_user_id && data.auth_user_id !== user.id) {
+        throw new RequestError('This patient profile is linked to another login. Contact the clinic.', 409);
+      }
+      if (data && !data.auth_user_id) {
+        const linked = await client.from('patients').update({ auth_user_id: user.id, email_verified: true })
+          .eq('patient_id', data.patient_id).eq('email', data.email).eq('status', 'active')
+          .is('auth_user_id', null).select(patientFields).maybeSingle();
+        if (linked.error) throw new RequestError('Could not link your patient account. Please log in again.', 409);
+        if (!linked.data) {
+          const latest = await client.from('patients').select(patientFields).eq('auth_user_id', user.id).maybeSingle();
+          if (latest.error || !latest.data || latest.data.status !== 'active') {
+            throw new RequestError('The patient profile changed while linking. Please log in again.', 409);
+          }
+          data = latest.data;
+        } else data = linked.data;
+      }
       return data;
     };
     let patient = await readPatient();
@@ -82,7 +107,7 @@ Deno.serve(async req => {
       let body;
       try { body = await req.json(); } catch { throw new RequestError('Invalid request body.'); }
       if (!body || typeof body !== 'object' || Array.isArray(body)) throw new RequestError('Invalid request body.');
-      const profile = registrationProfile(body.profile ?? user.user_metadata?.registration_profile, email);
+      const profile = { ...registrationProfile(body.profile ?? user.user_metadata?.registration_profile, email), auth_user_id: user.id };
       // Ignore duplicates rather than replacing a profile created by another
       // verification tab or retry. The existing unique email constraint applies.
       const { error } = await client.from('patients').upsert(profile, { onConflict: 'email', ignoreDuplicates: true });

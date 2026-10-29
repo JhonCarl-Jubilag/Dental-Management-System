@@ -3,18 +3,13 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
+import { roleDestinations } from '../../utils/accessControl';
 import './login.css';
 import DentalLogo from '../../assets/DentalLogo.png';
 import bg1 from '../../assets/bg1.jpg';
 import bg2 from '../../assets/bg2.jpg';
 import bg3 from '../../assets/bg3.jpg';
 import bg4 from '../../assets/bg4.jpg';
-
-const roleDestinations = {
-  admin: '/admin/dashboard',
-  doctor: '/doctor/dashboard',
-  patient: '/',
-};
 
 const Login = () => {
   const navigate = useNavigate();

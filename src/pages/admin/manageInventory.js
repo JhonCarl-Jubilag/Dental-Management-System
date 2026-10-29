@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
+import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
@@ -58,12 +59,12 @@ const ManageInventory = () => {
     return () => clearTimeout(searchTimeout.current);
   }, [search]);
 
-  const isSuperAdmin = user?.email === 'jhoncarl.jubilag@cvsu.edu.ph';
+  const isSuperAdmin = isOwner(userType);
 
   useEffect(() => {
     if (!authLoading) {
       if (!user) navigate('/login');
-      else if (userType !== 'admin' && !isSuperAdmin) navigate('/');
+      else if (!isClinicUser(userType)) navigate('/');
     }
   }, [user, userType, authLoading, navigate, isSuperAdmin]);
 
@@ -272,7 +273,7 @@ const ManageInventory = () => {
     );
   }
 
-  if (!user || (userType !== 'admin' && !isSuperAdmin)) return null;
+  if (!user || (!isClinicUser(userType))) return null;
 
   return (
     <div className="admin-dashboard">
@@ -291,7 +292,7 @@ const ManageInventory = () => {
               <div className="user-avatar">{adminInitial}</div>
               <div className="user-details">
                 <div className="user-name">{adminName}</div>
-                <div className="user-role">System Administrator</div>
+                <div className="user-role">{roleLabel(userType)}</div>
               </div>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
+import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase, doctorProfileFields } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
@@ -100,13 +101,13 @@ const ManageDoctors = () => {
     return () => clearTimeout(searchTimeout.current);
   }, [search]);
 
-  const isSuperAdmin = user?.email === 'jhoncarl.jubilag@cvsu.edu.ph';
+  const isSuperAdmin = isOwner(userType);
 
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
         navigate('/login');
-      } else if (userType !== 'admin' && !isSuperAdmin) {
+      } else if (!isClinicUser(userType)) {
         navigate('/');
       }
     }
@@ -116,7 +117,7 @@ const ManageDoctors = () => {
   const adminInitial = adminName.charAt(0).toUpperCase();
 
   const fetchData = useCallback(async () => {
-    if (!user || (userType !== 'admin' && !isSuperAdmin)) return;
+    if (!user || (!isClinicUser(userType))) return;
     setLoading(true);
     setLoadError(null);
 
@@ -249,7 +250,7 @@ const ManageDoctors = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, userType, isSuperAdmin, debouncedSearch, statusFilter, specializationFilter, page]);
+  }, [user, userType, debouncedSearch, statusFilter, specializationFilter, page]);
 
   useEffect(() => {
     fetchData();
@@ -484,7 +485,7 @@ const ManageDoctors = () => {
     );
   }
 
-  if (!user || (userType !== 'admin' && !isSuperAdmin)) return null;
+  if (!user || (!isClinicUser(userType))) return null;
 
   return (
     <div className="admin-dashboard">
@@ -504,7 +505,7 @@ const ManageDoctors = () => {
               <div className="user-avatar">{adminInitial}</div>
               <div className="user-details">
                 <div className="user-name">{adminName}</div>
-                <div className="user-role">System Administrator</div>
+                <div className="user-role">{roleLabel(userType)}</div>
               </div>
             </div>
           </div>

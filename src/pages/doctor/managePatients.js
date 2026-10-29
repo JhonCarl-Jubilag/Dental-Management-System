@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
+import { isOwner } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import DoctorSidebar from '../../components/doctor/Sidebar';
 import './managePatients.css';
@@ -23,7 +24,7 @@ const ManagePatients = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const isSuperAdmin = user?.email === 'jhoncarl.jubilag@cvsu.edu.ph';
+  const isSuperAdmin = isOwner(userType);
 
   useEffect(() => {
     if (!authLoading) {

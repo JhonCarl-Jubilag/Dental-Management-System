@@ -1,0 +1,17 @@
+.staff-account-page { color: #354d70; }
+.staff-account-page .staff-account-heading { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.staff-account-page h1 { color: #354d70; margin: 0 0 8px; }
+.staff-account-page h2 { color: #354d70; margin: 0 0 12px; font-size: 22px; }
+.staff-account-page p { line-height: 1.6; margin: 8px 0 16px; }
+.staff-account-page .staff-account-info { padding: 18px; background: #edf4fb; border-radius: 12px; }
+.staff-account-page .staff-account-card { max-width: 680px; background: #fff; padding: 28px; margin: 24px 0; border: 1px solid #e0e8ef; border-radius: 16px; box-shadow: 0 4px 16px rgba(30, 52, 80, 0.05); }
+.staff-account-page fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.staff-account-page label { display: block; font-weight: 600; margin: 16px 0 6px; }
+.staff-account-page input { box-sizing: border-box; width: 100%; padding: 11px 12px; border: 1px solid #cad7e6; border-radius: 8px; font: inherit; color: #354d70; background: #fff; }
+.staff-account-page button { padding: 10px 16px; border: 0; border-radius: 8px; background: #354d70; color: #fff; font: inherit; cursor: pointer; }
+.staff-account-page button:hover:not(:disabled) { background: #263c5b; }
+.staff-account-page button:disabled { opacity: 0.55; cursor: not-allowed; }
+.staff-account-page button:focus-visible,
+.staff-account-page input:focus-visible { outline: 3px solid #78a8e8; outline-offset: 2px; }
+.staff-account-page .staff-account-error { padding: 14px; border-radius: 8px; background: #fff0ef; color: #9c332b; }
+@media (max-width: 640px) { .staff-account-page .staff-account-card { padding: 20px; } }

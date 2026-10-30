@@ -7,7 +7,10 @@ import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
+import PatientTreatmentHistory from '../../components/admin/PatientTreatmentHistory';
 import './managePatients.css';
+
+const patientFields = 'patient_id, first_name, last_name, email, contact_no, address, birthday, age, date_created, status, email_verified';
 
 const managePatientAccount = async (body) => {
   const { data, error } = await supabase.functions.invoke('manage-patient-account', { body });
@@ -79,6 +82,7 @@ const ManagePatients = () => {
           />
         ) : (
           <PatientDetail
+            key={id}
             patientId={id}
             onBack={() => navigate('/admin/patients')}
             user={user}
@@ -142,9 +146,9 @@ const PatientList = ({ onViewDetail, user, userType, isSuperAdmin, adminName, ad
 
   const fetchStats = useCallback(async () => {
     try {
-      const { count: total } = await supabase.from('patients').select('*', { count: 'exact', head: true });
-      const { count: active } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('status', 'active');
-      const { count: inactive } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('status', 'inactive');
+      const { count: total } = await supabase.from('patients').select('patient_id', { count: 'exact', head: true });
+      const { count: active } = await supabase.from('patients').select('patient_id', { count: 'exact', head: true }).eq('status', 'active');
+      const { count: inactive } = await supabase.from('patients').select('patient_id', { count: 'exact', head: true }).eq('status', 'inactive');
       setStats({ total: total || 0, active: active || 0, inactive: inactive || 0 });
     } catch (err) {
       console.error(err);
@@ -155,7 +159,7 @@ const PatientList = ({ onViewDetail, user, userType, isSuperAdmin, adminName, ad
     setLoading(true);
     setLoadError(null);
     try {
-      let query = supabase.from('patients').select('*', { count: 'exact' });
+      let query = supabase.from('patients').select(patientFields, { count: 'exact' });
       if (debouncedSearch) {
         query = query.or(`first_name.ilike.%${debouncedSearch}%,last_name.ilike.%${debouncedSearch}%,email.ilike.%${debouncedSearch}%,contact_no.ilike.%${debouncedSearch}%`);
       }
@@ -400,7 +404,7 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
 
   const fetchPatient = useCallback(async () => {
     try {
-      const { data, error } = await supabase.from('patients').select('*').eq('patient_id', patientId).single();
+      const { data, error } = await supabase.from('patients').select(patientFields).eq('patient_id', patientId).single();
       if (error) throw error;
       setPatient(data);
       setEditForm({
@@ -575,6 +579,8 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
           </div>
         </div>
       </div>
+
+      <PatientTreatmentHistory key={patient.patient_id} patientId={patient.patient_id} />
 
       {/* Reset Password Modal */}
       {showResetModal && (

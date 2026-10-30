@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
+import { savePatientAppointmentAction } from '../../services/appointmentNotes';
+import { loadDoctorBookingSlots, validateAppointmentReschedule } from '../../services/doctorScheduling';
+import { getAppointmentDuration } from '../../utils/appointmentTiming';
+import { CLINIC_TIME_ZONE, clinicDateTime, formatClinicDate, getClinicDate } from '../../utils/clinicScheduling';
 import './MyAppointments.css';
 import DentalLogo from '../../assets/DentalLogo.png';
 
@@ -36,12 +40,16 @@ const MyAppointments = () => {
 
   const [availableDates, setAvailableDates] = useState([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(() => Number(getClinicDate().slice(5, 7)) - 1);
+  const [currentYear, setCurrentYear] = useState(() => Number(getClinicDate().slice(0, 4)));
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [serviceDuration, setServiceDuration] = useState(60);
   const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
+  const [loadingDates, setLoadingDates] = useState(false);
+  const [scheduleError, setScheduleError] = useState('');
+  const rescheduleSaving = useRef(false);
+  const [savingReschedule, setSavingReschedule] = useState(false);
 
   useEffect(() => {
     if (!authLoading) {
@@ -85,7 +93,7 @@ const MyAppointments = () => {
         specialization: app.doctors.specialization,
         service_name: app.services.service_name,
         service_price: app.services.price,
-        duration_minutes: app.services.duration_minutes || 60,
+        duration_minutes: getAppointmentDuration(app),
         ...(app.billing && app.billing[0] ? {
           total_amount: app.billing[0].total_amount,
           amount_paid: app.billing[0].amount_paid,
@@ -134,7 +142,7 @@ const MyAppointments = () => {
     const createdTime = new Date(appointment.created_at).getTime();
     const currentTime = new Date().getTime();
     const hoursSinceCreation = (currentTime - createdTime) / 3600000;
-    return hoursSinceCreation <= 1;
+    return hoursSinceCreation >= 0 && hoursSinceCreation <= 1 && new Date(appointment.appointment_datetime).getTime() > currentTime;
   };
 
   const canCancelAppointment = (appointment) => {
@@ -142,7 +150,7 @@ const MyAppointments = () => {
     const createdTime = new Date(appointment.created_at).getTime();
     const currentTime = new Date().getTime();
     const hoursSinceCreation = (currentTime - createdTime) / 3600000;
-    return hoursSinceCreation <= 1;
+    return hoursSinceCreation >= 0 && hoursSinceCreation <= 1 && new Date(appointment.appointment_datetime).getTime() > currentTime;
   };
 
   const canRequestReschedule = (appointment) => {
@@ -161,117 +169,68 @@ const MyAppointments = () => {
     return hoursBeforeAppointment >= 24;
   };
 
-  const formatDateTime = (dateString) => new Date(dateString).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const formatDateTime = (dateString) => new Date(dateString).toLocaleString('en-US', { timeZone: CLINIC_TIME_ZONE, year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const formatDate = dateString => /^\d{4}-\d{2}-\d{2}$/.test(dateString) ? formatClinicDate(dateString) : new Date(dateString).toLocaleDateString('en-US', { timeZone: CLINIC_TIME_ZONE, year: 'numeric', month: 'long', day: 'numeric' });
 
-  const fetchAvailableDates = async (doctorId) => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from('doctor_availability')
-        .select('available_date')
-        .eq('doctor_id', doctorId)
-        .eq('is_available', true)
-        .gte('available_date', today)
-        .order('available_date');
-      if (error) throw error;
-      const uniqueDates = [...new Set(data.map(d => d.available_date))];
-      setAvailableDates(uniqueDates);
-    } catch (error) {
-      console.error('Error fetching dates:', error);
+  const savePatientAction = (action, reason, target) => {
+    if (!userDetails?.patient_id || selectedAppointment?.patient_id !== userDetails.patient_id) {
+      throw new Error('Reload your appointment before making changes.');
     }
+    return savePatientAppointmentAction(supabase, selectedAppointment, action, reason, target);
   };
 
-  const fetchAvailableTimeSlots = async (doctorId, date, duration) => {
-    setLoadingTimeSlots(true);
-    try {
-      const { data: availability, error: availError } = await supabase
-        .from('doctor_availability')
-        .select('start_time, end_time')
-        .eq('doctor_id', doctorId)
-        .eq('available_date', date)
-        .eq('is_available', true)
-        .maybeSingle();
-      if (availError || !availability) {
-        setAvailableTimeSlots([]);
-        return;
-      }
-
-      const { data: allAppointments, error: apptError } = await supabase
-        .from('appointments')
-        .select(`
-          appointment_datetime,
-          status,
-          services!inner (duration_minutes)
-        `)
-        .eq('doctor_id', doctorId)
-        .gte('appointment_datetime', `${date} 00:00:00`)
-        .lt('appointment_datetime', `${date} 23:59:59`);
-      if (apptError) throw apptError;
-
-      const activeStatuses = ['pending', 'confirmed'];
-      const existingApps = allAppointments.filter(apt =>
-        activeStatuses.includes(apt.status?.toLowerCase())
-      );
-
-      const startTime = availability.start_time;
-      const endTime = availability.end_time;
-      const slotInterval = 30;
-      const startDateTime = new Date(`${date}T${startTime}`);
-      const endDateTime = new Date(`${date}T${endTime}`);
-      if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-        throw new Error('Invalid start/end time format');
-      }
-
-      const slots = [];
-      let current = new Date(startDateTime);
-      const now = new Date();
-      const minStartTime = new Date(now.getTime() + duration * 60000);
-      const isToday = date === now.toISOString().split('T')[0];
-
-      while (current.getTime() + duration * 60000 <= endDateTime.getTime()) {
-        const slotStart = new Date(current);
-        const slotEnd = new Date(current.getTime() + duration * 60000);
-        let overlapping = false;
-        for (const apt of existingApps) {
-          const aptStart = new Date(apt.appointment_datetime);
-          const aptDuration = apt.services?.duration_minutes || 60;
-          const aptEnd = new Date(aptStart.getTime() + aptDuration * 60000);
-          if (slotStart < aptEnd && slotEnd > aptStart) {
-            overlapping = true;
-            break;
-          }
-        }
-        let valid = true;
-        if (isToday && slotStart < minStartTime) valid = false;
-        if (!overlapping && valid) {
-          const timeStr = slotStart.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-          slots.push({
-            time: slotStart.toISOString().slice(11, 16),
-            display: timeStr
-          });
-        }
-        current = new Date(current.getTime() + slotInterval * 60000);
-      }
-      setAvailableTimeSlots(slots);
-    } catch (error) {
-      console.error('Error fetching time slots:', error);
-      setAvailableTimeSlots([]);
-    } finally {
-      setLoadingTimeSlots(false);
+  useEffect(() => {
+    let cancelled = false;
+    if ((!showEditModal && !showRescheduleRequestModal) || !selectedAppointment?.doctor_id) {
+      setLoadingDates(false); return;
     }
-  };
+    const loadDates = async () => {
+      setLoadingDates(true); setAvailableDates([]); setScheduleError('');
+      try {
+        const { data, error } = await supabase.from('doctor_availability').select('available_date')
+          .eq('doctor_id', selectedAppointment.doctor_id).eq('is_available', true)
+          .gte('available_date', getClinicDate()).order('available_date');
+        if (error) throw error;
+        if (!cancelled) setAvailableDates([...new Set((data || []).map(item => item.available_date))]);
+      } catch (error) {
+        if (!cancelled) setScheduleError(error.message || 'Could not load available dates. Reopen the appointment to retry.');
+      } finally { if (!cancelled) setLoadingDates(false); }
+    };
+    loadDates();
+    return () => { cancelled = true; };
+  }, [showEditModal, showRescheduleRequestModal, selectedAppointment?.doctor_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if ((!showEditModal && !showRescheduleRequestModal) || !selectedDate || !selectedAppointment?.doctor_id) {
+      setLoadingTimeSlots(false); return;
+    }
+    const loadTimes = async () => {
+      setLoadingTimeSlots(true); setAvailableTimeSlots([]); setScheduleError('');
+      try {
+        const slots = await loadDoctorBookingSlots({
+          doctorId: selectedAppointment.doctor_id, serviceId: selectedAppointment.service_id, date: selectedDate,
+          interval: 30, leadMinutes: serviceDuration, excludeAppointmentId: selectedAppointment.appointment_id,
+        });
+        if (!cancelled) setAvailableTimeSlots(slots);
+      } catch (error) {
+        if (!cancelled) setScheduleError(error.message || 'Could not load time slots. Select another date to retry.');
+      } finally { if (!cancelled) setLoadingTimeSlots(false); }
+    };
+    loadTimes();
+    return () => { cancelled = true; };
+  }, [showEditModal, showRescheduleRequestModal, selectedDate, selectedAppointment?.doctor_id, selectedAppointment?.service_id, selectedAppointment?.appointment_id, serviceDuration]);
 
   const generateCalendar = () => {
-    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const today = new Date();
+    const firstDay = new Date(Date.UTC(currentYear, currentMonth, 1)).getUTCDay();
+    const daysInMonth = new Date(Date.UTC(currentYear, currentMonth + 1, 0)).getUTCDate();
+    const today = getClinicDate();
     const days = [];
     for (let i = 0; i < firstDay; i++) days.push(null);
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const isAvailable = availableDates.includes(dateStr);
-      const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
+      const isToday = dateStr === today;
       const isSelected = selectedDate === dateStr;
       days.push({ day, dateStr, isAvailable, isToday, isSelected });
     }
@@ -292,27 +251,30 @@ const MyAppointments = () => {
     setShowViewModal(true);
   };
 
-  const openEditModal = async (appointment) => {
+  const openEditModal = (appointment) => {
     setSelectedAppointment(appointment);
     setSelectedDate('');
     setSelectedTime('');
     setUpdateReason('');
     setNewDateTime('');
-    setServiceDuration(appointment.duration_minutes || 60);
-    await fetchAvailableDates(appointment.doctor_id);
+    setServiceDuration(getAppointmentDuration(appointment));
+    setAvailableDates([]); setAvailableTimeSlots([]); setScheduleError('');
+    setCurrentMonth(Number(getClinicDate().slice(5, 7)) - 1);
+    setCurrentYear(Number(getClinicDate().slice(0, 4)));
     setShowEditModal(true);
   };
 
-  const handleDateSelect = async (dateStr) => {
-    setSelectedDate(dateStr);
-    setSelectedTime('');
-    setNewDateTime('');
-    await fetchAvailableTimeSlots(selectedAppointment.doctor_id, dateStr, serviceDuration);
+  const handleDateSelect = dateStr => {
+    if (rescheduleSaving.current) return;
+    setSelectedDate(dateStr); setSelectedTime('');
+    setNewDateTime(''); setRequestNewDateTime(''); setAvailableTimeSlots([]);
   };
 
-  const handleTimeSelect = (timeObj) => {
-    setSelectedTime(timeObj.time);
-    setNewDateTime(`${selectedDate}T${timeObj.time}`);
+  const handleTimeSelect = slot => {
+    if (rescheduleSaving.current) return;
+    setSelectedTime(slot.time);
+    const timestamp = clinicDateTime(selectedDate, slot.time);
+    setNewDateTime(timestamp); setRequestNewDateTime(timestamp);
   };
 
   const handleReschedule = async () => {
@@ -320,40 +282,14 @@ const MyAppointments = () => {
       toast.error('Please select a new date/time and provide a reason');
       return;
     }
+    if (rescheduleSaving.current || loadingDates || loadingTimeSlots) return;
+    rescheduleSaving.current = true; setSavingReschedule(true);
     try {
-      const { data: allOnDate, error: fetchErr } = await supabase
-        .from('appointments')
-        .select(`
-          appointment_datetime,
-          status,
-          services!inner (duration_minutes)
-        `)
-        .eq('doctor_id', selectedAppointment.doctor_id)
-        .gte('appointment_datetime', `${selectedDate} 00:00:00`)
-        .lt('appointment_datetime', `${selectedDate} 23:59:59`);
-      if (fetchErr) throw fetchErr;
-
-      const slotStart = new Date(newDateTime);
-      const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
-      const activeStatuses = ['pending', 'confirmed'];
-      const overlapping = allOnDate.filter(apt => {
-        if (!activeStatuses.includes(apt.status?.toLowerCase())) return false;
-        const aptStart = new Date(apt.appointment_datetime);
-        const aptDuration = apt.services?.duration_minutes || 60;
-        const aptEnd = new Date(aptStart.getTime() + aptDuration * 60000);
-        return (slotStart < aptEnd && slotEnd > aptStart);
+      if (!canEditAppointment(selectedAppointment)) throw new Error('This appointment is no longer eligible. Reopen it to refresh.');
+      const timestamp = await validateAppointmentReschedule({
+        appointment: selectedAppointment, targetDateTime: newDateTime, leadMinutes: null,
       });
-      if (overlapping.length > 0) throw new Error('Time slot no longer available');
-
-      const { error } = await supabase
-        .from('appointments')
-        .update({
-          appointment_datetime: newDateTime,
-          remarks: `${selectedAppointment.remarks || ''}\n[Rescheduled by Patient - ${new Date().toLocaleString()}]: Changed from ${formatDateTime(selectedAppointment.appointment_datetime)} to ${formatDateTime(newDateTime)} - Reason: ${updateReason}`
-        })
-        .eq('appointment_id', selectedAppointment.appointment_id)
-        .eq('patient_id', userDetails.patient_id);
-      if (error) throw error;
+      await savePatientAction('reschedule', updateReason, timestamp);
 
       toast.success('Appointment rescheduled successfully!');
       setShowEditModal(false);
@@ -362,6 +298,7 @@ const MyAppointments = () => {
       console.error('Error rescheduling:', error);
       toast.error(error.message);
     }
+    finally { rescheduleSaving.current = false; setSavingReschedule(false); }
   };
 
   const openCancelModal = (appointment) => {
@@ -376,15 +313,7 @@ const MyAppointments = () => {
       return;
     }
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .update({
-          status: 'cancelled',
-          remarks: `${selectedAppointment.remarks || ''}\n[Cancelled by Patient - ${new Date().toLocaleString()}]: ${cancellationReason}`
-        })
-        .eq('appointment_id', selectedAppointment.appointment_id)
-        .eq('patient_id', userDetails.patient_id);
-      if (error) throw error;
+      await savePatientAction('cancel', cancellationReason);
       toast.success('Appointment cancelled successfully!');
       setShowCancelModal(false);
       fetchAppointments();
@@ -394,14 +323,16 @@ const MyAppointments = () => {
     }
   };
 
-  const openRescheduleRequestModal = async (appointment) => {
+  const openRescheduleRequestModal = (appointment) => {
     setSelectedAppointment(appointment);
     setRequestReason('');
     setRequestNewDateTime('');
     setSelectedDate('');
     setSelectedTime('');
-    setServiceDuration(appointment.duration_minutes || 60);
-    await fetchAvailableDates(appointment.doctor_id);
+    setServiceDuration(getAppointmentDuration(appointment));
+    setAvailableDates([]); setAvailableTimeSlots([]); setScheduleError('');
+    setCurrentMonth(Number(getClinicDate().slice(5, 7)) - 1);
+    setCurrentYear(Number(getClinicDate().slice(0, 4)));
     setShowRescheduleRequestModal(true);
   };
 
@@ -416,49 +347,22 @@ const MyAppointments = () => {
       toast.error('Please select a new date/time and provide a reason');
       return;
     }
+    if (rescheduleSaving.current || loadingDates || loadingTimeSlots) return;
+    rescheduleSaving.current = true; setSavingReschedule(true);
     try {
-      const { data: allOnDate, error: fetchErr } = await supabase
-        .from('appointments')
-        .select(`
-          appointment_datetime,
-          status,
-          services!inner (duration_minutes)
-        `)
-        .eq('doctor_id', selectedAppointment.doctor_id)
-        .gte('appointment_datetime', `${selectedDate} 00:00:00`)
-        .lt('appointment_datetime', `${selectedDate} 23:59:59`);
-      if (fetchErr) throw fetchErr;
-
-      const slotStart = new Date(requestNewDateTime);
-      const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
-      const activeStatuses = ['pending', 'confirmed'];
-      const overlapping = allOnDate.filter(apt => {
-        if (!activeStatuses.includes(apt.status?.toLowerCase())) return false;
-        const aptStart = new Date(apt.appointment_datetime);
-        const aptDuration = apt.services?.duration_minutes || 60;
-        const aptEnd = new Date(aptStart.getTime() + aptDuration * 60000);
-        return (slotStart < aptEnd && slotEnd > aptStart);
+      if (!canRequestReschedule(selectedAppointment)) throw new Error('This appointment is no longer eligible. Reopen it to refresh.');
+      const timestamp = await validateAppointmentReschedule({
+        appointment: selectedAppointment, targetDateTime: requestNewDateTime, leadMinutes: null,
       });
-      if (overlapping.length > 0) throw new Error('Requested time slot is not available');
-
-      const { error } = await supabase
-        .from('appointments')
-        .update({
-          request_type: 'reschedule',
-          request_new_datetime: requestNewDateTime,
-          request_status: 'pending',
-          remarks: `${selectedAppointment.remarks || ''}\n[Reschedule Request - ${new Date().toLocaleString()}]: Requested new time: ${formatDateTime(requestNewDateTime)}. Reason: ${requestReason}`
-        })
-        .eq('appointment_id', selectedAppointment.appointment_id)
-        .eq('patient_id', userDetails.patient_id);
-      if (error) throw error;
-      toast.success('Reschedule request submitted. The doctor will review it.');
+      await savePatientAction('request_reschedule', requestReason, timestamp);
+      toast.success('Reschedule request submitted. The clinic will review it.');
       setShowRescheduleRequestModal(false);
       fetchAppointments();
     } catch (error) {
       console.error('Error submitting request:', error);
       toast.error(error.message);
     }
+    finally { rescheduleSaving.current = false; setSavingReschedule(false); }
   };
 
   const submitCancelRequest = async () => {
@@ -467,17 +371,8 @@ const MyAppointments = () => {
       return;
     }
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .update({
-          request_type: 'cancellation',
-          request_status: 'pending',
-          remarks: `${selectedAppointment.remarks || ''}\n[Cancellation Request - ${new Date().toLocaleString()}]: Reason: ${requestReason}`
-        })
-        .eq('appointment_id', selectedAppointment.appointment_id)
-        .eq('patient_id', userDetails.patient_id);
-      if (error) throw error;
-      toast.success('Cancellation request submitted. The doctor will review it.');
+      await savePatientAction('request_cancel', requestReason);
+      toast.success('Cancellation request submitted. The clinic will review it.');
       setShowCancelRequestModal(false);
       fetchAppointments();
     } catch (error) {
@@ -621,7 +516,7 @@ const MyAppointments = () => {
             <ul>
               <li>Pending appointments can be edited or cancelled within 1 hour.</li>
               <li>Confirmed appointments require a request at least 24 hours in advance.</li>
-              <li>Requests need doctor/admin approval.</li>
+              <li>Requests need clinic approval.</li>
               <li>New appointment time must be at least 1 hour from now (duration‑based buffer applied).</li>
               <li>For emergency changes, please contact the clinic directly.</li>
             </ul>
@@ -630,11 +525,11 @@ const MyAppointments = () => {
       </div>
 
       {showEditModal && selectedAppointment && (
-        <div className="appointment-modal-overlay active" onClick={() => setShowEditModal(false)}>
+        <div className="appointment-modal-overlay active" onClick={() => !rescheduleSaving.current && setShowEditModal(false)}>
           <div className="appointment-modal-container" onClick={e => e.stopPropagation()}>
             <div className="appointment-modal-header">
               <h3>Edit/Reschedule Appointment</h3>
-              <button className="appointment-modal-close" onClick={() => setShowEditModal(false)}>&times;</button>
+              <button disabled={savingReschedule} className="appointment-modal-close" onClick={() => !rescheduleSaving.current && setShowEditModal(false)}>&times;</button>
             </div>
             <div className="appointment-modal-body">
               <div className="appointment-form-group">
@@ -642,18 +537,20 @@ const MyAppointments = () => {
                 <p><strong>{formatDateTime(selectedAppointment.appointment_datetime)}</strong></p>
               </div>
               <div className="appointment-availability-section">
-                <h4><i className="fas fa-calendar-check"></i> Select New Date & Time</h4>
+                <h4><i className="fas fa-calendar-check"></i> Select New Date & Time (Philippine time)</h4>
                 <div className="appointment-calendar-nav">
-                  <button type="button" className="appointment-nav-btn" onClick={() => changeMonth(-1)}>
+                  <button disabled={savingReschedule} type="button" className="appointment-nav-btn" onClick={() => changeMonth(-1)}>
                     <i className="fas fa-chevron-left"></i> Prev
                   </button>
                   <div className="appointment-current-month">
                     {new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
                   </div>
-                  <button type="button" className="appointment-nav-btn" onClick={() => changeMonth(1)}>
+                  <button disabled={savingReschedule} type="button" className="appointment-nav-btn" onClick={() => changeMonth(1)}>
                     Next <i className="fas fa-chevron-right"></i>
                   </button>
                 </div>
+                {loadingDates && <p role="status">Loading available dates…</p>}
+                {scheduleError && <p role="alert">{scheduleError}</p>}
                 <div className="appointment-calendar-grid">
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                     <div key={day} className="appointment-calendar-header">{day}</div>
@@ -696,7 +593,7 @@ const MyAppointments = () => {
               </div>
               <div className="appointment-form-group">
                 <label>Reason for Rescheduling</label>
-                <textarea 
+                <textarea disabled={savingReschedule} maxLength={2000}
                   value={updateReason} 
                   onChange={e => setUpdateReason(e.target.value)} 
                   placeholder="Please provide a reason" 
@@ -705,8 +602,8 @@ const MyAppointments = () => {
                 />
               </div>
               <div className="appointment-form-actions">
-                <button className="appointment-btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <button className="appointment-btn-primary" onClick={handleReschedule} disabled={!newDateTime || !updateReason}>
+                <button disabled={savingReschedule} className="appointment-btn-secondary" onClick={() => !rescheduleSaving.current && setShowEditModal(false)}>Cancel</button>
+                <button className="appointment-btn-primary" onClick={handleReschedule} disabled={savingReschedule || loadingTimeSlots || loadingDates || Boolean(scheduleError) || !newDateTime || !updateReason}>
                   Reschedule Appointment
                 </button>
               </div>
@@ -730,7 +627,7 @@ const MyAppointments = () => {
               <div className="appointment-form-group">
                 <label>Reason for Cancellation</label>
                 <textarea 
-                  value={cancellationReason} 
+                  value={cancellationReason} maxLength={2000}
                   onChange={e => setCancellationReason(e.target.value)} 
                   placeholder="Please provide a reason" 
                   rows="3" 
@@ -749,27 +646,29 @@ const MyAppointments = () => {
       )}
 
       {showRescheduleRequestModal && selectedAppointment && (
-        <div className="appointment-modal-overlay active" onClick={() => setShowRescheduleRequestModal(false)}>
+        <div className="appointment-modal-overlay active" onClick={() => !rescheduleSaving.current && setShowRescheduleRequestModal(false)}>
           <div className="appointment-modal-container" onClick={e => e.stopPropagation()}>
             <div className="appointment-modal-header">
               <h3>Request Reschedule</h3>
-              <button className="appointment-modal-close" onClick={() => setShowRescheduleRequestModal(false)}>&times;</button>
+              <button disabled={savingReschedule} className="appointment-modal-close" onClick={() => !rescheduleSaving.current && setShowRescheduleRequestModal(false)}>&times;</button>
             </div>
             <div className="appointment-modal-body">
               <p>Current appointment: <strong>{formatDateTime(selectedAppointment.appointment_datetime)}</strong></p>
               <div className="appointment-availability-section">
-                <h4><i className="fas fa-calendar-check"></i> Select New Date & Time</h4>
+                <h4><i className="fas fa-calendar-check"></i> Select New Date & Time (Philippine time)</h4>
                 <div className="appointment-calendar-nav">
-                  <button type="button" className="appointment-nav-btn" onClick={() => changeMonth(-1)}>
+                  <button disabled={savingReschedule} type="button" className="appointment-nav-btn" onClick={() => changeMonth(-1)}>
                     <i className="fas fa-chevron-left"></i> Prev
                   </button>
                   <div className="appointment-current-month">
                     {new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
                   </div>
-                  <button type="button" className="appointment-nav-btn" onClick={() => changeMonth(1)}>
+                  <button disabled={savingReschedule} type="button" className="appointment-nav-btn" onClick={() => changeMonth(1)}>
                     Next <i className="fas fa-chevron-right"></i>
                   </button>
                 </div>
+                {loadingDates && <p role="status">Loading available dates…</p>}
+                {scheduleError && <p role="alert">{scheduleError}</p>}
                 <div className="appointment-calendar-grid">
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                     <div key={day} className="appointment-calendar-header">{day}</div>
@@ -778,11 +677,7 @@ const MyAppointments = () => {
                     <div 
                       key={idx} 
                       className={`appointment-calendar-day ${day.isAvailable ? 'available' : 'unavailable'} ${day.isToday ? 'today' : ''} ${day.isSelected ? 'selected' : ''}`}
-                      onClick={() => day.isAvailable && (() => { 
-                        setSelectedDate(day.dateStr); 
-                        setSelectedTime(''); 
-                        fetchAvailableTimeSlots(selectedAppointment.doctor_id, day.dateStr, serviceDuration); 
-                      })()}
+                      onClick={() => day.isAvailable && handleDateSelect(day.dateStr)}
                     >
                       <div className="appointment-day-number">{day.day}</div>
                       <div className="appointment-day-status">{day.isAvailable ? 'Available' : 'Unavailable'}</div>
@@ -804,10 +699,7 @@ const MyAppointments = () => {
                           <div 
                             key={slot.time} 
                             className={`appointment-timeslot ${selectedTime === slot.time ? 'selected' : ''}`}
-                            onClick={() => { 
-                              setSelectedTime(slot.time); 
-                              setRequestNewDateTime(`${selectedDate}T${slot.time}`);
-                            }}
+                            onClick={() => handleTimeSelect(slot)}
                           >
                             {slot.display}
                           </div>
@@ -819,8 +711,8 @@ const MyAppointments = () => {
               </div>
               <div className="appointment-form-group">
                 <label>Reason for Reschedule</label>
-                <textarea 
-                  value={requestReason} 
+                <textarea disabled={savingReschedule} maxLength={2000}
+                  value={requestReason}
                   onChange={e => setRequestReason(e.target.value)} 
                   placeholder="Please provide a reason" 
                   rows="3" 
@@ -828,8 +720,8 @@ const MyAppointments = () => {
                 />
               </div>
               <div className="appointment-form-actions">
-                <button className="appointment-btn-secondary" onClick={() => setShowRescheduleRequestModal(false)}>Cancel</button>
-                <button className="appointment-btn-primary" onClick={submitRescheduleRequest} disabled={!requestNewDateTime || !requestReason}>
+                <button disabled={savingReschedule} className="appointment-btn-secondary" onClick={() => !rescheduleSaving.current && setShowRescheduleRequestModal(false)}>Cancel</button>
+                <button className="appointment-btn-primary" onClick={submitRescheduleRequest} disabled={savingReschedule || loadingTimeSlots || loadingDates || Boolean(scheduleError) || !requestNewDateTime || !requestReason}>
                   Submit Request
                 </button>
               </div>
@@ -848,12 +740,12 @@ const MyAppointments = () => {
             <div className="appointment-modal-body">
               <p>You are requesting to cancel your confirmed appointment on <strong>{formatDateTime(selectedAppointment.appointment_datetime)}</strong>.</p>
               <p className="appointment-info-text">
-                <i className="fas fa-info-circle"></i> This request requires approval from the doctor and admin.
+                <i className="fas fa-info-circle"></i> This request requires approval from the clinic.
               </p>
               <div className="appointment-form-group">
                 <label>Reason for Cancellation</label>
                 <textarea 
-                  value={requestReason} 
+                  value={requestReason} maxLength={2000}
                   onChange={e => setRequestReason(e.target.value)} 
                   placeholder="Please provide a reason" 
                   rows="3" 

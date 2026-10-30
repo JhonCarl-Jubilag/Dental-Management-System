@@ -44,6 +44,7 @@ export const AuthProvider = ({ children }) => {
         ? 'The clinic account update has not been installed. Please contact the clinic.'
         : error.message || 'Could not load your account profile. Please try logging in again.');
       if (data) {
+        if (data.role === 'doctor') throw new Error('Dentist logins have been retired. Clinic staff manage dentist records.');
         if (!Object.hasOwn(roleDestinations, data.role) || !data.profile || data.profile.status !== 'active') {
           throw new Error('Your account is inactive or has an unsupported role. Please contact the clinic.');
         }
@@ -181,21 +182,8 @@ export const AuthProvider = ({ children }) => {
       !Array.isArray(authData.user.identities) || authData.user.identities.length === 0) {
       return { success: false, message: 'Registration could not be completed. If you already have an account, verify your email and log in, or use Forgot Password.' };
     }
-    try {
-      const { error: dbError } = await supabase
-        .from('patients')
-        .insert([{
-          ...profile,
-          email: normalizedEmail,
-          age: calculateAge(profile.birthday),
-          email_verified: false,
-          status: 'active',
-          date_created: new Date().toISOString()
-        }]);
-      if (dbError) throw dbError;
-    } catch {
-      return { success: false, message: 'Your login account was created, but your patient profile could not be saved. Verify your email, then log in to finish registration. Your existing account will be kept.' };
-    }
+    // The verified recovery backend creates/links the patient profile on first
+    // login. Anonymous browsers must not insert clinic records before verification.
 
     return {
       success: true,
@@ -278,24 +266,25 @@ export const AuthProvider = ({ children }) => {
   // Update Profile
   const updateProfile = async (userData) => {
     try {
-      if (!user) throw new Error('No user logged in');
+      if (!user || userType !== 'patient') throw new Error('Log in as a patient to update your personal profile.');
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('patients')
         .update({
           first_name: userData.first_name,
           last_name: userData.last_name,
-          email: userData.email,
           address: userData.address,
           contact_no: userData.contact_no,
           birthday: userData.birthday,
           age: calculateAge(userData.birthday)
         })
-        .eq('email', user.email);
+        .eq('auth_user_id', user.id)
+        .select('patient_id, first_name, last_name, address, contact_no, birthday, age');
 
       if (error) throw error;
+      if (data?.length !== 1) throw new Error('Your patient profile changed or access was denied. Please log in again.');
 
-      setUserDetails(prev => ({ ...prev, ...userData }));
+      setUserDetails(prev => ({ ...prev, ...data[0] }));
       
       return { success: true, message: 'Profile updated successfully!' };
     } catch (error) {

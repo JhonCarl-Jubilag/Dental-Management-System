@@ -1,0 +1,63 @@
+.doctor-availability-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background: rgba(24, 42, 65, 0.55);
+}
+
+.doctor-availability-dialog {
+  width: min(960px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 18px;
+  background: #fff;
+  color: #354d70;
+  box-shadow: 0 20px 60px rgba(24, 42, 65, 0.2);
+  padding: 28px;
+}
+
+.doctor-availability-dialog .doctor-availability-heading,
+.doctor-availability-dialog .doctor-availability-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.doctor-availability-dialog h2 { margin: 0 0 8px; font-size: 24px; color: #354d70; }
+.doctor-availability-dialog h3 { margin: 0 0 16px; font-size: 18px; color: #354d70; }
+.doctor-availability-dialog p { line-height: 1.5; margin: 8px 0 16px; }
+.doctor-availability-dialog .doctor-availability-notice { padding: 14px; border-radius: 10px; background: #edf6fa; font-size: 14px; }
+.doctor-availability-dialog .doctor-availability-error { padding: 14px; background: #fff0ef; color: #9c332b; border-radius: 10px; margin-bottom: 16px; }
+.doctor-availability-dialog .doctor-availability-columns { display: grid; grid-template-columns: 280px 1fr; gap: 28px; }
+.doctor-availability-dialog fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.doctor-availability-dialog label { display: block; font-weight: 600; margin: 16px 0 6px; }
+.doctor-availability-dialog input { box-sizing: border-box; display: block; width: 100%; padding: 10px 12px; background: #fff; color: #354d70; border: 1px solid #ced9e5; border-radius: 8px; font: inherit; }
+.doctor-availability-dialog button { cursor: pointer; border: 1px solid #ced9e5; border-radius: 8px; background: #fff; color: #354d70; padding: 9px 14px; font: inherit; line-height: 1.25; }
+.doctor-availability-dialog button:hover:not(:disabled) { background: #edf3f9; }
+.doctor-availability-dialog button:disabled { opacity: 0.55; cursor: not-allowed; }
+.doctor-availability-dialog button:focus-visible,
+.doctor-availability-dialog input:focus-visible { outline: 3px solid #78a8e8; outline-offset: 2px; }
+.doctor-availability-dialog .doctor-availability-primary { background: #354d70; color: #fff; border-color: #354d70; }
+.doctor-availability-dialog .doctor-availability-primary:hover:not(:disabled) { background: #263c5b; }
+.doctor-availability-dialog .doctor-availability-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.doctor-availability-dialog .doctor-availability-periods { min-width: 0; }
+.doctor-availability-dialog .doctor-availability-period { padding: 16px; border: 1px solid #e0e8ef; border-radius: 10px; margin: 0 0 12px; line-height: 1.6; }
+.doctor-availability-dialog .doctor-availability-enabled,
+.doctor-availability-dialog .doctor-availability-disabled { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 13px; margin-top: 6px; background: #e5f7ed; color: #197346; }
+.doctor-availability-dialog .doctor-availability-disabled { background: #eef1f5; color: #58677a; }
+.doctor-availability-dialog .doctor-availability-appointments { border-top: 1px solid #e0e8ef; padding-top: 20px; margin-top: 24px; }
+.doctor-availability-dialog .doctor-availability-appointment { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 12px 0; border-bottom: 1px solid #edf1f5; }
+.doctor-availability-dialog .doctor-availability-appointment time { margin-left: auto; }
+.doctor-availability-dialog .doctor-availability-footer { display: flex; justify-content: flex-end; padding-top: 20px; }
+
+@media (max-width: 640px) {
+  .doctor-availability-overlay { padding: 12px; }
+  .doctor-availability-dialog { padding: 20px; max-height: 94vh; }
+  .doctor-availability-dialog .doctor-availability-columns { grid-template-columns: 1fr; gap: 24px; }
+  .doctor-availability-dialog .doctor-availability-appointment { flex-direction: column; }
+  .doctor-availability-dialog .doctor-availability-appointment time { margin-left: 0; }
+}

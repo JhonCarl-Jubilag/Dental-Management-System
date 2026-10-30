@@ -7,6 +7,8 @@ import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase, doctorProfileFields } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
+import DoctorAvailabilityModal from '../../components/admin/DoctorAvailabilityModal';
+import { getClinicDate } from '../../utils/clinicScheduling';
 import './manageDoctors.css';
 
 const manageDoctorAccount = async (body) => {
@@ -50,15 +52,16 @@ const ManageDoctors = () => {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
-  const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+  const [providerSetup, setProviderSetup] = useState(null);
+  const [setupError, setSetupError] = useState('');
+  const providerSaving = useRef(false);
+  const providerSetupRequest = useRef(0);
+  const [availabilityDoctor, setAvailabilityDoctor] = useState(null);
 
   const [addForm, setAddForm] = useState({
     first_name: '',
     last_name: '',
     email: '',
-    password: '',
-    confirm_password: '',
     specialization: '',
     contact_no: '',
     service_ids: []
@@ -73,16 +76,6 @@ const ManageDoctors = () => {
     status: 'active',
     service_ids: []
   });
-  const [resetForm, setResetForm] = useState({
-    doctor_id: ''
-  });
-  const [availabilityForm, setAvailabilityForm] = useState({
-    doctor_id: '',
-    available_date: '',
-    start_time: '09:00',
-    end_time: '17:00'
-  });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [doctorServicesMap, setDoctorServicesMap] = useState({});
   const [doctorStats, setDoctorStats] = useState({});
@@ -213,11 +206,12 @@ const ManageDoctors = () => {
       });
 
       // 5. Availability counts
-      const today = new Date().toISOString().split('T')[0];
+      const today = getClinicDate();
       const { data: availData, error: availError } = await supabase
         .from('doctor_availability')
         .select('doctor_id, availability_id')
         .in('doctor_id', doctorIds)
+        .eq('is_available', true)
         .gte('available_date', today);
       if (!availError && availData) {
         const counts = {};
@@ -264,177 +258,55 @@ const ManageDoctors = () => {
     setPage(1);
   };
 
-  const handleAddDoctor = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    if (addForm.password !== addForm.confirm_password) {
-      toast.error('Passwords do not match');
-      setIsSubmitting(false);
-      return;
-    }
-    if (addForm.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      setIsSubmitting(false);
-      return;
-    }
-
+  const loadProviderSetup = useCallback(async () => {
+    if (!user || !isClinicUser(userType)) return;
+    const version = ++providerSetupRequest.current;
+    setProviderSetup(null);
+    setSetupError('');
     try {
-      await manageDoctorAccount({
-        action: 'create',
-        first_name: addForm.first_name,
-        last_name: addForm.last_name,
-        email: addForm.email,
-        password: addForm.password,
-        specialization: addForm.specialization,
-        contact_no: addForm.contact_no,
-        service_ids: addForm.service_ids,
+      const state = await manageDoctorAccount({ action: 'status' });
+      if (version === providerSetupRequest.current) setProviderSetup(state);
+    } catch (err) {
+      if (version === providerSetupRequest.current) { setProviderSetup(null); setSetupError(err.message); }
+    }
+  }, [user, userType]);
+
+  useEffect(() => { loadProviderSetup(); return () => { providerSetupRequest.current += 1; }; }, [loadProviderSetup]);
+
+  const saveProvider = async (event, editing = false) => {
+    event.preventDefault();
+    if (providerSaving.current || !providerSetup?.ready) return;
+    providerSaving.current = true; setIsSubmitting(true);
+    const form = editing ? editForm : addForm;
+    try {
+      await manageDoctorAccount({ action: editing ? 'update' : 'create',
+        ...(editing ? { doctor_id: form.doctor_id, expected: form.expected } : {}),
+        profile: { first_name: form.first_name, last_name: form.last_name, email: form.email,
+          specialization: form.specialization || null, contact_no: form.contact_no || null, status: editing ? form.status : 'active' },
+        service_ids: form.service_ids,
       });
-
-      toast.success('Doctor and login account created successfully! Use the login page to sign in.');
-      setShowAddModal(false);
-      setAddForm({
-        first_name: '', last_name: '', email: '', password: '', confirm_password: '',
-        specialization: '', contact_no: '', service_ids: []
-      });
-      fetchData();
-    } catch (err) {
-      console.error('Error adding doctor:', err);
-      toast.error(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+      toast.success(editing ? 'Dentist profile and services updated.' : 'Dentist profile created. No login account was created.');
+      if (editing) setShowEditModal(false); else setShowAddModal(false);
+      await fetchData();
+    } catch (err) { toast.error(err.message); }
+    finally { providerSaving.current = false; setIsSubmitting(false); }
   };
 
-  const handleEditDoctor = async (e) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    let emailChanged = false;
-
+  const retireDentistLogins = async () => {
+    if (!isSuperAdmin || providerSaving.current || !providerSetup?.fingerprint) return;
+    const count = providerSetup.candidates.filter(candidate => !candidate.disabled).length;
+    if (!window.confirm(`Retire ${count} reviewed dentist login(s)? Dentist profiles, schedules and clinical records will be kept. Owner, Staff and Patient identities are excluded.`)) return;
+    providerSaving.current = true; setIsSubmitting(true);
     try {
-      const email = editForm.email.trim().toLowerCase();
-      if (email !== editForm.original_email.trim().toLowerCase()) {
-        if (!isSuperAdmin) throw new Error('Only the super admin can change login emails.');
-        const result = await manageDoctorAccount({
-          action: 'change_email', doctor_id: editForm.doctor_id,
-          new_email: email, expected_email: editForm.original_email,
-        });
-        emailChanged = true;
-        setEditForm(form => ({ ...form, email: result.email, original_email: result.email }));
-        setDoctors(current => current.map(doctor => doctor.doctor_id === editForm.doctor_id
-          ? { ...doctor, email: result.email } : doctor));
-      }
-      const { error: updateError } = await supabase
-        .from('doctors')
-        .update({
-          first_name: editForm.first_name,
-          last_name: editForm.last_name,
-          specialization: editForm.specialization || null,
-          contact_no: editForm.contact_no || null,
-          status: editForm.status
-        })
-        .eq('doctor_id', editForm.doctor_id);
-      if (updateError) throw updateError;
-
-      const { error: deleteError } = await supabase
-        .from('doctor_services')
-        .delete()
-        .eq('doctor_id', editForm.doctor_id);
-      if (deleteError) throw deleteError;
-
-      if (editForm.service_ids.length > 0) {
-        const servicesToInsert = editForm.service_ids.map(service_id => ({
-          doctor_id: editForm.doctor_id,
-          service_id,
-          status: 'active'
-        }));
-        const { error: insertError } = await supabase
-          .from('doctor_services')
-          .insert(servicesToInsert);
-        if (insertError) throw insertError;
-      }
-
-      toast.success(emailChanged ? 'Doctor updated successfully! Use the new email with the existing password.' : 'Doctor updated successfully!');
-      setShowEditModal(false);
-      fetchData();
-    } catch (err) {
-      console.error('Error updating doctor:', err);
-      toast.error(emailChanged ? `Login email updated, but the other changes could not be saved: ${err.message}` : err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      const result = await manageDoctorAccount({ action: 'send_reset_email', doctor_id: resetForm.doctor_id });
-      toast.success(result.message);
-      setShowResetPasswordModal(false);
-      setResetForm({ doctor_id: '' });
-    } catch (err) {
-      console.error('Error resetting password:', err);
-      toast.error(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAddAvailability = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    if (availabilityForm.start_time >= availabilityForm.end_time) {
-      toast.error('End time must be after start time');
-      setIsSubmitting(false);
-      return;
-    }
-
-    try {
-      const { data: existing, error: checkError } = await supabase
-        .from('doctor_availability')
-        .select('availability_id')
-        .eq('doctor_id', availabilityForm.doctor_id)
-        .eq('available_date', availabilityForm.available_date)
-        .eq('start_time', availabilityForm.start_time)
-        .maybeSingle();
-
-      if (checkError) throw checkError;
-      if (existing) {
-        toast.error('Availability slot already exists for this doctor on the selected date and time.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const { error } = await supabase
-        .from('doctor_availability')
-        .insert([{
-          doctor_id: availabilityForm.doctor_id,
-          available_date: availabilityForm.available_date,
-          start_time: availabilityForm.start_time,
-          end_time: availabilityForm.end_time,
-          is_available: true
-        }]);
-      if (error) throw error;
-
-      toast.success('Availability slot added successfully!');
-      setShowAvailabilityModal(false);
-      setAvailabilityForm({ doctor_id: '', available_date: '', start_time: '09:00', end_time: '17:00' });
-      fetchData();
-    } catch (err) {
-      console.error('Error adding availability:', err);
-      toast.error(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+      setProviderSetup(await manageDoctorAccount({ action: 'retire_logins', fingerprint: providerSetup.fingerprint }));
+      toast.success('Reviewed dentist logins retired. Provider profiles are preserved.');
+    } catch (err) { toast.error(err.message); await loadProviderSetup(); }
+    finally { providerSaving.current = false; setIsSubmitting(false); }
   };
 
   const openAddModal = () => {
     setAddForm({
-      first_name: '', last_name: '', email: '', password: '', confirm_password: '',
+      first_name: '', last_name: '', email: '',
       specialization: '', contact_no: '', service_ids: []
     });
     setShowAddModal(true);
@@ -446,29 +318,15 @@ const ManageDoctors = () => {
       first_name: doctor.first_name,
       last_name: doctor.last_name,
       email: doctor.email,
-      original_email: doctor.email,
+      expected: { profile: { first_name: doctor.first_name, last_name: doctor.last_name, email: doctor.email,
+        specialization: doctor.specialization, contact_no: doctor.contact_no, status: doctor.status },
+        service_ids: (doctorServicesMap[doctor.doctor_id] || []).map(service => service.service_id).sort((a,b) => a-b) },
       specialization: doctor.specialization || '',
       contact_no: doctor.contact_no || '',
       status: doctor.status,
       service_ids: doctorServicesMap[doctor.doctor_id]?.map(s => s.service_id) || []
     });
     setShowEditModal(true);
-  };
-
-  const openResetPasswordModal = (doctorId) => {
-    setResetForm({ doctor_id: doctorId });
-    setShowResetPasswordModal(true);
-  };
-
-  const openAvailabilityModal = (doctorId) => {
-    const today = new Date().toISOString().split('T')[0];
-    setAvailabilityForm({
-      doctor_id: doctorId,
-      available_date: today,
-      start_time: '09:00',
-      end_time: '17:00'
-    });
-    setShowAvailabilityModal(true);
   };
 
   const handleLogout = async () => {
@@ -498,7 +356,7 @@ const ManageDoctors = () => {
             <p className="welcome-message">Add, edit, and manage dental doctors and their services</p>
           </div>
           <div className="header-actions">
-            <button className="btn btn-primary" disabled={loading || !hasLoaded} onClick={openAddModal}>
+            <button className="btn btn-primary" disabled={loading || !hasLoaded || !providerSetup?.ready || isSubmitting} onClick={openAddModal}>
               <i className="fas fa-plus"></i> Add New Doctor
             </button>
             <div className="user-info">
@@ -509,6 +367,17 @@ const ManageDoctors = () => {
               </div>
             </div>
           </div>
+        </div>
+        <div className="provider-cutover-notice">
+          <p>Dentists are managed as clinic profiles. New profiles do not receive login accounts.</p>
+          {setupError && <p role="alert">{setupError}</p>}
+          {!providerSetup?.ready && !setupError && <p>Provider editing is waiting for the Owner to finish retiring legacy dentist logins. Scheduling remains available.</p>}
+          <button type="button" className="btn btn-secondary" disabled={isSubmitting} onClick={loadProviderSetup}>Refresh provider setup</button>
+          {isSuperAdmin && providerSetup?.candidates?.some(candidate => !candidate.disabled) && <details>
+            <summary>Review legacy dentist sign-ins</summary>
+            <ul>{providerSetup.candidates.map(candidate => <li key={candidate.auth_user_id}>Dr. {candidate.first_name} {candidate.last_name} — {candidate.email} ({candidate.disabled ? 'Already disabled' : 'Will be retired'})</li>)}</ul>
+            <button type="button" className="btn btn-warning" disabled={isSubmitting} onClick={retireDentistLogins}>Retire reviewed dentist logins</button>
+          </details>}
         </div>
         <AdminDataRegion loading={loading} hasLoaded={hasLoaded} error={loadError} label="Doctors" onRetry={fetchData}>
 
@@ -609,7 +478,7 @@ const ManageDoctors = () => {
                             <div>
                               <button 
                                 className="doctor-name-button"
-                                onClick={() => openEditModal(doctor)}
+                                disabled={!providerSetup?.ready || isSubmitting} onClick={() => openEditModal(doctor)}
                               >
                                 Dr. {doctor.first_name} {doctor.last_name}
                               </button>
@@ -647,14 +516,11 @@ const ManageDoctors = () => {
                         </td>
                         <td style={{ verticalAlign: 'middle' }}>
                           <div className="action-buttonsss">
-                            <button className="btn btn-primary btn-sm" onClick={() => openEditModal(doctor)}>
+                            <button className="btn btn-primary btn-sm" disabled={!providerSetup?.ready || isSubmitting} onClick={() => openEditModal(doctor)}>
                               Edit
                             </button>
-                            <button className="btn btn-info btn-sm" onClick={() => openAvailabilityModal(doctor.doctor_id)}>
+                            <button className="btn btn-info btn-sm" onClick={() => setAvailabilityDoctor(doctor)}>
                               Availability
-                            </button>
-                            <button className="btn btn-secondary btn-sm" onClick={() => openResetPasswordModal(doctor.doctor_id)}>
-                              Reset Pass
                             </button>
                           </div>
                         </td>
@@ -684,7 +550,7 @@ const ManageDoctors = () => {
               <h3>Add New Doctor</h3>
               <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
             </div>
-            <form onSubmit={handleAddDoctor}>
+            <form onSubmit={event => saveProvider(event)}>
               <div className="modal-body">
                 <div className="form-row">
                   <div className="form-group">
@@ -697,19 +563,10 @@ const ManageDoctors = () => {
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>Email *</label>
+                  <label>Contact Email *</label>
                   <input type="email" className="form-control" value={addForm.email} onChange={e => setAddForm({...addForm, email: e.target.value})} required />
                 </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Password *</label>
-                    <input type="password" className="form-control" value={addForm.password} onChange={e => setAddForm({...addForm, password: e.target.value})} required />
-                  </div>
-                  <div className="form-group">
-                    <label>Confirm Password *</label>
-                    <input type="password" className="form-control" value={addForm.confirm_password} onChange={e => setAddForm({...addForm, confirm_password: e.target.value})} required />
-                  </div>
-                </div>
+
                 <div className="form-group">
                   <label>Specialization</label>
                   <input type="text" className="form-control" value={addForm.specialization} onChange={e => setAddForm({...addForm, specialization: e.target.value})} placeholder="e.g., General Dentistry, Orthodontics" />
@@ -758,7 +615,7 @@ const ManageDoctors = () => {
               <h3>Edit Doctor</h3>
               <button className="modal-close" onClick={() => setShowEditModal(false)}>&times;</button>
             </div>
-            <form onSubmit={handleEditDoctor}>
+            <form onSubmit={event => saveProvider(event, true)}>
               <div className="modal-body">
                 <div className="form-row">
                   <div className="form-group">
@@ -771,9 +628,9 @@ const ManageDoctors = () => {
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>Email *</label>
-                  <input type="email" className="form-control" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} readOnly={!isSuperAdmin} disabled={isSubmitting} maxLength={254} required />
-                  <small>{isSuperAdmin ? 'Changing this email changes the login address. The password stays the same.' : 'Only the super admin can change the login email.'}</small>
+                  <label>Contact Email *</label>
+                  <input type="email" className="form-control" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} disabled={isSubmitting} maxLength={254} required />
+                  <small>This changes dentist contact information only. No login account is changed.</small>
                 </div>
                 <div className="form-group">
                   <label>Specialization</label>
@@ -822,60 +679,13 @@ const ManageDoctors = () => {
         </div>
       )}
 
-      {/* Reset Password Modal */}
-      {showResetPasswordModal && (
-        <div className="modal active" onClick={(e) => e.target === e.currentTarget && setShowResetPasswordModal(false)}>
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Reset Doctor Password</h3>
-              <button className="modal-close" onClick={() => setShowResetPasswordModal(false)}>&times;</button>
-            </div>
-            <form onSubmit={handleResetPassword}>
-              <div className="modal-body">
-                <p>Send a password reset email to <strong>{doctors.find(doctor => doctor.doctor_id === resetForm.doctor_id)?.email}</strong>?</p>
-                <p>The doctor will use the email link to choose their own new password.</p>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowResetPasswordModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : 'Send Reset Email'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Availability Modal */}
-      {showAvailabilityModal && (
-        <div className="modal active" onClick={(e) => e.target === e.currentTarget && setShowAvailabilityModal(false)}>
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Add Availability Slot</h3>
-              <button className="modal-close" onClick={() => setShowAvailabilityModal(false)}>&times;</button>
-            </div>
-            <form onSubmit={handleAddAvailability}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>Available Date *</label>
-                  <input type="date" className="form-control" value={availabilityForm.available_date} onChange={e => setAvailabilityForm({...availabilityForm, available_date: e.target.value})} min={new Date().toISOString().split('T')[0]} required />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Start Time *</label>
-                    <input type="time" className="form-control" value={availabilityForm.start_time} onChange={e => setAvailabilityForm({...availabilityForm, start_time: e.target.value})} required />
-                  </div>
-                  <div className="form-group">
-                    <label>End Time *</label>
-                    <input type="time" className="form-control" value={availabilityForm.end_time} onChange={e => setAvailabilityForm({...availabilityForm, end_time: e.target.value})} required />
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAvailabilityModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Adding...' : 'Add Slot'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {availabilityDoctor && (
+        <DoctorAvailabilityModal
+          key={availabilityDoctor.doctor_id}
+          doctor={availabilityDoctor}
+          onClose={() => setAvailabilityDoctor(null)}
+          onChanged={fetchData}
+        />
       )}
 
       {isLoggingOut && <div className="logout-overlay"><div className="logout-content"><i className="fas fa-spinner fa-spin"></i><p>Logging out...</p></div></div>}

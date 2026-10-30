@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
-import { completeFinishedAppointments } from '../../services/appointmentCompletion';
+import { completeFinishedAppointments, cancelExpiredPendingAppointments } from '../../services/appointmentCompletion';
 import { hasAppointmentEnded } from '../../utils/appointmentTiming';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
+import { saveAppointmentNote, getAppointmentRequestReason } from '../../services/appointmentNotes';
+import { validateAppointmentReschedule } from '../../services/doctorScheduling';
+import { CLINIC_TIME_ZONE, clinicDateTime, clinicDayBounds, formatClinicDateTime, toClinicDateTimeInput } from '../../utils/clinicScheduling';
 import './manageAppointments.css';
 
 const ManageAppointments = () => {
@@ -29,6 +32,10 @@ const ManageAppointments = () => {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedDate, setSelectedDate] = useState('');
   const [showRemarksModal, setShowRemarksModal] = useState(false);
+  const [savingRemarks, setSavingRemarks] = useState(false);
+  const remarksSaving = useRef(false);
+  const rescheduleSaving = useRef(false);
+  const [savingReschedule, setSavingReschedule] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showRescheduleRequestModal, setShowRescheduleRequestModal] = useState(false);
   const [showCancelRequestModal, setShowCancelRequestModal] = useState(false);
@@ -85,16 +92,12 @@ const ManageAppointments = () => {
     let cancelledCount = 0;
     let completedCount = 0;
 
-    const { data: pendingExpired, error: pendingError } = await supabase
-      .from('appointments')
-      .update({
-        status: 'cancelled',
-        remarks: `[System Auto-cancel ${new Date().toLocaleString()}]: Appointment auto-cancelled because the scheduled time has passed.`
-      })
-      .eq('status', 'pending')
-      .lt('appointment_datetime', now)
-      .select();
-    if (!pendingError && pendingExpired) cancelledCount = pendingExpired.length;
+    try {
+      cancelledCount = await cancelExpiredPendingAppointments(supabase, null, new Date(now));
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not update expired appointments. Please reload to retry.');
+    }
 
     try {
       completedCount = await completeFinishedAppointments(supabase, new Date(now));
@@ -145,9 +148,8 @@ const ManageAppointments = () => {
       if (selectedDoctor !== 'all') query = query.eq('doctor_id', selectedDoctor);
       if (selectedStatus !== 'all') query = query.eq('status', selectedStatus);
       if (selectedDate) {
-        const start = `${selectedDate} 00:00:00`;
-        const end = `${selectedDate} 23:59:59`;
-        query = query.gte('appointment_datetime', start).lte('appointment_datetime', end);
+        const { start, end } = clinicDayBounds(selectedDate);
+        query = query.gte('appointment_datetime', start).lt('appointment_datetime', end);
       }
 
       const { data, error } = await query;
@@ -173,13 +175,11 @@ const ManageAppointments = () => {
   }, [autoUpdateExpired, fetchStats, fetchAppointments]);
 
   const updateStatus = async (appointmentId, status, remarksOverride = null) => {
-    const updateData = {
-      status,
-      updated_at: new Date().toISOString(),
-      remarks: remarksOverride !== null ? remarksOverride : `[Admin Action ${new Date().toLocaleString()}]: Status changed to ${status.toUpperCase()}`
-    };
-    const { error } = await supabase.from('appointments').update(updateData).eq('appointment_id', appointmentId);
-    if (error) throw error;
+    const appointment = appointments.find(item => item.appointment_id === appointmentId);
+    if (!appointment) throw new Error('Reload the appointment before changing its status.');
+    await saveAppointmentNote(supabase, appointment,
+      remarksOverride !== null ? remarksOverride : `[Admin Action ${new Date().toLocaleString()}]: Status changed to ${status.toUpperCase()}`,
+      { status: status });
   };
 
   const handleApprove = async (appointment) => {
@@ -219,6 +219,7 @@ const ManageAppointments = () => {
   };
 
   const handleDelete = async (appointment) => {
+    if (!isOwner(userType)) { toast.error('Only the Owner can permanently delete appointments.'); return; }
     if (appointment.status !== 'cancelled') {
       toast.error('Only cancelled appointments can be deleted.');
       return;
@@ -256,20 +257,21 @@ const ManageAppointments = () => {
 
   const saveRemarks = async (e) => {
     e.preventDefault();
+    if (remarksSaving.current || !currentAppointment) return;
+    if (!remarksForm.remarks.trim()) { toast.error('Enter service remarks before saving.'); return; }
+    remarksSaving.current = true;
+    setSavingRemarks(true);
     try {
       let newRemarks = `[Admin Remarks ${new Date().toLocaleString()}]:\n\nSERVICE NOTES:\n${remarksForm.remarks}\n\n`;
       if (remarksForm.follow_up_date) newRemarks += `FOLLOW-UP DATE: ${new Date(remarksForm.follow_up_date).toLocaleDateString()}\n`;
       if (remarksForm.next_service) newRemarks += `RECOMMENDED NEXT SERVICE: ${remarksForm.next_service}\n`;
       if (remarksForm.additional_notes) newRemarks += `ADDITIONAL NOTES:\n${remarksForm.additional_notes}\n`;
-      const { error } = await supabase
-        .from('appointments')
-        .update({ remarks: newRemarks, updated_at: new Date().toISOString() })
-        .eq('appointment_id', remarksForm.appointment_id);
-      if (error) throw error;
+      await saveAppointmentNote(supabase, currentAppointment, newRemarks);
       toast.success('Remarks added!');
       setShowRemarksModal(false);
       await fetchAppointments();
     } catch (err) { toast.error(err.message); }
+    finally { remarksSaving.current = false; setSavingRemarks(false); }
   };
 
   const openRescheduleModal = (appointment) => {
@@ -284,51 +286,23 @@ const ManageAppointments = () => {
       toast.error('Please select a new date and time.');
       return;
     }
-    const newTime = new Date(rescheduleForm.new_datetime);
-    if (newTime - new Date() < 3600000) {
-      toast.error('New time must be at least 1 hour from now.');
-      return;
-    }
+    if (rescheduleSaving.current) return;
+    rescheduleSaving.current = true;
+    setSavingReschedule(true);
     try {
-      const doctorId = currentAppointment.doctor_id;
-      const newDate = rescheduleForm.new_datetime.slice(0, 10);
-      const duration = 60;
-      const { data: availability, error: availError } = await supabase
-        .from('doctor_availability')
-        .select('*')
-        .eq('doctor_id', doctorId)
-        .eq('available_date', newDate)
-        .eq('is_available', true)
-        .maybeSingle();
-      if (availError || !availability) throw new Error('Doctor not available on selected date.');
-      const { data: overlapping, error: overlapError } = await supabase
-        .from('appointments')
-        .select('appointment_datetime')
-        .eq('doctor_id', doctorId)
-        .in('status', ['pending', 'confirmed'])
-        .neq('appointment_id', currentAppointment.appointment_id)
-        .gte('appointment_datetime', `${newDate} 00:00:00`)
-        .lt('appointment_datetime', `${newDate} 23:59:59`);
-      if (overlapError) throw overlapError;
-      const requestStart = newTime;
-      const requestEnd = new Date(requestStart.getTime() + duration * 60000);
-      let overlap = false;
-      for (const apt of overlapping) {
-        const aptStart = new Date(apt.appointment_datetime);
-        const aptEnd = new Date(aptStart.getTime() + duration * 60000);
-        if (requestStart < aptEnd && requestEnd > aptStart) { overlap = true; break; }
-      }
-      if (overlap) throw new Error('Time slot overlaps with another appointment.');
-      const newRemarks = `[Admin Action ${new Date().toLocaleString()}]: Rescheduled to ${new Date(rescheduleForm.new_datetime).toLocaleString()}`;
-      await supabase
-        .from('appointments')
-        .update({ appointment_datetime: rescheduleForm.new_datetime, remarks: newRemarks, updated_at: new Date().toISOString() })
-        .eq('appointment_id', currentAppointment.appointment_id);
+      if (currentAppointment?.status !== 'pending') throw new Error('Reload this pending appointment before rescheduling.');
+      const [date, time] = rescheduleForm.new_datetime.split('T');
+      const newTime = await validateAppointmentReschedule({
+        appointment: currentAppointment, targetDateTime: clinicDateTime(date, time), leadMinutes: 60,
+      });
+      const newRemarks = `[Admin Action ${new Date().toLocaleString()}]: Rescheduled to ${formatClinicDateTime(newTime)}`;
+      await saveAppointmentNote(supabase, currentAppointment, newRemarks, { appointment_datetime: newTime });
       toast.success('Appointment rescheduled!');
       setShowRescheduleModal(false);
       await autoUpdateExpired();
       await fetchStats(); await fetchAppointments();
     } catch (err) { toast.error(err.message); }
+    finally { rescheduleSaving.current = false; setSavingReschedule(false); }
   };
 
   const openRescheduleRequestModal = (appointment) => {
@@ -338,72 +312,37 @@ const ManageAppointments = () => {
   };
 
   const handleRescheduleRequest = async (action, rejectReasonText = '') => {
+    if (rescheduleSaving.current) return;
     if (!window.confirm(`Are you sure you want to ${action} this reschedule request?`)) return;
+    rescheduleSaving.current = true;
+    setSavingReschedule(true);
     try {
       if (action === 'approve') {
-        let requestedTime = currentAppointment.request_new_datetime ? new Date(currentAppointment.request_new_datetime) : null;
-        if (!requestedTime || isNaN(requestedTime.getTime())) throw new Error('Could not determine requested time.');
-        if (requestedTime <= new Date()) throw new Error('Requested time must be in the future.');
-        const doctorId = currentAppointment.doctor_id;
-        const newDate = requestedTime.toISOString().slice(0, 10);
-        const duration = 60;
-        const { data: availability } = await supabase
-          .from('doctor_availability')
-          .select('*')
-          .eq('doctor_id', doctorId)
-          .eq('available_date', newDate)
-          .eq('is_available', true)
-          .maybeSingle();
-        if (!availability) throw new Error('Doctor not available on requested date.');
-        const { data: overlapping } = await supabase
-          .from('appointments')
-          .select('appointment_datetime')
-          .eq('doctor_id', doctorId)
-          .in('status', ['pending', 'confirmed'])
-          .neq('appointment_id', currentAppointment.appointment_id)
-          .gte('appointment_datetime', `${newDate} 00:00:00`)
-          .lt('appointment_datetime', `${newDate} 23:59:59`);
-        const requestStart = requestedTime;
-        const requestEnd = new Date(requestStart.getTime() + duration * 60000);
-        let overlap = false;
-        for (const apt of overlapping) {
-          const aptStart = new Date(apt.appointment_datetime);
-          const aptEnd = new Date(aptStart.getTime() + duration * 60000);
-          if (requestStart < aptEnd && requestEnd > aptStart) { overlap = true; break; }
+        if (currentAppointment?.status !== 'confirmed' || currentAppointment.request_status !== 'pending' || currentAppointment.request_type !== 'reschedule') {
+          throw new Error('This reschedule request is no longer pending. Refresh the appointment.');
         }
-        if (overlap) throw new Error('Requested time overlaps with another appointment.');
-        const newRemarks = `[Admin Action ${new Date().toLocaleString()}]: Patient reschedule request APPROVED\nChanged to ${requestedTime.toLocaleString()}`;
-        await supabase
-          .from('appointments')
-          .update({
-            appointment_datetime: requestedTime.toISOString(),
-            remarks: newRemarks,
+        const requestedTime = await validateAppointmentReschedule({
+          appointment: currentAppointment, targetDateTime: currentAppointment.request_new_datetime, leadMinutes: 0,
+        });
+        const newRemarks = `[Admin Action ${new Date().toLocaleString()}]: Patient reschedule request APPROVED\nChanged to ${formatClinicDateTime(requestedTime)}`;
+        await saveAppointmentNote(supabase, currentAppointment, newRemarks, { appointment_datetime: requestedTime,
             request_type: null,
             request_new_datetime: null,
-            request_status: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('appointment_id', currentAppointment.appointment_id);
+            request_status: null });
         toast.success('Reschedule request approved!');
       } else {
         const rejectMsg = rejectReasonText ? ` - ${rejectReasonText}` : '';
         const newRemarks = `[Admin Action ${new Date().toLocaleString()}]: Patient reschedule request REJECTED${rejectMsg}`;
-        await supabase
-          .from('appointments')
-          .update({
-            remarks: newRemarks,
-            request_type: null,
+        await saveAppointmentNote(supabase, currentAppointment, newRemarks, { request_type: null,
             request_new_datetime: null,
-            request_status: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('appointment_id', currentAppointment.appointment_id);
+            request_status: null });
         toast.success('Reschedule request rejected.');
       }
       setShowRescheduleRequestModal(false);
       await autoUpdateExpired();
       await fetchStats(); await fetchAppointments();
     } catch (err) { toast.error(err.message); }
+    finally { rescheduleSaving.current = false; setSavingReschedule(false); }
   };
 
   const openCancelRequestModal = (appointment) => {
@@ -417,31 +356,17 @@ const ManageAppointments = () => {
     try {
       if (action === 'approve') {
         const newRemarks = `[Admin Action ${new Date().toLocaleString()}]: Patient cancellation request APPROVED`;
-        await supabase
-          .from('appointments')
-          .update({
-            status: 'cancelled',
-            remarks: newRemarks,
+        await saveAppointmentNote(supabase, currentAppointment, newRemarks, { status: 'cancelled',
             request_type: null,
             request_new_datetime: null,
-            request_status: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('appointment_id', currentAppointment.appointment_id);
+            request_status: null });
         toast.success('Cancellation request approved! Appointment cancelled.');
       } else {
         const rejectMsg = rejectReasonText ? ` - ${rejectReasonText}` : '';
         const newRemarks = `[Admin Action ${new Date().toLocaleString()}]: Patient cancellation request REJECTED${rejectMsg}`;
-        await supabase
-          .from('appointments')
-          .update({
-            remarks: newRemarks,
-            request_type: null,
+        await saveAppointmentNote(supabase, currentAppointment, newRemarks, { request_type: null,
             request_new_datetime: null,
-            request_status: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('appointment_id', currentAppointment.appointment_id);
+            request_status: null });
         toast.success('Cancellation request rejected.');
       }
       setShowCancelRequestModal(false);
@@ -603,7 +528,7 @@ const ManageAppointments = () => {
                         </div>
                         <div className="admin-compact-datetime">
                           <i className="fas fa-calendar-alt"></i>
-                          <span>{appointmentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {appointmentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>{appointmentTime.toLocaleDateString('en-US', { timeZone: CLINIC_TIME_ZONE, month: 'short', day: 'numeric', year: 'numeric' })} at {appointmentTime.toLocaleTimeString('en-US', { timeZone: CLINIC_TIME_ZONE, hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                       </div>
                       <div className="admin-compact-status">
@@ -658,7 +583,7 @@ const ManageAppointments = () => {
                           )}
                           {app.status === 'cancelled' && (
                             <>
-                              <button className="btn btn-danger btn-sm" onClick={() => handleDelete(app)}>Delete Permanently</button>
+                              {isSuperAdmin && <button className="btn btn-danger btn-sm" onClick={() => handleDelete(app)}>Delete Permanently</button>}
                               <button className="btn btn-info btn-sm" onClick={() => openRemarksModal(app)}>View Remarks</button>
                             </>
                           )}
@@ -716,7 +641,7 @@ const ManageAppointments = () => {
                 <div className="detail-row"><div className="detail-label">Patient ID:</div><div className="detail-value">{currentAppointment.patients?.patient_id}</div></div>
                 <div className="detail-row"><div className="detail-label">Service:</div><div className="detail-value">{currentAppointment.services?.service_name}</div></div>
                 <div className="detail-row"><div className="detail-label">Doctor:</div><div className="detail-value">Dr. {currentAppointment.doctors?.first_name} {currentAppointment.doctors?.last_name}</div></div>
-                <div className="detail-row"><div className="detail-label">Appointment Date:</div><div className="detail-value">{new Date(currentAppointment.appointment_datetime).toLocaleString()}</div></div>
+                <div className="detail-row"><div className="detail-label">Appointment Date:</div><div className="detail-value">{formatClinicDateTime(currentAppointment.appointment_datetime)}</div></div>
                 <div className="detail-row"><div className="detail-label">Status:</div><div className="detail-value"><span className={`status-badge ${getStatusClass(currentAppointment.status)}`}>{currentAppointment.status.toUpperCase()}</span></div></div>
                 {currentAppointment.remarks && <div className="detail-row"><div className="detail-label">Remarks:</div><div className="detail-value remarks-text">{currentAppointment.remarks}</div></div>}
               </div>
@@ -727,50 +652,54 @@ const ManageAppointments = () => {
       )}
 
       {showRemarksModal && (
-        <div className="modal active" onClick={e => e.target === e.currentTarget && setShowRemarksModal(false)}>
+        <div className="modal active" onClick={e => e.target === e.currentTarget && !savingRemarks && setShowRemarksModal(false)}>
           <div className="modal-content">
-            <div className="modal-header"><h3>Add/Update Remarks</h3><button className="modal-close" onClick={() => setShowRemarksModal(false)}>&times;</button></div>
+            <div className="modal-header"><h3>Appointment documentation</h3><button className="modal-close" disabled={savingRemarks} onClick={() => setShowRemarksModal(false)}>&times;</button></div>
             <form onSubmit={saveRemarks}>
               <div className="modal-body">
+                <p>New documentation is added below existing notes and appears in the patient's appointment information.</p>
+                <div className="appointment-documentation-previous-notes">{currentAppointment?.remarks || 'No previous notes.'}</div>
+                <fieldset disabled={savingRemarks} className="appointment-documentation-fields">
                 <div className="form-group"><label>Service Remarks *</label><textarea className="form-control" rows="6" value={remarksForm.remarks} onChange={e => setRemarksForm({...remarksForm, remarks: e.target.value})} required /></div>
                 <div className="form-row"><div className="form-group"><label>Follow-up Date</label><input type="date" className="form-control" value={remarksForm.follow_up_date} onChange={e => setRemarksForm({...remarksForm, follow_up_date: e.target.value})} /></div><div className="form-group"><label>Next Service</label><select className="form-control" value={remarksForm.next_service} onChange={e => setRemarksForm({...remarksForm, next_service: e.target.value})}><option value="">Select</option>{allServices.map(s => <option key={s.service_id} value={s.service_name}>{s.service_name}</option>)}</select></div></div>
                 <div className="form-group"><label>Additional Notes</label><textarea className="form-control" rows="4" value={remarksForm.additional_notes} onChange={e => setRemarksForm({...remarksForm, additional_notes: e.target.value})} /></div>
+                </fieldset>
               </div>
-              <div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={() => setShowRemarksModal(false)}>Cancel</button><button type="submit" className="btn btn-primary">Save Remarks</button></div>
+              <div className="modal-footer"><button type="button" className="btn btn-secondary" disabled={savingRemarks} onClick={() => setShowRemarksModal(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={savingRemarks}>{savingRemarks ? 'Saving…' : 'Add documentation'}</button></div>
             </form>
           </div>
         </div>
       )}
 
       {showRescheduleModal && (
-        <div className="modal active" onClick={e => e.target === e.currentTarget && setShowRescheduleModal(false)}>
+        <div className="modal active" onClick={e => e.target === e.currentTarget && !savingReschedule && setShowRescheduleModal(false)}>
           <div className="modal-content">
-            <div className="modal-header"><h3>Reschedule Appointment</h3><button className="modal-close" onClick={() => setShowRescheduleModal(false)}>&times;</button></div>
+            <div className="modal-header"><h3>Reschedule Appointment</h3><button disabled={savingReschedule} className="modal-close" onClick={() => setShowRescheduleModal(false)}>&times;</button></div>
             <form onSubmit={approveReschedule}>
               <div className="modal-body">
-                <div className="form-group"><label>Current Time</label><input type="text" className="form-control" value={currentAppointment ? new Date(currentAppointment.appointment_datetime).toLocaleString() : ''} disabled /></div>
-                <div className="form-group"><label>New Date & Time</label><input type="datetime-local" className="form-control" value={rescheduleForm.new_datetime} onChange={e => setRescheduleForm({...rescheduleForm, new_datetime: e.target.value})} required min={new Date(Date.now() + 3600000).toISOString().slice(0,16)} /></div>
+                <div className="form-group"><label>Current Time</label><input type="text" className="form-control" value={currentAppointment ? formatClinicDateTime(currentAppointment.appointment_datetime) : ''} disabled /></div>
+                <div className="form-group"><label>New Date & Time (Philippine time)</label><input disabled={savingReschedule} type="datetime-local" className="form-control" value={rescheduleForm.new_datetime} onChange={e => setRescheduleForm({...rescheduleForm, new_datetime: e.target.value})} required min={toClinicDateTimeInput(new Date(Date.now() + 3600000))} /></div>
               </div>
-              <div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={() => setShowRescheduleModal(false)}>Cancel</button><button type="submit" className="btn btn-primary">Approve Reschedule</button></div>
+              <div className="modal-footer"><button disabled={savingReschedule} type="button" className="btn btn-secondary" onClick={() => setShowRescheduleModal(false)}>Cancel</button><button disabled={savingReschedule} type="submit" className="btn btn-primary">Approve Reschedule</button></div>
             </form>
           </div>
         </div>
       )}
 
       {showRescheduleRequestModal && currentAppointment && (
-        <div className="modal active" onClick={e => e.target === e.currentTarget && setShowRescheduleRequestModal(false)}>
+        <div className="modal active" onClick={e => e.target === e.currentTarget && !savingReschedule && setShowRescheduleRequestModal(false)}>
           <div className="modal-content">
-            <div className="modal-header"><h3>Review Reschedule Request</h3><button className="modal-close" onClick={() => setShowRescheduleRequestModal(false)}>&times;</button></div>
+            <div className="modal-header"><h3>Review Reschedule Request</h3><button disabled={savingReschedule} className="modal-close" onClick={() => setShowRescheduleRequestModal(false)}>&times;</button></div>
             <div className="modal-body">
-              <div><strong>Current Time:</strong> {new Date(currentAppointment.appointment_datetime).toLocaleString()}</div>
-              <div><strong>Patient Reason:</strong> {currentAppointment.remarks?.match(/Reason:\s*(.+)/i)?.[1] || 'N/A'}</div>
-              <div><strong>Requested Time:</strong> {currentAppointment.request_new_datetime ? new Date(currentAppointment.request_new_datetime).toLocaleString() : 'Not specified'}</div>
-              <div className="reject-reason-box"><label>Rejection Reason (optional)</label><textarea className="form-control" rows="3" value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Optional reason if rejecting..." /></div>
+              <div><strong>Current Time:</strong> {formatClinicDateTime(currentAppointment.appointment_datetime)}</div>
+              <div><strong>Patient Reason:</strong> {getAppointmentRequestReason(currentAppointment.remarks, 'reschedule')}</div>
+              <div><strong>Requested Time:</strong> {currentAppointment.request_new_datetime ? formatClinicDateTime(currentAppointment.request_new_datetime) : 'Not specified'}</div>
+              <div className="reject-reason-box"><label>Rejection Reason (optional)</label><textarea disabled={savingReschedule} className="form-control" rows="3" value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Optional reason if rejecting..." /></div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-danger" onClick={() => handleRescheduleRequest('reject', rejectReason)}>Reject</button>
-              <button className="btn btn-success" onClick={() => handleRescheduleRequest('approve')}>Approve</button>
-              <button className="btn btn-secondary" onClick={() => setShowRescheduleRequestModal(false)}>Cancel</button>
+              <button disabled={savingReschedule} className="btn btn-danger" onClick={() => handleRescheduleRequest('reject', rejectReason)}>Reject</button>
+              <button disabled={savingReschedule} className="btn btn-success" onClick={() => handleRescheduleRequest('approve')}>Approve</button>
+              <button disabled={savingReschedule} className="btn btn-secondary" onClick={() => setShowRescheduleRequestModal(false)}>Cancel</button>
             </div>
           </div>
         </div>
@@ -781,8 +710,8 @@ const ManageAppointments = () => {
           <div className="modal-content">
             <div className="modal-header"><h3>Review Cancellation Request</h3><button className="modal-close" onClick={() => setShowCancelRequestModal(false)}>&times;</button></div>
             <div className="modal-body">
-              <div><strong>Appointment Time:</strong> {new Date(currentAppointment.appointment_datetime).toLocaleString()}</div>
-              <div><strong>Patient Reason:</strong> {currentAppointment.remarks?.match(/Reason:\s*(.+)/i)?.[1] || 'N/A'}</div>
+              <div><strong>Appointment Time:</strong> {formatClinicDateTime(currentAppointment.appointment_datetime)}</div>
+              <div><strong>Patient Reason:</strong> {getAppointmentRequestReason(currentAppointment.remarks, 'cancellation')}</div>
               <div className="reject-reason-box"><label>Rejection Reason (optional)</label><textarea className="form-control" rows="3" value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Optional reason if rejecting..." /></div>
             </div>
             <div className="modal-footer">

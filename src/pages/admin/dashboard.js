@@ -91,7 +91,7 @@ const AdminDashboard = () => {
         growthRateResult,
         revenueGrowthResult
       ] = await Promise.all([
-        supabase.from('patients').select('*', { count: 'exact', head: true }),
+        supabase.from('patients').select('patient_id', { count: 'exact', head: true }),
         supabase.from('doctors').select('doctor_id', { count: 'exact', head: true }),
         supabase.from('appointments').select('*', { count: 'exact', head: true }),
         supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('appointment_datetime', new Date().toISOString().split('T')[0]),
@@ -99,7 +99,7 @@ const AdminDashboard = () => {
         supabase.from('billing').select('amount_paid'),
         supabase.from('billing').select('amount_paid').gte('payment_date', new Date().toISOString().split('T')[0]),
         supabase.from('billing').select('amount_paid').gt('amount_paid', 0),
-        supabase.from('patients').select('*', { count: 'exact', head: true }).gte('date_created', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
+        supabase.from('patients').select('patient_id', { count: 'exact', head: true }).gte('date_created', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
         supabase.from('billing').select('balance').gt('balance', 0),
         supabase.from('appointments').select('*, patients(first_name, last_name), doctors(first_name, last_name), services(service_name)').order('created_at', { ascending: false }).limit(10),
         supabase.from('patients').select('date_created').gte('date_created', new Date(new Date().setMonth(new Date().getMonth() - 2)).toISOString()),

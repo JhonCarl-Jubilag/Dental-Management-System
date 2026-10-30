@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import DentalLogo from '../../assets/DentalLogo.png';
 import { useAuth } from '../../contexts/AuthContext';
-import { roleLabel } from '../../utils/accessControl';
+import { isOwner, roleLabel } from '../../utils/accessControl';
 
 
 const Sidebar = ({ onLogout }) => {
@@ -84,6 +84,12 @@ const Sidebar = ({ onLogout }) => {
           </Link>
         </li>
         
+        {isOwner(userType) && <li>
+          <Link to="/admin/staff" className={`sidebar-link ${isActive('/admin/staff') ? 'active' : ''}`}>
+            <i className="fas fa-user-shield nav-icon"></i>
+            <span>Staff account</span>
+          </Link>
+        </li>}
         <li>
           <button onClick={onLogout} className="sidebar-link logout-btn">
             <i className="fas fa-sign-out-alt nav-icon"></i>

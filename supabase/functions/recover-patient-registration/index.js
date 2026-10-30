@@ -62,6 +62,9 @@ Deno.serve(async req => {
     if (userError || !user?.email || !user.email_confirmed_at) {
       throw new RequestError('Verify your email and log in before completing registration.', 401);
     }
+    if (user.app_metadata?.clinic_provider_login_retired === true || user.app_metadata?.fifthcusp_legacy_doctor_id != null || (user.banned_until && Date.parse(user.banned_until) > Date.now())) {
+      throw new RequestError('This login has been retired or disabled. Contact the clinic.', 403);
+    }
     const email = user.email.trim().toLowerCase();
     const { data: clinicAccount, error: clinicError } = await client.from('admin')
       .select('admin_id').eq('auth_user_id', user.id).maybeSingle();

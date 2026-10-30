@@ -148,7 +148,7 @@ const Login = () => {
             <p className="subtitle">Sign in to your FifthCusp account</p>
           </div>
 
-          {(accountError || roleError) && <div className="alert alert-error" role="alert">{accountError || roleError}</div>}
+          {(accountError || roleError || location.state?.dentistLoginRetired) && <div className="alert alert-error" role="alert">{accountError || roleError || 'Dentist logins have been retired. Clinic staff manage dentist records.'}</div>}
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
               <label htmlFor="email">Email Address</label>

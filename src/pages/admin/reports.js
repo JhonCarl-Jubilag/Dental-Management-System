@@ -123,7 +123,7 @@ const Reports = () => {
   const fetchOverallStats = useCallback(async () => {
     const { start_date, end_date, doctor_id } = getDateParams();
     try {
-      const { count: totalPatients } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('status', 'active');
+      const { count: totalPatients } = await supabase.from('patients').select('patient_id', { count: 'exact', head: true }).eq('status', 'active');
       const { count: totalDoctors } = await supabase.from('doctors').select('doctor_id', { count: 'exact', head: true }).eq('status', 'active');
       let revenueQuery = supabase.from('billing').select('amount_paid').gte('created_at', `${start_date} 00:00:00`).lte('created_at', `${end_date} 23:59:59`);
       if (doctor_id) revenueQuery = revenueQuery.eq('doctor_id', doctor_id);

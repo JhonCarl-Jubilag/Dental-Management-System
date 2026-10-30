@@ -684,3 +684,15 @@
     vertical-align: middle;
   }
 }
+.provider-cutover-notice {
+  padding: 18px;
+  margin: 0 0 22px;
+  border: 1px solid #dce7f2;
+  border-radius: 12px;
+  background: #edf4fb;
+  color: #354d70;
+}
+.provider-cutover-notice p { margin: 0 0 12px; line-height: 1.5; }
+.provider-cutover-notice details { margin-top: 16px; }
+.provider-cutover-notice summary { cursor: pointer; font-weight: 600; }
+.provider-cutover-notice ul { padding-left: 22px; line-height: 1.8; overflow-wrap: anywhere; }

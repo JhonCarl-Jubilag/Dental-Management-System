@@ -1,167 +1,65 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.105.1';
-import { changeAccountEmail } from '../_shared/changeAccountEmail.js';
 import { requireClinicAccount } from '../_shared/clinicAccess.js';
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
+const response = (status, body) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+class RequestError extends Error { constructor(message, status = 400) { super(message); this.status = status; } }
+const fingerprint = async candidates => {
+  const value = JSON.stringify(candidates.map(row => [row.doctor_id, row.auth_user_id, row.email.toLowerCase(), row.disabled]).sort((a, b) => String(a[1]).localeCompare(String(b[1]))));
+  return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))].map(byte => byte.toString(16).padStart(2, '0')).join('');
 };
-const response = (status, body) =>
-  new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
-class RequestError extends Error {
-  constructor(message, status = 400) {
-    super(message);
-    this.status = status;
-  }
-}
-const requiredText = (value, label, max = 200) => {
-  if (typeof value !== 'string' || !value.trim() || value.trim().length > max) {
-    throw new RequestError(`${label} is required and must be at most ${max} characters.`);
-  }
-  return value.trim();
-};
-const emailPattern = (email) => email.replace(/[\\%_]/g, '\\$&');
-
-Deno.serve(async (req) => {
+// Existing endpoint name is retained. Provider saves never create Auth accounts.
+Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return response(405, { error: 'Method not allowed.' });
-  let createdUserId = null;
-  let createdDoctorId = null;
-  const client = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'), {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const client = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'), { auth: { persistSession: false, autoRefreshToken: false } });
   try {
     const authorization = req.headers.get('Authorization');
     if (!authorization?.startsWith('Bearer ')) throw new RequestError('Please log in again.', 401);
-    const { data: { user }, error: userError } = await client.auth.getUser(authorization.slice(7));
-    if (userError || !user?.email || !user.email_confirmed_at) throw new RequestError('Please log in again.', 401);
-
-    // Authorization comes from the verified Auth identity and protected admin
-    // records, never from editable user_metadata or a role supplied by the form.
-    const { isOwner: isSuperAdmin } = await requireClinicAccount(client, user, RequestError);
-
+    const { data: identity, error: authError } = await client.auth.getUser(authorization.slice(7));
+    if (authError || !identity?.user) throw new RequestError('Please log in again.', 401);
+    const caller = await requireClinicAccount(client, identity.user, RequestError);
     let body;
     try { body = await req.json(); } catch { throw new RequestError('Invalid request body.'); }
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw new RequestError('Invalid request body.');
-
-    if (body.action === 'change_email') {
-      if (!isSuperAdmin) throw new RequestError('Only the super admin can change login emails.', 403);
-      return response(200, await changeAccountEmail(client, {
-        table: 'doctors', idField: 'doctor_id', id: body.doctor_id,
-        newEmail: body.new_email, expectedEmail: body.expected_email,
-      }, RequestError));
-    }
-
-    if (body.action === 'send_reset_email') {
-      const doctorId = Number(body.doctor_id);
-      if (!Number.isSafeInteger(doctorId) || doctorId <= 0) throw new RequestError('Select a valid doctor.');
-      const { data: doctor, error } = await client.from('doctors')
-        .select('email, status').eq('doctor_id', doctorId).single();
-      if (error || !doctor) throw new RequestError('Doctor was not found.', 404);
-      if (doctor.status !== 'active') throw new RequestError('Activate this doctor before sending a reset email.');
-      // Supabase deliberately does not report missing users from the public
-      // recovery API. Check here so admins do not receive a false success.
-      let accountFound = false;
-      for (let page = 1; ; page++) {
-        const { data, error: listError } = await client.auth.admin.listUsers({ page, perPage: 100 });
-        if (listError) throw new RequestError('Could not verify the doctor login account.', 500);
-        if (data.users.some(account => account.email?.toLowerCase() === doctor.email.toLowerCase())) {
-          accountFound = true;
-          break;
-        }
-        if (data.users.length < 100) break;
+    if (['change_email', 'send_reset_email'].includes(body.action)) throw new RequestError('Dentists no longer use login accounts. Refresh the application.', 410);
+    if (!['status', 'retire_logins', 'create', 'update'].includes(body.action)) throw new RequestError('Unsupported provider action.');
+    if (body.action === 'retire_logins' && !caller.isOwner) throw new RequestError('Only the Owner can retire legacy dentist logins.', 403);
+    const allowedKeys = body.action === 'status' ? ['action'] : body.action === 'retire_logins' ? ['action', 'fingerprint'] : ['action', 'doctor_id', 'profile', 'service_ids', 'expected'];
+    if (Object.keys(body).some(key => !allowedKeys.includes(key))) throw new RequestError('Unsupported provider fields. Refresh the application; dentist passwords are no longer used.');
+    const readState = async () => {
+      const { data, error } = await client.rpc('provider_cutover_state');
+      if (error || !data || !Array.isArray(data.candidates)) throw new RequestError('Install the provider-only migration before using dentist management.', 409);
+      return data;
+    };
+    const state = await readState();
+    const summarize = async value => ({ success: true, ready: value.ready === true, ...(caller.isOwner ? { candidates: value.candidates, fingerprint: await fingerprint(value.candidates) } : {}) });
+    if (body.action === 'status') return response(200, await summarize(state));
+    if (body.action === 'retire_logins') {
+      if (typeof body.fingerprint !== 'string' || body.fingerprint !== await fingerprint(state.candidates)) throw new RequestError('The account review changed. Refresh and review the dentist sign-ins again.', 409);
+      let retired = 0;
+      for (const candidate of state.candidates.filter(row => !row.disabled)) {
+        const fresh = await readState();
+        const current = fresh.candidates.find(row => row.auth_user_id === candidate.auth_user_id && row.doctor_id === candidate.doctor_id && row.email === candidate.email);
+        if (!current || current.auth_user_id === identity.user.id) throw new RequestError('A dentist account mapping changed. Review it before retrying.', 409);
+        if (current.disabled) continue;
+        const { data, error } = await client.auth.admin.getUserById(current.auth_user_id);
+        if (error || !data?.user || data.user.email?.toLowerCase() !== current.email.toLowerCase() || data.user.app_metadata?.fifthcusp_legacy_doctor_id !== current.doctor_id) throw new RequestError('Could not verify a mapped dentist login. Review the accounts before retrying.', 409);
+        const { error: banError } = await client.auth.admin.updateUserById(current.auth_user_id, { ban_duration: '876000h', app_metadata: { ...data.user.app_metadata, clinic_provider_login_retired: true } });
+        if (banError) throw new RequestError('Some dentist sign-ins could not be retired. Refresh the review; existing completed retirements are kept.', 500);
+        retired += 1;
       }
-      if (!accountFound) throw new RequestError('This doctor profile has no login account. A login account must be provisioned first.', 409);
-
-      // Browser requests use the current frontend origin. APP_ORIGIN is only
-      // a fallback for callers without an Origin header. Supabase Auth checks
-      // the redirect against the project's configured Redirect URLs.
-      const origin = req.headers.get('Origin') || Deno.env.get('APP_ORIGIN');
-      if (!origin) throw new RequestError('Configure APP_ORIGIN before requesting a password reset.', 500);
-      let appUrl;
-      try { appUrl = new URL(origin); } catch { throw new RequestError('Invalid application origin.'); }
-      const isLocalhost = ['localhost', '127.0.0.1', '[::1]'].includes(appUrl.hostname);
-      if ((appUrl.protocol !== 'https:' && !(appUrl.protocol === 'http:' && isLocalhost)) ||
-        appUrl.username || appUrl.password || appUrl.pathname !== '/' || appUrl.search || appUrl.hash) {
-        throw new RequestError('Invalid application origin.');
-      }
-      const appOrigin = appUrl.origin;
-      const redirectTo = `${appOrigin}/reset-password`;
-      const { error: resetError } = await client.auth.resetPasswordForEmail(doctor.email, { redirectTo });
-      if (resetError) throw new RequestError(resetError.message, 400);
-      return response(200, { success: true, message: 'Password reset email requested successfully. Ask the doctor to check their inbox.' });
+      return response(200, { ...await summarize(await readState()), retired_count: retired });
     }
-
-    if (body.action !== 'create') throw new RequestError('Unsupported account action.');
-    const firstName = requiredText(body.first_name, 'First name');
-    const lastName = requiredText(body.last_name, 'Last name');
-    const email = requiredText(body.email, 'Email', 254).toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new RequestError('Enter a valid email address.');
-    if (typeof body.password !== 'string' || body.password.length < 6 || body.password.length > 4096) {
-      throw new RequestError('Password must contain at least 6 characters.');
-    }
-    if (!Array.isArray(body.service_ids) || body.service_ids.length > 100 ||
-      body.service_ids.some((id) => !Number.isSafeInteger(id) || Number(id) <= 0)) {
-      throw new RequestError('Select valid services.');
-    }
-    const serviceIds = [...new Set(body.service_ids)];
-    // Reject cross-role email collisions: the existing login checks patients
-    // before doctors and must never turn an existing account into a doctor.
-    for (const table of ['patients', 'doctors', 'admin']) {
-      const { data, error } = await client.from(table).select('email').ilike('email', emailPattern(email)).limit(1);
-      if (error) throw new RequestError('Could not check for existing accounts.', 500);
-      if (data?.length) throw new RequestError('This email is already assigned to a profile. Use a different email.', 409);
-    }
-    if (serviceIds.length) {
-      const { data, error } = await client.from('services').select('service_id').in('service_id', serviceIds).eq('status', 'active');
-      if (error || data?.length !== serviceIds.length) throw new RequestError('One or more selected services are unavailable.');
-    }
-    const specialization = body.specialization ? requiredText(body.specialization, 'Specialization') : null;
-    const contact = body.contact_no ? requiredText(body.contact_no, 'Contact number', 50) : null;
-    const { data: auth, error: authError } = await client.auth.admin.createUser({
-      email, password: body.password, email_confirm: true,
-      user_metadata: { first_name: firstName, last_name: lastName },
-    });
-    if (authError || !auth.user) throw new RequestError(authError?.message || 'Could not create the login account.');
-    createdUserId = auth.user.id;
-    const { data: doctor, error: doctorError } = await client.from('doctors').insert({
-      first_name: firstName, last_name: lastName, email,
-      password: null, specialization, contact_no: contact, status: 'active',
-    }).select('doctor_id').single();
-    if (doctorError || !doctor) throw new RequestError('Could not create the doctor profile.', 500);
-    createdDoctorId = doctor.doctor_id;
-    if (serviceIds.length) {
-      const { error } = await client.from('doctor_services').insert(serviceIds.map(service_id => ({
-        doctor_id: doctor.doctor_id, service_id, status: 'active',
-      })));
-      if (error) throw new RequestError('Could not assign doctor services.', 500);
-    }
-    return response(200, { success: true, doctor_id: doctor.doctor_id });
+    if (!state.ready) throw new RequestError('The Owner must retire the reviewed legacy dentist logins first.', 409);
+    if (!body.profile || typeof body.profile !== 'object' || Array.isArray(body.profile)) throw new RequestError('Enter valid provider details.');
+    if (!Array.isArray(body.service_ids) || body.service_ids.length > 100 || body.service_ids.some(id => !Number.isSafeInteger(id) || id <= 0)) throw new RequestError('Select valid dental services.');
+    if (body.action === 'update' && (!Number.isSafeInteger(body.doctor_id) || body.doctor_id <= 0 || !body.expected)) throw new RequestError('Reload the dentist before editing.');
+    if (body.action === 'create' && body.doctor_id != null) throw new RequestError('A new provider cannot choose an existing dentist ID.');
+    const { data, error } = await client.rpc('save_provider_profile', { p_actor: identity.user.id, p_doctor_id: body.action === 'update' ? body.doctor_id : null, p_profile: body.profile, p_service_ids: body.service_ids, p_expected: body.action === 'update' ? body.expected : null });
+    if (error) throw new RequestError(['40001', '23505', '22023', '42501', 'P0002'].includes(error.code) ? error.message : 'The save outcome could not be verified. Refresh the dentist list before retrying.', error.code === '40001' ? 409 : 400);
+    if (!Number.isSafeInteger(Number(data)) || Number(data) <= 0) throw new RequestError('Provider save could not be verified. Refresh before retrying.', 500);
+    return response(200, { success: true, doctor_id: data });
   } catch (error) {
-    // Only undo records created by THIS request. Existing accounts are never
-    // deleted or overwritten when email validation or Auth creation fails.
-    let cleanupFailed = false;
-    if (createdDoctorId !== null) {
-      const { error } = await client.from('doctors').delete().eq('doctor_id', createdDoctorId);
-      cleanupFailed = !!error;
-    }
-    if (createdUserId && !cleanupFailed) {
-      const { error } = await client.auth.admin.deleteUser(createdUserId);
-      cleanupFailed = cleanupFailed || !!error;
-    }
-    if (cleanupFailed) {
-      if (createdDoctorId !== null) {
-        await client.from('doctors').update({ status: 'inactive' }).eq('doctor_id', createdDoctorId);
-      }
-      if (createdUserId) {
-        await client.auth.admin.updateUserById(createdUserId, { ban_duration: '876000h' });
-      }
-      console.error('Doctor account rollback needs administrator attention.');
-      return response(500, { error: 'Account creation failed and cleanup could not finish. Check the doctor profile and Auth account before retrying.' });
-    }
-    return response(error instanceof RequestError ? error.status : 500, {
-      error: error instanceof RequestError ? error.message : 'Could not manage the doctor account. Please try again.',
-    });
+    return response(error instanceof RequestError ? error.status : 500, { error: error instanceof RequestError ? error.message : 'Could not manage the provider. Please refresh before retrying.' });
   }
 });

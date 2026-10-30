@@ -9,3 +9,7 @@ entrypoint = './functions/manage-patient-account/index.js'
 [functions.recover-patient-registration]
 verify_jwt = true
 entrypoint = './functions/recover-patient-registration/index.js'
+
+[functions.manage-staff-account]
+verify_jwt = true
+entrypoint = './functions/manage-staff-account/index.js'

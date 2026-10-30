@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, doctorProfileFields } from '../../services/supabase';
+import { loadDoctorBookingSlots } from '../../services/doctorScheduling';
+import { appointmentWriteError, clinicDateTime, formatClinicDate, getClinicDate } from '../../utils/clinicScheduling';
 import './bookAppointment.css';
 import DentalLogo from '../../assets/DentalLogo.png';
 
@@ -26,6 +28,7 @@ const BookAppointment = () => {
   const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
   const [serviceDuration, setServiceDuration] = useState(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitting = useRef(false);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [loadingDates, setLoadingDates] = useState(false);
   const [loadingTimes, setLoadingTimes] = useState(false);
@@ -69,7 +72,8 @@ const BookAppointment = () => {
   }, []);
 
   useEffect(() => {
-    if (!selectedServiceId) return;
+    let cancelled = false;
+    if (!selectedServiceId) { setLoadingDoctors(false); return; }
 
     const loadDoctorsForService = async () => {
       setLoadingDoctors(true);
@@ -79,6 +83,8 @@ const BookAppointment = () => {
       setDoctors([]);
       setAvailableDates([]);
       setAvailableTimeSlots([]);
+      const service = services.find(s => s.service_id === Number(selectedServiceId));
+      setServiceDuration(service?.duration_minutes || 60);
 
       try {
         const { data: docServices, error: dsError } = await supabase
@@ -97,156 +103,77 @@ const BookAppointment = () => {
           .in('doctor_id', doctorIds)
           .eq('status', 'active');
         if (docsError) throw docsError;
-
-        setDoctors(doctorsData || []);
-
-        const service = services.find(s => s.service_id === Number(selectedServiceId));
-        setServiceDuration(service?.duration_minutes || 60);
+        if (!cancelled) setDoctors(doctorsData || []);
       } catch (err) {
         console.error(err);
-        toast.error('Failed to load doctors');
+        if (!cancelled) toast.error('Failed to load doctors');
       } finally {
-        setLoadingDoctors(false);
+        if (!cancelled) setLoadingDoctors(false);
       }
     };
 
     loadDoctorsForService();
+    return () => { cancelled = true; };
   }, [selectedServiceId, services]);
 
-  const handleDoctorChange = async (doctorId) => {
+  const handleDoctorChange = doctorId => {
     setSelectedDoctorId(doctorId);
     setSelectedDate('');
     setSelectedTime('');
     setAvailableDates([]);
     setAvailableTimeSlots([]);
-
-    if (!doctorId) return;
-
-    setLoadingDates(true);
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from('doctor_availability')
-        .select('available_date, start_time, end_time')
-        .eq('doctor_id', doctorId)
-        .eq('is_available', true)
-        .gte('available_date', today)
-        .order('available_date');
-      if (error) throw error;
-
-      const unique = [];
-      const seen = new Set();
-      for (const item of data) {
-        if (!seen.has(item.available_date)) {
-          seen.add(item.available_date);
-          unique.push(item);
-        }
-      }
-      setAvailableDates(unique);
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to load available dates');
-    } finally {
-      setLoadingDates(false);
-    }
   };
 
-  const handleDateChange = async (date) => {
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedDoctorId) { setLoadingDates(false); return; }
+    const loadDates = async () => {
+      setLoadingDates(true);
+      try {
+        const { data, error } = await supabase.from('doctor_availability')
+          .select('available_date').eq('doctor_id', selectedDoctorId)
+          .eq('is_available', true).gte('available_date', getClinicDate()).order('available_date');
+        if (error) throw error;
+        if (!cancelled) setAvailableDates([...new Set((data || []).map(item => item.available_date))].map(available_date => ({ available_date })));
+      } catch (err) {
+        if (!cancelled) toast.error('Failed to load available dates');
+      } finally {
+        if (!cancelled) setLoadingDates(false);
+      }
+    };
+    loadDates();
+    return () => { cancelled = true; };
+  }, [selectedDoctorId]);
+
+  const handleDateChange = date => {
     setSelectedDate(date);
     setSelectedTime('');
     setAvailableTimeSlots([]);
-
-    if (!date || !selectedDoctorId || !selectedServiceId) return;
-
-    setLoadingTimes(true);
-    try {
-      const { data: availability, error: availError } = await supabase
-        .from('doctor_availability')
-        .select('start_time, end_time')
-        .eq('doctor_id', selectedDoctorId)
-        .eq('available_date', date)
-        .eq('is_available', true)
-        .maybeSingle();
-
-      if (availError || !availability) {
-        toast.error('Doctor not available on this date');
-        setLoadingTimes(false);
-        return;
-      }
-
-      const { data: allAppointments, error: apptError } = await supabase
-        .from('appointments')
-        .select(`
-          appointment_datetime,
-          status,
-          services!inner (duration_minutes)
-        `)
-        .eq('doctor_id', selectedDoctorId)
-        .gte('appointment_datetime', `${date} 00:00:00`)
-        .lt('appointment_datetime', `${date} 23:59:59`);
-      if (apptError) throw apptError;
-
-      const activeStatuses = ['pending', 'confirmed'];
-      const existingApps = allAppointments.filter(apt =>
-        activeStatuses.includes(apt.status?.toLowerCase())
-      );
-
-      const startTime = availability.start_time;
-      const endTime = availability.end_time;
-      const duration = serviceDuration;
-      const slotInterval = 30;
-
-      const startDateTime = new Date(`${date}T${startTime}`);
-      const endDateTime = new Date(`${date}T${endTime}`);
-      if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-        throw new Error('Invalid start/end time format');
-      }
-
-      const slots = [];
-      let current = new Date(startDateTime);
-      const now = new Date();
-      const minStartTime = new Date(now.getTime() + duration * 60000);
-      const isToday = date === now.toISOString().split('T')[0];
-
-      while (current.getTime() + duration * 60000 <= endDateTime.getTime()) {
-        const slotStart = new Date(current);
-        const slotEnd = new Date(current.getTime() + duration * 60000);
-
-        let overlapping = false;
-        for (const apt of existingApps) {
-          const aptStart = new Date(apt.appointment_datetime);
-          const aptDuration = apt.services?.duration_minutes || 60;
-          const aptEnd = new Date(aptStart.getTime() + aptDuration * 60000);
-          if (slotStart < aptEnd && slotEnd > aptStart) {
-            overlapping = true;
-            break;
-          }
-        }
-
-        let valid = true;
-        if (isToday && slotStart < minStartTime) {
-          valid = false;
-        }
-
-        if (!overlapping && valid) {
-          const timeStr = slotStart.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-          slots.push({
-            time: slotStart.toISOString().slice(11, 16),
-            display: timeStr
-          });
-        }
-        current = new Date(current.getTime() + slotInterval * 60000);
-      }
-
-      setAvailableTimeSlots(slots);
-      if (slots.length === 0) toast.info('No available time slots for this date');
-    } catch (err) {
-      console.error('Error generating slots:', err);
-      toast.error('Failed to load time slots');
-    } finally {
-      setLoadingTimes(false);
-    }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedDate || !selectedDoctorId || !selectedServiceId) { setLoadingTimes(false); return; }
+    const loadTimes = async () => {
+      setLoadingTimes(true);
+      try {
+        const slots = await loadDoctorBookingSlots({
+          doctorId: selectedDoctorId, serviceId: selectedServiceId, date: selectedDate,
+          interval: 30, leadMinutes: serviceDuration,
+        });
+        if (!cancelled) {
+          setAvailableTimeSlots(slots);
+          if (!slots.length) toast.info('No available time slots for this date');
+        }
+      } catch (err) {
+        if (!cancelled) { setAvailableTimeSlots([]); toast.error(err.message || 'Failed to load time slots'); }
+      } finally {
+        if (!cancelled) setLoadingTimes(false);
+      }
+    };
+    loadTimes();
+    return () => { cancelled = true; };
+  }, [selectedDate, selectedDoctorId, selectedServiceId, serviceDuration]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -255,77 +182,34 @@ const BookAppointment = () => {
       return;
     }
 
+    if (submitting.current || loadingDoctors || loadingDates || loadingTimes) return;
+    submitting.current = true;
     setIsSubmitting(true);
     setShowNotice(false);
 
     try {
-      const appointmentDateTime = `${selectedDate} ${selectedTime}:00`;
-      const patientId = userDetails?.patient_id;
-
-      // 1. Check doctor availability
-      const { data: availCheck, error: availErr } = await supabase
-        .from('doctor_availability')
-        .select('availability_id')
-        .eq('doctor_id', selectedDoctorId)
-        .eq('available_date', selectedDate)
-        .eq('is_available', true)
-        .maybeSingle();
-
-      if (availErr || !availCheck) {
-        throw new Error('Doctor not available on this date');
+      const appointmentDateTime = clinicDateTime(selectedDate, selectedTime);
+      const slots = await loadDoctorBookingSlots({
+        doctorId: selectedDoctorId, serviceId: selectedServiceId, date: selectedDate,
+        interval: 30, leadMinutes: serviceDuration,
+      });
+      if (!slots.some(slot => slot.time === selectedTime)) {
+        setSelectedTime('');
+        setAvailableTimeSlots(slots);
+        throw new Error('Time slot no longer available. Please choose another time.');
       }
 
-      // 2. Check overlapping appointments on same doctor
-      const { data: allOnDate, error: fetchErr } = await supabase
-        .from('appointments')
-        .select(`
-          appointment_datetime,
-          status,
-          services!inner (duration_minutes)
-        `)
-        .eq('doctor_id', selectedDoctorId)
-        .gte('appointment_datetime', `${selectedDate} 00:00:00`)
-        .lt('appointment_datetime', `${selectedDate} 23:59:59`);
-      if (fetchErr) throw fetchErr;
-
-      const slotStart = new Date(appointmentDateTime);
-      const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
-      const activeStatuses = ['pending', 'confirmed'];
-      const overlapping = allOnDate.filter(apt => {
-        if (!activeStatuses.includes(apt.status?.toLowerCase())) return false;
-        const aptStart = new Date(apt.appointment_datetime);
-        const aptDuration = apt.services?.duration_minutes || 60;
-        const aptEnd = new Date(aptStart.getTime() + aptDuration * 60000);
-        return (slotStart < aptEnd && slotEnd > aptStart);
+      // The database derives ownership/status and checks the appointment limit.
+      const { data: appointmentId, error: insertErr } = await supabase.rpc('book_patient_appointment', {
+        p_doctor_id: Number(selectedDoctorId), p_service_id: Number(selectedServiceId),
+        p_datetime: appointmentDateTime, p_notes: notes || null,
       });
 
-      if (overlapping.length > 0) throw new Error('Time slot no longer available');
-
-      // 3. Check global active appointment limit (max 3 total pending/confirmed)
-      const { count: activeCount, error: countError } = await supabase
-        .from('appointments')
-        .select('*', { count: 'exact', head: true })
-        .eq('patient_id', patientId)
-        .in('status', ['pending', 'confirmed']);
-
-      if (countError) throw countError;
-      if (activeCount >= 3) {
-        throw new Error('Only 3 active appointments allowed. Cancel or finish one first.');
+      if (insertErr) throw insertErr.code === 'PGRST202'
+        ? new Error('The patient privacy update has not been installed. Contact the clinic.') : appointmentWriteError(insertErr);
+      if (!Number.isSafeInteger(Number(appointmentId)) || Number(appointmentId) <= 0) {
+        throw new Error('Could not verify the booking. Refresh your appointments before trying again.');
       }
-
-      // 4. Insert appointment
-      const { error: insertErr } = await supabase
-        .from('appointments')
-        .insert([{
-          patient_id: patientId,
-          doctor_id: selectedDoctorId,
-          service_id: selectedServiceId,
-          appointment_datetime: appointmentDateTime,
-          remarks: notes || null,
-          status: 'pending'
-        }]);
-
-      if (insertErr) throw insertErr;
 
       toast.success('Appointment booked successfully! We will confirm your appointment shortly.');
       setShowNotice(true);
@@ -343,6 +227,7 @@ const BookAppointment = () => {
       console.error('Booking error:', err);
       toast.error(err.message || 'Failed to book appointment');
     } finally {
+      submitting.current = false;
       setIsSubmitting(false);
     }
   };
@@ -478,7 +363,7 @@ const BookAppointment = () => {
 
           {selectedDoctorId && (
             <div className="form-section">
-              <h2 className="section-title"><i className="fas fa-calendar-alt"></i> Select Date & Time</h2>
+              <h2 className="section-title"><i className="fas fa-calendar-alt"></i> Select Date & Time (Philippine time)</h2>
               <div className="form-group">
                 <label className="form-label required">Preferred Date</label>
                 {loadingDates ? (
@@ -493,7 +378,7 @@ const BookAppointment = () => {
                     <option value="">Choose a date...</option>
                     {availableDates.map(dateObj => (
                       <option key={dateObj.available_date} value={dateObj.available_date}>
-                        {new Date(dateObj.available_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        {formatClinicDate(dateObj.available_date)}
                       </option>
                     ))}
                   </select>
@@ -531,6 +416,7 @@ const BookAppointment = () => {
               <textarea
                 className="form-control"
                 rows="4"
+                maxLength={4000}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Any specific requirements, concerns, or symptoms you'd like to mention..."
@@ -539,7 +425,7 @@ const BookAppointment = () => {
           </div>
 
           <div className="action-buttons">
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting || loadingDoctors || loadingDates || loadingTimes}>
               {isSubmitting ? <><i className="fas fa-spinner fa-spin"></i> Processing...</> : <><i className="fas fa-calendar-check"></i> Book Appointment</>}
             </button>
             <Link to="/" className="btn btn-secondary"><i className="fas fa-times"></i> Cancel</Link>

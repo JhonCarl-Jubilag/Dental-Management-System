@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -6,6 +6,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
+import { loadDoctorBookingSlots } from '../../services/doctorScheduling';
+import { appointmentWriteError, clinicDateTime, formatClinicDate, formatClinicTime, getClinicDate } from '../../utils/clinicScheduling';
 import './manualBooking.css';
 
 const ManualBooking = () => {
@@ -13,6 +15,11 @@ const ManualBooking = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
+  const [loadingDates, setLoadingDates] = useState(false);
+  const [loadingTimes, setLoadingTimes] = useState(false);
+  const busy = loading || loadingDoctors || loadingDates || loadingTimes;
+  const submitting = useRef(false);
   const [patients, setPatients] = useState([]);
   const [services, setServices] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -79,12 +86,14 @@ const ManualBooking = () => {
 
   // Load doctors for selected service
   useEffect(() => {
+    let cancelled = false;
     const fetchDoctorsForService = async () => {
       if (!selectedServiceId) {
         setDoctors([]);
+        setLoadingDoctors(false);
         return;
       }
-      setLoading(true);
+      setLoadingDoctors(true);
       try {
         const { data, error } = await supabase
           .from('doctor_services')
@@ -98,23 +107,25 @@ const ManualBooking = () => {
 
         if (error) throw error;
         const doctorsList = data.map(item => item.doctors);
-        setDoctors(doctorsList);
+        if (!cancelled) setDoctors(doctorsList);
       } catch (err) {
-        toast.error(err.message);
+        if (!cancelled) toast.error(err.message);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoadingDoctors(false);
       }
     };
     fetchDoctorsForService();
+    return () => { cancelled = true; };
   }, [selectedServiceId]);
 
   // Fetch available dates for selected doctor
   useEffect(() => {
+    let cancelled = false;
     const fetchAvailableDates = async () => {
-      if (!selectedDoctorId) return;
-      setLoading(true);
+      if (!selectedDoctorId) { setLoadingDates(false); return; }
+      setLoadingDates(true);
       try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getClinicDate();
         const { data, error } = await supabase
           .from('doctor_availability')
           .select('available_date')
@@ -124,108 +135,38 @@ const ManualBooking = () => {
           .order('available_date');
 
         if (error) throw error;
-        setAvailableDates(data.map(d => d.available_date));
+        if (!cancelled) setAvailableDates([...new Set((data || []).map(d => d.available_date))]);
       } catch (err) {
-        toast.error(err.message);
+        if (!cancelled) toast.error(err.message);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoadingDates(false);
       }
     };
     fetchAvailableDates();
+    return () => { cancelled = true; };
   }, [selectedDoctorId]);
 
-  // Generate available time slots (with past slots filtered out for today)
   useEffect(() => {
+    let cancelled = false;
+    setAvailableTimeSlots([]);
+    setSelectedTime('');
+    if (!selectedDoctorId || !selectedDate || !selectedServiceId) { setLoadingTimes(false); return; }
     const fetchTimeSlots = async () => {
-      if (!selectedDoctorId || !selectedDate || !selectedServiceId) {
-        setAvailableTimeSlots([]);
-        return;
-      }
-      setLoading(true);
+      setLoadingTimes(true);
       try {
-        // Doctor's availability range for that day
-        const { data: availability, error: availError } = await supabase
-          .from('doctor_availability')
-          .select('start_time, end_time')
-          .eq('doctor_id', selectedDoctorId)
-          .eq('available_date', selectedDate)
-          .eq('is_available', true)
-          .maybeSingle();
-
-        if (availError || !availability) {
-          setAvailableTimeSlots([]);
-          return;
-        }
-
-        // Existing appointments (pending or confirmed) on that day
-        const { data: booked, error: bookError } = await supabase
-          .from('appointments')
-          .select('appointment_datetime')
-          .eq('doctor_id', selectedDoctorId)
-          .in('status', ['pending', 'confirmed'])
-          .gte('appointment_datetime', `${selectedDate} 00:00:00`)
-          .lt('appointment_datetime', `${selectedDate} 23:59:59`);
-
-        if (bookError) throw bookError;
-
-        const start = availability.start_time;
-        const end = availability.end_time;
-        const duration = selectedServiceDuration; // minutes
-
-        const slots = [];
-        let current = new Date(`2000-01-01T${start}`);
-        const endTime = new Date(`2000-01-01T${end}`);
-
-        // Current time for filtering (only for today)
-        const today = new Date().toISOString().split('T')[0];
-        const now = new Date();
-        const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
-
-        while (current < endTime) {
-          const slotStartStr = current.toTimeString().slice(0, 5); // HH:MM
-          const slotEnd = new Date(current.getTime() + duration * 60000);
-          const slotEndStr = slotEnd.toTimeString().slice(0, 5);
-
-          // Check if the slot fully fits within doctor's availability
-          if (slotEndStr > end) break;
-
-          // For today, skip slots that have already passed
-          let slotPassed = false;
-          if (selectedDate === today) {
-            const [slotHour, slotMin] = slotStartStr.split(':').map(Number);
-            const slotMinutes = slotHour * 60 + slotMin;
-            if (slotMinutes < currentTimeMinutes) {
-              slotPassed = true;
-            }
-          }
-
-          // Overlap check with existing appointments
-          let overlap = false;
-          for (const apt of booked) {
-            const aptTime = new Date(apt.appointment_datetime);
-            const aptStart = aptTime.toTimeString().slice(0, 5);
-            const aptEnd = new Date(aptTime.getTime() + duration * 60000).toTimeString().slice(0, 5);
-            if ((slotStartStr < aptEnd && slotEndStr > aptStart)) {
-              overlap = true;
-              break;
-            }
-          }
-
-          if (!slotPassed && !overlap) {
-            slots.push(slotStartStr);
-          }
-          current = new Date(current.getTime() + duration * 60000);
-        }
-
-        setAvailableTimeSlots(slots);
+        const slots = await loadDoctorBookingSlots({
+          doctorId: selectedDoctorId, serviceId: selectedServiceId, date: selectedDate,
+          interval: selectedServiceDuration,
+        });
+        if (!cancelled) setAvailableTimeSlots(slots.map(slot => slot.time));
       } catch (err) {
-        toast.error(err.message);
-        setAvailableTimeSlots([]);
+        if (!cancelled) { toast.error(err.message); setAvailableTimeSlots([]); }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoadingTimes(false);
       }
     };
     fetchTimeSlots();
+    return () => { cancelled = true; };
   }, [selectedDoctorId, selectedDate, selectedServiceId, selectedServiceDuration]);
 
   const handleServiceChange = (e) => {
@@ -248,10 +189,21 @@ const ManualBooking = () => {
       return;
     }
 
-    const appointmentDatetime = `${selectedDate} ${selectedTime}:00`;
+    if (submitting.current || busy) return;
+    submitting.current = true;
     setLoading(true);
 
     try {
+      const appointmentDatetime = clinicDateTime(selectedDate, selectedTime);
+      const slots = await loadDoctorBookingSlots({
+        doctorId: selectedDoctorId, serviceId: selectedServiceId, date: selectedDate,
+        interval: selectedServiceDuration,
+      });
+      if (!slots.some(slot => slot.time === selectedTime)) {
+        setSelectedTime('');
+        setAvailableTimeSlots(slots.map(slot => slot.time));
+        throw new Error('Time slot no longer available. Please choose another time.');
+      }
       // Insert appointment as 'confirmed' (walk‑in)
       const { data: newAppointment, error: insertError } = await supabase
         .from('appointments')
@@ -266,7 +218,7 @@ const ManualBooking = () => {
         })
         .select();
 
-      if (insertError) throw insertError;
+      if (insertError) throw appointmentWriteError(insertError);
 
       const appointmentId = newAppointment[0].appointment_id;
       const service = services.find(s => s.service_id === parseInt(selectedServiceId));
@@ -301,6 +253,7 @@ const ManualBooking = () => {
     } catch (err) {
       toast.error(err.message);
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
   };
@@ -406,7 +359,11 @@ const ManualBooking = () => {
                   <select
                     className="form-control"
                     value={selectedDoctorId}
-                    onChange={(e) => setSelectedDoctorId(e.target.value)}
+                    onChange={e => {
+                      setSelectedDoctorId(e.target.value);
+                      setSelectedDate(''); setSelectedTime('');
+                      setAvailableDates([]); setAvailableTimeSlots([]);
+                    }}
                     required
                   >
                     <option value="">Select a doctor...</option>
@@ -424,20 +381,22 @@ const ManualBooking = () => {
 
             {/* Date Section */}
             <div className="form-section">
-              <h2><i className="fas fa-calendar-alt"></i> Date & Time</h2>
+              <h2><i className="fas fa-calendar-alt"></i> Date & Time (Philippine time)</h2>
               <div className="form-group">
                 <label className="required">Date</label>
                 <select
                   className="form-control"
                   value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
+                  onChange={e => {
+                    setSelectedDate(e.target.value); setSelectedTime(''); setAvailableTimeSlots([]);
+                  }}
                   disabled={!selectedDoctorId}
                   required
                 >
                   <option value="">Select a date...</option>
                   {availableDates.map(date => (
                     <option key={date} value={date}>
-                      {new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                      {formatClinicDate(date)}
                     </option>
                   ))}
                 </select>
@@ -447,7 +406,7 @@ const ManualBooking = () => {
               {selectedDate && (
                 <div className="form-group">
                   <label className="required">Available Time Slots</label>
-                  {loading ? (
+                  {loadingTimes ? (
                     <div className="loading-slots">Loading available slots...</div>
                   ) : availableTimeSlots.length > 0 ? (
                     <div className="time-slots-grid">
@@ -458,7 +417,7 @@ const ManualBooking = () => {
                           className={`time-slot-btn ${selectedTime === time ? 'selected' : ''}`}
                           onClick={() => setSelectedTime(time)}
                         >
-                          {new Date(`2000-01-01T${time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {formatClinicTime(time)}
                         </button>
                       ))}
                     </div>
@@ -467,7 +426,7 @@ const ManualBooking = () => {
                   )}
                   {selectedTime && (
                     <div className="selected-time-info">
-                      <i className="fas fa-clock"></i> Selected time: {new Date(`2000-01-01T${selectedTime}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <i className="fas fa-clock"></i> Selected time: {formatClinicTime(selectedTime)}
                     </div>
                   )}
                 </div>
@@ -499,7 +458,7 @@ const ManualBooking = () => {
               <button type="button" className="btn btn-secondary" onClick={() => navigate('/admin/appointments')}>
                 Cancel
               </button>
-              <button type="submit" className="btn btn-primary" disabled={loading}>
+              <button type="submit" className="btn btn-primary" disabled={busy}>
                 {loading ? 'Booking...' : 'Book Appointment (Confirmed)'}
               </button>
             </div>

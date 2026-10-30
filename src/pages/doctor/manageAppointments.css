@@ -691,3 +691,19 @@
     margin-bottom: 5px;
   }
 }
+.doctor-modal-content .appointment-documentation-fields {
+  border: 0;
+  padding: 0;
+  margin: 16px 0 0;
+  min-width: 0;
+}
+
+.doctor-modal-content .appointment-documentation-previous-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f5f8fc;
+}

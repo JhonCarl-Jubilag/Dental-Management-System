@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import './App.css';
 import { isClinicUser } from './utils/accessControl';
 
 // Public Pages
@@ -31,13 +30,10 @@ import ManualBooking from './pages/admin/manualBooking';
 import Billing from './pages/admin/manageBilling';
 import Reports from './pages/admin/reports';
 import ManageInventory from './pages/admin/manageInventory';
+import ManageStaff from './pages/admin/manageStaff';
 
-// Doctor Pages
-import DoctorDashboard from './pages/doctor/doctorDashboard';
-import ManagePatientsDoctor from './pages/doctor/managePatients';
-import DoctorProfile from './pages/doctor/profile';
-import DoctorManageAppointments from './pages/doctor/manageAppointments';
-import ManageSchedule from './pages/doctor/manageSchedule';
+// Keep shared button styles after page styles, independent of retired pages.
+import './App.css';
 
 const ProtectedRoute = ({ children, allowedUserType }) => {
   const { user, userType, loading, registrationIncomplete, accountError } = useAuth();
@@ -158,32 +154,13 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
-      {/* Doctor */}
-      <Route path="/doctor/dashboard" element={
-        <ProtectedRoute allowedUserType="doctor">
-          <DoctorDashboard />
+      <Route path="/admin/staff" element={
+        <ProtectedRoute allowedUserType="super_admin">
+          <ManageStaff />
         </ProtectedRoute>
       } />
-      <Route path="/doctor/patients" element={
-        <ProtectedRoute allowedUserType="doctor">
-          <ManagePatientsDoctor />
-        </ProtectedRoute>
-      } />
-      <Route path="/doctor/profile" element={
-        <ProtectedRoute allowedUserType="doctor">
-          <DoctorProfile />
-        </ProtectedRoute>
-      } />
-      <Route path="/doctor/manageAppointments" element={
-        <ProtectedRoute allowedUserType="doctor">
-          <DoctorManageAppointments />
-        </ProtectedRoute>
-      } />
-      <Route path="/doctor/manageSchedule" element={
-        <ProtectedRoute allowedUserType="doctor">
-          <ManageSchedule />
-        </ProtectedRoute>
-      } />
+
+      <Route path="/doctor/*" element={<Navigate to="/login" replace state={{ dentistLoginRetired: true }} />} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

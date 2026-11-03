@@ -12,16 +12,18 @@ export async function changeAccountEmail(client, { table, idField, id, newEmail,
     throw new RequestError('Enter a valid email address.');
   }
   if (!normalizeEmail(expectedEmail)) throw new RequestError('Reload the profile before changing its email.');
-  const profileFields = `${idField}, email${table === 'patients' ? ', auth_user_id' : ''}`;
+  const hasLoginLink = table === 'patients' || table === 'admin';
+  const profileFields = `${idField}, email${hasLoginLink ? ', auth_user_id' : ''}${table === 'admin' ? ', role' : ''}`;
   const { data: profile, error: profileError } = await client.from(table)
     .select(profileFields).eq(idField, id).maybeSingle();
   if (profileError) throw new RequestError('Could not read the account profile.', 500);
   if (!profile) throw new RequestError('The account profile was not found.', 404);
+  if (table === 'admin' && profile.role !== 'admin') throw new RequestError('Only Staff login emails can be changed here.', 403);
   const oldEmail = profile.email;
   if (oldEmail !== expectedEmail) throw new RequestError('The email has changed. Reload the profile and try again.', 409);
   const oldNormalized = normalizeEmail(oldEmail);
-  if (table === 'patients' && !profile.auth_user_id) {
-    throw new RequestError('This patient has no linked login account. Complete account linking before changing its login email.', 409);
+  if (hasLoginLink && !profile.auth_user_id) {
+    throw new RequestError('This profile has no linked login account. Complete account linking before changing its login email.', 409);
   }
 
   // Reject both new-email collisions and ambiguous existing role assignments.
@@ -54,15 +56,18 @@ export async function changeAccountEmail(client, { table, idField, id, newEmail,
     if (data.users.length < 100) break;
   }
   if (!account) throw new RequestError('This profile has no matching login account. A login account must be provisioned first.', 409);
-  if (table === 'patients' && account.id !== profile.auth_user_id) {
-    throw new RequestError('The linked login account does not match this patient. Review the account mapping first.', 409);
+  if (hasLoginLink && account.id !== profile.auth_user_id) {
+    throw new RequestError('The linked login account does not match this profile. Review the account mapping first.', 409);
   }
   if (newEmailAccounts.some(user => user.id !== account.id)) {
     throw new RequestError('This email already belongs to a login account. Use a different email.', 409);
   }
   const result = () => ({ success: true, email, message: 'Profile and login email updated successfully. Use the new email with the existing password.' });
   if (oldEmail === email && account.email === email) return result();
-  const linkedProfile = query => table === 'patients' ? query.eq('auth_user_id', account.id) : query;
+  const linkedProfile = query => {
+    if (hasLoginLink) query = query.eq('auth_user_id', account.id);
+    return table === 'admin' ? query.eq('role', 'admin') : query;
+  };
 
   const readState = async () => {
     const { data: authData, error: authError } = await client.auth.admin.getUserById(account.id);
@@ -71,9 +76,10 @@ export async function changeAccountEmail(client, { table, idField, id, newEmail,
     if (authError || error || !authData?.user?.email || !currentProfile?.email) {
       throw new Error('Could not verify both account records.');
     }
-    if (table === 'patients' && currentProfile.auth_user_id !== account.id) {
-      throw new Error('The patient account link changed while saving.');
+    if (hasLoginLink && currentProfile.auth_user_id !== account.id) {
+      throw new Error('The account link changed while saving.');
     }
+    if (table === 'admin' && currentProfile.role !== 'admin') throw new Error('The Staff role changed while saving.');
     return { auth: authData.user, profile: currentProfile };
   };
   const matches = (state) => normalizeEmail(state.auth.email) === normalizeEmail(state.profile.email);

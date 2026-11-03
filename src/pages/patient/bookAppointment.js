@@ -5,7 +5,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, doctorProfileFields } from '../../services/supabase';
 import { loadDoctorBookingSlots } from '../../services/doctorScheduling';
-import { appointmentWriteError, clinicDateTime, formatClinicDate, getClinicDate } from '../../utils/clinicScheduling';
+import { appointmentWriteError, clinicDateTime } from '../../utils/clinicScheduling';
+import BookingCalendar from './BookingCalendar';
 import './bookAppointment.css';
 import DentalLogo from '../../assets/DentalLogo.png';
 
@@ -24,14 +25,11 @@ const BookAppointment = () => {
   const [selectedTime, setSelectedTime] = useState('');
   const [notes, setNotes] = useState('');
   const [showNotice, setShowNotice] = useState(false);
-  const [availableDates, setAvailableDates] = useState([]);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
+  const [revision, setRevision] = useState(0);
   const [serviceDuration, setServiceDuration] = useState(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitting = useRef(false);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
-  const [loadingDates, setLoadingDates] = useState(false);
-  const [loadingTimes, setLoadingTimes] = useState(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -81,8 +79,6 @@ const BookAppointment = () => {
       setSelectedDate('');
       setSelectedTime('');
       setDoctors([]);
-      setAvailableDates([]);
-      setAvailableTimeSlots([]);
       const service = services.find(s => s.service_id === Number(selectedServiceId));
       setServiceDuration(service?.duration_minutes || 60);
 
@@ -120,60 +116,7 @@ const BookAppointment = () => {
     setSelectedDoctorId(doctorId);
     setSelectedDate('');
     setSelectedTime('');
-    setAvailableDates([]);
-    setAvailableTimeSlots([]);
   };
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!selectedDoctorId) { setLoadingDates(false); return; }
-    const loadDates = async () => {
-      setLoadingDates(true);
-      try {
-        const { data, error } = await supabase.from('doctor_availability')
-          .select('available_date').eq('doctor_id', selectedDoctorId)
-          .eq('is_available', true).gte('available_date', getClinicDate()).order('available_date');
-        if (error) throw error;
-        if (!cancelled) setAvailableDates([...new Set((data || []).map(item => item.available_date))].map(available_date => ({ available_date })));
-      } catch (err) {
-        if (!cancelled) toast.error('Failed to load available dates');
-      } finally {
-        if (!cancelled) setLoadingDates(false);
-      }
-    };
-    loadDates();
-    return () => { cancelled = true; };
-  }, [selectedDoctorId]);
-
-  const handleDateChange = date => {
-    setSelectedDate(date);
-    setSelectedTime('');
-    setAvailableTimeSlots([]);
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!selectedDate || !selectedDoctorId || !selectedServiceId) { setLoadingTimes(false); return; }
-    const loadTimes = async () => {
-      setLoadingTimes(true);
-      try {
-        const slots = await loadDoctorBookingSlots({
-          doctorId: selectedDoctorId, serviceId: selectedServiceId, date: selectedDate,
-          interval: 30, leadMinutes: serviceDuration,
-        });
-        if (!cancelled) {
-          setAvailableTimeSlots(slots);
-          if (!slots.length) toast.info('No available time slots for this date');
-        }
-      } catch (err) {
-        if (!cancelled) { setAvailableTimeSlots([]); toast.error(err.message || 'Failed to load time slots'); }
-      } finally {
-        if (!cancelled) setLoadingTimes(false);
-      }
-    };
-    loadTimes();
-    return () => { cancelled = true; };
-  }, [selectedDate, selectedDoctorId, selectedServiceId, serviceDuration]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -182,7 +125,7 @@ const BookAppointment = () => {
       return;
     }
 
-    if (submitting.current || loadingDoctors || loadingDates || loadingTimes) return;
+    if (submitting.current || loadingDoctors) return;
     submitting.current = true;
     setIsSubmitting(true);
     setShowNotice(false);
@@ -195,7 +138,7 @@ const BookAppointment = () => {
       });
       if (!slots.some(slot => slot.time === selectedTime)) {
         setSelectedTime('');
-        setAvailableTimeSlots(slots);
+
         throw new Error('Time slot no longer available. Please choose another time.');
       }
 
@@ -221,9 +164,8 @@ const BookAppointment = () => {
       setSelectedTime('');
       setNotes('');
       setDoctors([]);
-      setAvailableDates([]);
-      setAvailableTimeSlots([]);
     } catch (err) {
+      setRevision(n => n + 1);
       console.error('Booking error:', err);
       toast.error(err.message || 'Failed to book appointment');
     } finally {
@@ -248,11 +190,7 @@ const BookAppointment = () => {
       <nav className="modern-nav">
         <div className="nav-container">
           <Link to="/book-appointment" className="logo">
-            <img src={DentalLogo} alt="Fifthcusp Dental Clinic Logo" className="logo-image" />
-            <div className="logo-text-wrapper">
-              <span className="logo-main-text">Fifthcusp</span>
-              <span className="logo-sub-text">Dental Clinic</span>
-            </div>
+            <img src={DentalLogo} alt="Diolata Dental Clinic Logo" className="logo-image" />
           </Link>
           <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             <i className={`fas fa-${mobileMenuOpen ? 'times' : 'bars'}`}></i>
@@ -364,48 +302,9 @@ const BookAppointment = () => {
           {selectedDoctorId && (
             <div className="form-section">
               <h2 className="section-title"><i className="fas fa-calendar-alt"></i> Select Date & Time (Philippine time)</h2>
-              <div className="form-group">
-                <label className="form-label required">Preferred Date</label>
-                {loadingDates ? (
-                  <div className="loading-text">Loading dates...</div>
-                ) : (
-                  <select
-                    className="form-control"
-                    value={selectedDate}
-                    onChange={(e) => handleDateChange(e.target.value)}
-                    required
-                  >
-                    <option value="">Choose a date...</option>
-                    {availableDates.map(dateObj => (
-                      <option key={dateObj.available_date} value={dateObj.available_date}>
-                        {formatClinicDate(dateObj.available_date)}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              {selectedDate && (
-                <div className="form-group">
-                  <label className="form-label required">Preferred Time</label>
-                  {loadingTimes ? (
-                    <div className="loading-text">Loading time slots...</div>
-                  ) : availableTimeSlots.length === 0 ? (
-                    <div className="alert alert-info">No available time slots for this date. Please select another date.</div>
-                  ) : (
-                    <div className="time-slots-grid">
-                      {availableTimeSlots.map(slot => (
-                        <div
-                          key={slot.time}
-                          className={`time-slot ${selectedTime === slot.time ? 'selected' : ''}`}
-                          onClick={() => setSelectedTime(slot.time)}
-                        >
-                          {slot.display}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <BookingCalendar key={selectedServiceId + ':' + selectedDoctorId}
+                doctorId={selectedDoctorId} serviceId={selectedServiceId} leadMinutes={serviceDuration} date={selectedDate} time={selectedTime}
+                setDate={setSelectedDate} setTime={setSelectedTime} revision={revision} locked={isSubmitting} />
             </div>
           )}
 
@@ -425,7 +324,7 @@ const BookAppointment = () => {
           </div>
 
           <div className="action-buttons">
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting || loadingDoctors || loadingDates || loadingTimes}>
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting || loadingDoctors || !selectedTime}>
               {isSubmitting ? <><i className="fas fa-spinner fa-spin"></i> Processing...</> : <><i className="fas fa-calendar-check"></i> Book Appointment</>}
             </button>
             <Link to="/" className="btn btn-secondary"><i className="fas fa-times"></i> Cancel</Link>

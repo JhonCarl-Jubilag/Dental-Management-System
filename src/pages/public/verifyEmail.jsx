@@ -68,9 +68,8 @@ const VerifyEmail = () => {
       <div className="verify-background" aria-hidden="true"></div>
       <div className="verify-content">
         <div className="verify-card">
-          <Link to="/" className="verify-brand" aria-label="Fifthcusp Dental Clinic homepage">
+          <Link to="/" className="verify-brand" aria-label="Diolata Dental Clinic homepage">
             <img src={DentalLogo} alt="" />
-            <span><strong>Fifthcusp</strong><small>Dental Clinic</small></span>
           </Link>
           <div className="verify-header">
             <div className={`verify-icon ${status}`} aria-hidden="true">

@@ -642,7 +642,7 @@ const ManageBilling = () => {
 
         <div className="table-container">
           <div className="table-header">
-            <h3>Billing Records {showArchived && <span style={{ color: '#e74c3c' }}>(Archived)</span>}</h3>
+            <h3>Billing Records {showArchived && <span style={{ color: '#b52e42' }}>(Archived)</span>}</h3>
             <span>Showing {billingRecords.length} record(s)</span>
           </div>
           <div className="table-responsive">
@@ -893,7 +893,7 @@ const ManageBilling = () => {
             <div className="invoice-scroll-container" id="invoiceContent">
               <div className="invoice-wrapper">
                 <div className="invoice-header">
-                  <div className="clinic-info"><div className="clinic-name">Fifthcusp Dental Clinic</div><div className="clinic-address">123 Dental St., Imus, Cavite</div><div className="clinic-contact">info@fifthcusp.com | (02) 1234-5678</div></div>
+                  <div className="clinic-info"><div className="clinic-name">Diolata Dental Clinic</div><div className="clinic-address">123 Dental St., Imus, Cavite</div><div className="clinic-contact">info@fifthcusp.com | (02) 1234-5678</div></div>
                   <div className="invoice-title"><div className="invoice-badge">TAX INVOICE</div><div className="invoice-number">INV-{String(selectedRecord.billing_id).padStart(6, '0')}</div><div className="invoice-date">Date: {new Date(selectedRecord.payment_date || selectedRecord.created_at).toLocaleDateString()}</div><span className={`status-badge-invoice ${selectedRecord.balance === 0 ? (selectedRecord.amount_paid > 0 ? 'status-paid' : 'status-pending') : 'status-partial'}`}>{selectedRecord.balance === 0 ? (selectedRecord.amount_paid > 0 ? 'PAID' : 'PENDING') : 'PARTIAL'}</span></div>
                 </div>
                 <div className="info-grid">
@@ -916,7 +916,7 @@ const ManageBilling = () => {
                   <div className="info-section"><div className="section-header">Payment Information</div><div className="info-row-group"><div className="info-row-item"><span className="item-label">Method:</span><span className="item-value">{selectedRecord.payment_method.toUpperCase()}</span></div>{selectedRecord.reference_number && (<div className="info-row-item"><span className="item-label">Reference #:</span><span className="item-value">{selectedRecord.reference_number}</span></div>)}<div className="info-row-item"><span className="item-label">Date:</span><span className="item-value">{selectedRecord.payment_date ? new Date(selectedRecord.payment_date).toLocaleDateString() : 'N/A'}</span></div></div></div>
                 )}
                 {selectedRecord.remarks && (<div className="info-section"><div className="section-header">Remarks</div><div className="remarks-text">{selectedRecord.remarks}</div></div>)}
-                <div className="invoice-footer"><div className="footer-thanks">Thank you for choosing Fifthcusp Dental Clinic!</div><div className="footer-note">Please keep this invoice for your records.</div></div>
+                <div className="invoice-footer"><div className="footer-thanks">Thank you for choosing Diolata Dental Clinic!</div><div className="footer-note">Please keep this invoice for your records.</div></div>
               </div>
             </div>
             <div className="modal-footer"><button className="btn btn-primary" onClick={() => window.print()}>Print Invoice</button><button className="btn btn-secondary" onClick={() => setShowInvoiceModal(false)}>Close</button></div>

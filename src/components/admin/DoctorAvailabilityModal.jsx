@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { CalendarDays, Clock, Info, Plus, RefreshCw, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import { isClinicUser } from '../../utils/accessControl';
@@ -163,6 +164,10 @@ const DoctorAvailabilityModal = ({ doctor, onClose, onChanged }) => {
   };
 
   if (!allowed) return null;
+  const slotsByDate = slots.reduce((groups, slot) => {
+    (groups[slot.available_date] ??= []).push(slot);
+    return groups;
+  }, {});
   const disabled = busy || loading || Boolean(error);
   return (
     <div className="doctor-availability-overlay" onClick={event => {
@@ -170,57 +175,59 @@ const DoctorAvailabilityModal = ({ doctor, onClose, onChanged }) => {
     }}>
       <div className="doctor-availability-dialog" role="dialog" aria-modal="true" aria-labelledby="doctor-availability-title" tabIndex={-1} ref={dialog}>
         <div className="doctor-availability-heading">
-          <div><h2 id="doctor-availability-title">Dentist availability</h2><p>Dr. {doctor.first_name} {doctor.last_name} · Philippine time</p></div>
-          <button type="button" disabled={busy} onClick={onClose} aria-label="Close availability">×</button>
+          <span className="dav-emblem"><CalendarDays aria-hidden="true" /></span><div className="dav-title"><span className="doctor-availability-kicker">Availability schedule</span><h2 id="doctor-availability-title">Dr. {doctor.first_name} {doctor.last_name}</h2><p><Clock size={14} aria-hidden="true" /> Philippine time (UTC+8)</p></div>
+          <button type="button" disabled={busy} onClick={onClose} aria-label="Close availability"><X size={18} aria-hidden="true" /></button>
         </div>
-        <p className="doctor-availability-notice">Schedule changes affect new bookings. Existing appointments remain scheduled; review them below and reschedule separately when needed.</p>
+        <div className="dav-body">
         {error && <div className="doctor-availability-error" role="alert">{error} <button type="button" onClick={load} disabled={loading}>Retry</button></div>}
-        <div className="doctor-availability-columns">
+
           <form onSubmit={save} className="doctor-availability-form">
             <h3>{editing ? 'Edit period' : 'Add period'}</h3>
             <fieldset disabled={disabled}>
-              <label htmlFor="doctor-availability-date">Date</label>
+              <div className="dav-fields"><div><label htmlFor="doctor-availability-date">Date</label>
               <input id="doctor-availability-date" type="date" min={getClinicDate()} value={form.available_date} required onChange={event => setForm({ ...form, available_date: event.target.value })} />
-              <label htmlFor="doctor-availability-start">Start time</label>
+              </div><div><label htmlFor="doctor-availability-start">Start time</label>
               <input id="doctor-availability-start" type="time" step="60" value={form.start_time} required onChange={event => setForm({ ...form, start_time: event.target.value })} />
-              <label htmlFor="doctor-availability-end">End time</label>
+              </div><div><label htmlFor="doctor-availability-end">End time</label>
               <input id="doctor-availability-end" type="time" step="60" value={form.end_time} required onChange={event => setForm({ ...form, end_time: event.target.value })} />
-              <p>Add separate periods for breaks, such as 9 AM–12 PM and 1 PM–5 PM.</p>
+              </div>
               <div className="doctor-availability-actions">
-                <button type="submit" className="doctor-availability-primary">{busy ? 'Saving…' : editing ? 'Save period' : 'Add period'}</button>
+                <button type="submit" className="doctor-availability-primary">{!editing && <Plus size={16} aria-hidden="true" />}{busy ? 'Saving…' : editing ? 'Save period' : 'Add period'}</button>
                 {editing && <button type="button" onClick={resetForm}>Cancel edit</button>}
               </div>
-            </fieldset>
+            </div><p className="dav-hint">For a break, add separate periods before and after it.</p></fieldset>
           </form>
           <section className="doctor-availability-periods" aria-label="Upcoming availability" aria-busy={loading}>
-            <div className="doctor-availability-section-heading"><h3>Upcoming availability</h3><button type="button" onClick={load} disabled={busy || loading}>Refresh</button></div>
-            {loading ? <p role="status">Loading schedule…</p> : !error && slots.length === 0 ? <p>No upcoming availability. Add a period to open bookings.</p> : !error && slots.map(slot => (
-              <article key={slot.availability_id} className="doctor-availability-period">
-                <strong>{formatClinicDate(slot.available_date)}</strong>
-                <div>{formatClinicTime(slot.start_time)} – {formatClinicTime(slot.end_time)}</div>
-                <span className={slot.is_available ? 'doctor-availability-enabled' : 'doctor-availability-disabled'}>{slot.is_available ? 'Enabled' : 'Disabled'}</span>
-                <div className="doctor-availability-actions">
-                  <button type="button" disabled={disabled} aria-label={`Edit ${slot.available_date} ${slot.start_time.slice(0, 5)}`} onClick={() => {
-                    setEditing(slot);
-                    setForm({ available_date: slot.available_date, start_time: slot.start_time.slice(0, 5), end_time: slot.end_time.slice(0, 5) });
-                    document.getElementById('doctor-availability-date')?.focus();
-                  }}>Edit</button>
-                  <button type="button" disabled={disabled} aria-label={`${slot.is_available ? 'Disable' : 'Enable'} ${slot.available_date} ${slot.start_time.slice(0, 5)}`} onClick={() => toggle(slot)}>{slot.is_available ? 'Disable' : 'Enable'}</button>
-                </div>
-              </article>
+            <div className="doctor-availability-section-heading"><h3>Upcoming availability</h3><button type="button" onClick={load} disabled={busy || loading}><RefreshCw size={14} aria-hidden="true" />Refresh</button></div>
+            {loading ? <p className="dav-empty" role="status">Loading schedule…</p> : !error && slots.length === 0 ? <div className="dav-empty"><CalendarDays size={22} aria-hidden="true" /><strong>No upcoming availability</strong><p>Add a period above to open bookings.</p></div> : !error && Object.entries(slotsByDate).map(([date, periods]) => (
+              <section className="doctor-availability-day" key={date}>
+                <h4><time dateTime={date}>{formatClinicDate(date)}</time><span>{periods.length} {periods.length === 1 ? 'period' : 'periods'}</span></h4>
+                {periods.map(slot => (
+                  <article key={slot.availability_id} className="doctor-availability-period">
+                    <div className="doctor-availability-time"><strong>{formatClinicTime(slot.start_time)} – {formatClinicTime(slot.end_time)}</strong>
+                    <span className={slot.is_available ? 'doctor-availability-enabled' : 'doctor-availability-disabled'}>{slot.is_available ? 'Enabled' : 'Disabled'}</span></div>
+                    <div className="doctor-availability-actions">
+                      <button type="button" disabled={disabled} aria-label={`Edit ${slot.available_date} ${slot.start_time.slice(0, 5)}`} onClick={() => {
+                        setEditing(slot);
+                        setForm({ available_date: slot.available_date, start_time: slot.start_time.slice(0, 5), end_time: slot.end_time.slice(0, 5) });
+                        document.getElementById('doctor-availability-date')?.focus();
+                      }}>Edit</button>
+                      <button type="button" disabled={disabled} aria-label={`${slot.is_available ? 'Disable' : 'Enable'} ${slot.available_date} ${slot.start_time.slice(0, 5)}`} onClick={() => toggle(slot)}>{slot.is_available ? 'Disable' : 'Enable'}</button>
+                    </div>
+                  </article>
+                ))}
+              </section>
             ))}
-          </section>
-        </div>
-        <section className="doctor-availability-appointments" aria-label="Upcoming appointments">
-          <h3>Next 10 upcoming appointments</h3>
-          {!loading && !error && appointments.length === 0 && <p>No upcoming pending or confirmed appointments.</p>}
+          </section><section className="doctor-availability-appointments" aria-label="Upcoming appointments">
+          <h3>Upcoming appointments</h3><p className="dav-hint">Next 10 pending or confirmed appointments.</p>
+          {!loading && !error && appointments.length === 0 && <p className="dav-empty">No upcoming pending or confirmed appointments.</p>}
           {!loading && !error && appointments.map(appointment => <div key={appointment.appointment_id} className="doctor-availability-appointment">
-            <strong>{appointment.patients?.first_name} {appointment.patients?.last_name}</strong>
-            <span>{appointment.services?.service_name} · {appointment.status}</span>
+            <div><strong>{appointment.patients?.first_name} {appointment.patients?.last_name}</strong>
+            <span>{appointment.services?.service_name}</span></div><span className="dav-status">{appointment.status}</span>
             <time dateTime={appointment.appointment_datetime}>{new Date(appointment.appointment_datetime).toLocaleString('en-US', { timeZone: CLINIC_TIME_ZONE, dateStyle: 'medium', timeStyle: 'short' })}</time>
           </div>)}
         </section>
-        <div className="doctor-availability-footer"><button type="button" onClick={onClose} disabled={busy}>Done</button></div>
+        </div><div className="doctor-availability-footer"><p><Info size={16} aria-hidden="true" /><span>Changes apply to new bookings. Reschedule existing appointments separately.</span></p><button type="button" onClick={onClose} disabled={busy}>Done</button></div>
       </div>
     </div>
   );

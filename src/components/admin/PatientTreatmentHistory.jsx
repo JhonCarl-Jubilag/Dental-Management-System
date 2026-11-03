@@ -9,7 +9,7 @@ import { getAppointmentDuration } from '../../utils/appointmentTiming';
 import './PatientTreatmentHistory.css';
 
 const historyFields = 'appointment_id, patient_id, doctor_id, service_id, appointment_datetime, appointment_end, scheduled_duration_minutes, status, remarks, created_at, updated_at, request_type, request_new_datetime, request_status, services(service_name, duration_minutes), doctors(first_name, last_name)';
-const pageSize = 10;
+const pageSize = 5;
 const formatDateTime = value => new Date(value).toLocaleString('en-US', {
   timeZone: CLINIC_TIME_ZONE, dateStyle: 'medium', timeStyle: 'short',
 });
@@ -100,6 +100,8 @@ const PatientTreatmentHistory = ({ patientId }) => {
 
   if (!allowed) return null;
   const pages = Math.max(1, Math.ceil(count / pageSize));
+  const pageNumbers = [...new Set([1, page - 1, page, page + 1, pages])]
+    .filter(number => number >= 1 && number <= pages).sort((a, b) => a - b);
   const controlsDisabled = loading || saving || Boolean(editing);
   return (
     <section className="clinic-patient-history" aria-labelledby="clinic-patient-history-title" aria-busy={loading}>
@@ -114,7 +116,7 @@ const PatientTreatmentHistory = ({ patientId }) => {
         <label>Sort by<select value={sort} disabled={controlsDisabled} onChange={event => { setSort(event.target.value); setPage(1); }}>
           <option value="recent">Most recent</option><option value="oldest">Oldest first</option>
         </select></label>
-        <span>{count} appointment(s)</span>
+        {!loading && !error && <span role="status">{count ? `Showing ${(page - 1) * pageSize + 1}–${(page - 1) * pageSize + appointments.length} of ${count}` : '0 records'}</span>}
       </div>
       {loading && <p role="status">Loading patient history…</p>}
       {error && <p className="clinic-patient-history-error" role="alert">{error} Use Refresh history to retry.</p>}
@@ -128,7 +130,7 @@ const PatientTreatmentHistory = ({ patientId }) => {
           </dl>
           <h4>Notes and documentation</h4>
           <div className="clinic-patient-history-notes">{appointment.remarks || 'No notes recorded.'}</div>
-          <button type="button" disabled={saving || Boolean(editing)} onClick={() => { setEditing(appointment); setNote(''); setConflict(false); }}>Add documentation to appointment #{appointment.appointment_id}</button>
+          <button type="button" disabled={saving || Boolean(editing)} onClick={() => { setEditing(appointment); setNote(''); setConflict(false); }} aria-label={`Add documentation to appointment #${appointment.appointment_id}`}>Add documentation</button>
         </article>
       ))}
       {editing && <form className="clinic-patient-history-editor" onSubmit={addNote}>
@@ -142,8 +144,15 @@ const PatientTreatmentHistory = ({ patientId }) => {
         <div className="clinic-patient-history-actions"><button type="submit" disabled={saving || loading || conflict || Boolean(error)}>{saving ? 'Saving…' : 'Save documentation'}</button><button type="button" disabled={saving} onClick={() => { setEditing(null); setNote(''); setConflict(false); }}>Cancel note</button></div>
       </form>}
       {pages > 1 && <nav className="clinic-patient-history-pagination" aria-label="Patient history pages">
-        <button type="button" disabled={controlsDisabled || page <= 1} onClick={() => setPage(page - 1)}>Previous history page</button>
-        <span>Page {page} of {pages}</span><button type="button" disabled={controlsDisabled || page >= pages} onClick={() => setPage(page + 1)}>Next history page</button>
+        <button type="button" disabled={controlsDisabled || page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
+        {pageNumbers.map((number, index) => (
+          <React.Fragment key={number}>
+            {index > 0 && number - pageNumbers[index - 1] > 1 && <span aria-hidden="true">…</span>}
+            <button type="button" aria-label={`Page ${number}`} aria-current={number === page ? 'page' : undefined}
+              disabled={controlsDisabled} onClick={() => setPage(number)}>{number}</button>
+          </React.Fragment>
+        ))}
+        <button type="button" disabled={controlsDisabled || page >= pages} onClick={() => setPage(page + 1)}>Next</button>
       </nav>}
     </section>
   );

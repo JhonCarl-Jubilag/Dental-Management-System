@@ -7,6 +7,9 @@ const AuthContext = createContext({});
 export const useAuth = () => useContext(AuthContext);
 
 const identityKey = account => account ? `${account.id}:${account.email}` : null;
+const sameProfile = (previous, next) => previous && next
+  && Object.keys(previous).length === Object.keys(next).length
+  && Object.keys(next).every(key => previous[key] === next[key]);
 const recoverPatientRegistration = async (profile) => {
   const { data, error } = await supabase.functions.invoke('recover-patient-registration', {
     body: profile ? { profile } : {},
@@ -30,14 +33,19 @@ export const AuthProvider = ({ children }) => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [registrationIncomplete, setRegistrationIncomplete] = useState(false);
   const [accountError, setAccountError] = useState('');
+  const [profileRefresh, setProfileRefresh] = useState(0);
   const isMounted = useRef(true);
   const signingUpRef = useRef(false);
   const profileRequests = useRef(new Map());
   const currentIdentity = useRef(null);
+  const currentConfirmation = useRef(null);
+  const resolvedProfileIdentity = useRef(null);
+  const currentAccountVersion = useRef(0);
 
   const loadAccountProfile = useCallback(account => {
     const key = identityKey(account);
     if (profileRequests.current.has(key)) return profileRequests.current.get(key);
+    const version = currentAccountVersion.current;
     const request = (async () => {
       const { data, error } = await supabase.rpc('get_account_profile');
       if (error) throw new Error(error.code === 'PGRST202'
@@ -50,9 +58,11 @@ export const AuthProvider = ({ children }) => {
         }
         return { type: data.role, details: data.profile };
       }
-      if (currentIdentity.current !== key) throw new Error('Your login session changed. Please try again.');
+      if (currentIdentity.current !== key || currentAccountVersion.current !== version) throw new Error('Your login session changed. Please try again.');
       return recoverPatientRegistration();
-    })().finally(() => profileRequests.current.delete(key));
+    })().finally(() => {
+      if (profileRequests.current.get(key) === request) profileRequests.current.delete(key);
+    });
     profileRequests.current.set(key, request);
     return request;
   }, []);
@@ -70,43 +80,70 @@ export const AuthProvider = ({ children }) => {
   // Auth state listener
   useEffect(() => {
     isMounted.current = true;
+    let active = true;
+    let authEvents = 0;
+
+    const applySession = (session, event) => {
+      const account = session?.user ?? null;
+      const identity = identityKey(account);
+      const confirmation = account?.email_confirmed_at ?? null;
+      if (currentIdentity.current !== identity || currentConfirmation.current !== confirmation) {
+        currentAccountVersion.current += 1;
+        currentIdentity.current = identity;
+        currentConfirmation.current = confirmation;
+        resolvedProfileIdentity.current = null;
+        profileRequests.current.clear();
+        setUserType(null);
+        setUserDetails(null);
+        setProfileLoading(Boolean(account));
+        setRegistrationIncomplete(false);
+        setAccountError('');
+      }
+      // Supabase can emit SIGNED_IN again on tab focus. Keep the same user
+      // reference so page-level effects and in-progress forms stay intact.
+      setUser(previous => event !== 'USER_UPDATED'
+        && identityKey(previous) === identity
+        && (previous?.email_confirmed_at ?? null) === confirmation ? previous : account);
+      setProfileRefresh(version => version + 1);
+      setLoading(false);
+    };
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (isMounted.current) {
+      if (active && isMounted.current && authEvents === 0) {
         if (window.location.pathname === '/verify-email') {
           setLoading(false);
           return;
         }
-        currentIdentity.current = identityKey(session?.user);
-        setUser(session?.user ?? null);
-        setLoading(false);
+        applySession(session, 'INITIAL_SESSION');
       }
     }).catch(() => {
-      if (isMounted.current) setLoading(false);
+      if (active && isMounted.current && authEvents === 0) setLoading(false);
     });
 
     // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (isMounted.current) {
+      (event, session) => {
+        if (active && isMounted.current) {
           if (signingUpRef.current) return;
           if (window.location.pathname === '/verify-email' && session) return;
-          currentIdentity.current = identityKey(session?.user);
-          setUser(session?.user ?? null);
+          authEvents += 1;
+          applySession(session, event);
         }
       }
     );
 
     return () => {
+      active = false;
       isMounted.current = false;
       subscription.unsubscribe();
     };
   }, []);
 
-  // Fetch user details when user changes
+  // Load new identities and revalidate existing profiles in the background.
   useEffect(() => {
     if (!user) {
+      resolvedProfileIdentity.current = null;
       setUserDetails(null);
       setUserType(null);
       setProfileLoading(false);
@@ -114,31 +151,47 @@ export const AuthProvider = ({ children }) => {
       return;
     }
     let cancelled = false;
-    setUserType(null);
-    setUserDetails(null);
-    setProfileLoading(true);
-    setRegistrationIncomplete(false);
+    const identity = identityKey(user);
+    const version = currentAccountVersion.current;
+    const isCurrent = () => isMounted.current && !cancelled
+      && currentIdentity.current === identity && currentAccountVersion.current === version;
+    // Revalidate the current account without showing the route loader or
+    // clearing its profile. Only a new/unresolved identity blocks rendering.
+    if (resolvedProfileIdentity.current !== identity) {
+      setUserType(null);
+      setUserDetails(null);
+      setProfileLoading(true);
+      setRegistrationIncomplete(false);
+    }
     if (!user.email_confirmed_at) {
+      resolvedProfileIdentity.current = null;
+      setUserType(null);
+      setUserDetails(null);
       setProfileLoading(false);
       return;
     }
     loadAccountProfile(user).then(profile => {
-      if (isMounted.current && !cancelled) {
+      if (isCurrent()) {
+        resolvedProfileIdentity.current = identity;
         setUserType(profile.type);
-        setUserDetails(profile.details);
+        setUserDetails(previous => sameProfile(previous, profile.details) ? previous : profile.details);
+        setRegistrationIncomplete(false);
         setAccountError('');
       }
     }).catch(error => {
-      if (!isMounted.current || cancelled) return;
+      if (!isCurrent()) return;
+      resolvedProfileIdentity.current = null;
+      setUserType(null);
+      setUserDetails(null);
       setAccountError(error.message);
       if (error.code === 'profile_details_required') {
         setRegistrationIncomplete(true);
       }
     }).finally(() => {
-      if (isMounted.current && !cancelled) setProfileLoading(false);
+      if (isCurrent()) setProfileLoading(false);
     });
     return () => { cancelled = true; };
-  }, [user, loadAccountProfile]);
+  }, [user, profileRefresh, loadAccountProfile]);
 
   // Sign Up
   const signUp = async (email, password, userData) => {
@@ -201,28 +254,32 @@ export const AuthProvider = ({ children }) => {
   // Sign In
   const signIn = async (email, password) => {
     let account;
+    let version;
     setAccountError('');
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
       if (error) throw error;
       account = data.user;
+      version = currentAccountVersion.current;
       if (!data.user.email_confirmed_at) {
         await supabase.auth.signOut({ scope: 'local' });
         return { success: false, message: 'Please verify your email before logging in.', needsVerification: true };
       }
       const profile = await loadAccountProfile(data.user);
-      if (currentIdentity.current !== identityKey(data.user)) throw new Error('Your login session changed. Please try again.');
+      if (currentIdentity.current !== identityKey(data.user) || currentAccountVersion.current !== version) throw new Error('Your login session changed. Please try again.');
+      resolvedProfileIdentity.current = identityKey(data.user);
       setUserType(profile.type);
       setUserDetails(profile.details);
       setRegistrationIncomplete(false);
       return { success: true, data };
     } catch (error) {
-      if (error.code === 'profile_details_required' && currentIdentity.current === identityKey(account)) {
+      if (error.code === 'profile_details_required' && currentIdentity.current === identityKey(account)
+        && currentAccountVersion.current === version) {
         setRegistrationIncomplete(true);
         setAccountError(error.message);
         return { success: false, needsProfileCompletion: true, message: error.message };
       }
-      if (account && currentIdentity.current === identityKey(account)) {
+      if (account && currentIdentity.current === identityKey(account) && currentAccountVersion.current === version) {
         await supabase.auth.signOut({ scope: 'local' });
         currentIdentity.current = null;
         setUser(null);
@@ -236,8 +293,10 @@ export const AuthProvider = ({ children }) => {
   const completeRegistration = async profile => {
     try {
       const identity = identityKey(user);
+      const version = currentAccountVersion.current;
       const result = await recoverPatientRegistration(profile);
-      if (currentIdentity.current !== identity) throw new Error('Your session changed. Please log in again.');
+      if (currentIdentity.current !== identity || currentAccountVersion.current !== version) throw new Error('Your session changed. Please log in again.');
+      resolvedProfileIdentity.current = identity;
       setUserType(result.type);
       setUserDetails(result.details);
       setRegistrationIncomplete(false);
@@ -253,9 +312,16 @@ export const AuthProvider = ({ children }) => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      currentAccountVersion.current += 1;
+      currentIdentity.current = null;
+      currentConfirmation.current = null;
+      resolvedProfileIdentity.current = null;
+      profileRequests.current.clear();
       setUser(null);
       setUserDetails(null);
       setUserType(null);
+      setProfileLoading(false);
+      setRegistrationIncomplete(false);
       return { success: true };
     } catch (error) {
       console.error('Sign out error:', error);

@@ -1,13 +1,13 @@
 :root {
-  --primary: #354D70;
-  --primary-light: #4d83d4;
-  --success: #27ae60;
+  --primary: var(--clinic-navy);
+  --primary-light: var(--clinic-blue);
+  --success: var(--clinic-success);
   --gray-100: #f8f9fc;
   --gray-200: #eef2f7;
   --gray-600: #5a6e85;
-  --gray-800: #2c3e50;
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --gray-800: var(--clinic-ink);
+  --shadow-sm: 0 2px 8px rgba(5, 28, 67,0.04);
+  --shadow-md: 0 4px 12px rgba(5, 28, 67,0.08);
   --radius: 12px;
   --transition: 0.2s ease;
 }
@@ -37,7 +37,7 @@ body {
   padding: 28px 32px;
   margin-bottom: 32px;
   box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(0,0,0,0.03);
+  border: 1px solid rgba(5, 28, 67,0.03);
 }
 
 .service-title {
@@ -105,7 +105,7 @@ body {
   border: 1px solid #d9e5f5;
   border-radius: 24px;
   background: #eef4fd;
-  color: #354d70;
+  color: var(--clinic-navy);
   font: inherit;
   font-size: 0.85rem;
   font-weight: 600;
@@ -118,7 +118,7 @@ body {
 
 .service-details-container .service-animation-button:focus-visible,
 .service-details-container .service-animation-close:focus-visible {
-  outline: 3px solid #4d83d4;
+  outline: 3px solid var(--clinic-blue);
   outline-offset: 3px;
 }
 
@@ -131,8 +131,8 @@ body {
   border: 0;
   border-radius: 16px;
   background: white;
-  color: #2c3e50;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+  color: var(--clinic-ink);
+  box-shadow: 0 24px 80px rgba(5, 28, 67, 0.3);
   overflow-y: auto;
 }
 
@@ -161,7 +161,7 @@ body {
   border: 0;
   border-radius: 50%;
   background: #eef2f7;
-  color: #354d70;
+  color: var(--clinic-navy);
   font-size: 1.8rem;
   cursor: pointer;
 }
@@ -170,7 +170,7 @@ body {
   display: block;
   width: 100%;
   max-height: 70dvh;
-  background: #111827;
+  background: var(--clinic-ink);
 }
 
 .service-details-container .service-animation-error {
@@ -206,7 +206,7 @@ body {
   border-radius: var(--radius);
   padding: 24px 28px;
   box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(0,0,0,0.02);
+  border: 1px solid rgba(5, 28, 67,0.02);
   transition: var(--transition);
 }
 
@@ -335,7 +335,7 @@ body {
   box-shadow: var(--shadow-md);
   text-align: center;
   margin-bottom: 24px;
-  border: 1px solid rgba(0,0,0,0.05);
+  border: 1px solid rgba(5, 28, 67,0.05);
 }
 
 .booking-price {
@@ -367,7 +367,7 @@ body {
 .btn-book {
   width: 100%;
   padding: 14px;
-  background: var(--success);
+  background: var(--clinic-blue);
   color: white;
   border: none;
   border-radius: 40px;
@@ -382,7 +382,7 @@ body {
 }
 
 .btn-book:hover {
-  background: #1e8a50;
+  background: var(--clinic-blue-hover);
   transform: translateY(-1px);
 }
 
@@ -475,7 +475,7 @@ body {
 
 .error-card i {
   font-size: 3rem;
-  color: #e74c3c;
+  color: var(--clinic-danger);
   margin-bottom: 20px;
 }
 

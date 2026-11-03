@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ArrowLeft, Pencil, KeyRound, UserRound, Contact, ShieldCheck, CircleOff, CircleCheck } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -392,6 +393,9 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
   const [showResetModal, setShowResetModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [failedPhoto, setFailedPhoto] = useState('');
+  const editButton = useRef(null);
+
   const calculateAge = (birthday) => {
     if (!birthday) return null;
     const today = new Date();
@@ -404,17 +408,13 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
 
   const fetchPatient = useCallback(async () => {
     try {
-      const { data, error } = await supabase.from('patients').select(patientFields).eq('patient_id', patientId).single();
+      const readProfile = fields => supabase.from('patients').select(fields).eq('patient_id', patientId).single();
+      let result = await readProfile(`${patientFields}, profile_picture`);
+      if (result.error?.code === '42703') result = await readProfile(patientFields);
+      const { data, error } = result;
       if (error) throw error;
       setPatient(data);
-      setEditForm({
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
-        contact_no: data.contact_no || '',
-        address: data.address || '',
-        birthday: data.birthday || ''
-      });
+
     } catch (err) {
       toast.error('Failed to load patient details');
     } finally {
@@ -520,67 +520,89 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
 
   return (
     <div className="patient-detail-container">
-      <div className="dashboard-header">
-        <div className="header-left">
-          <button className="back-button" onClick={onBack}>
-            <i className="fas fa-arrow-left"></i> Back to Patients
-          </button>
-          <h1>Patient Profile</h1>
+      <button type="button" className="record-back" onClick={onBack}><ArrowLeft size={16} /> Back to Patients</button>
+      <header className="record-summary">
+        <div className="record-avatar" aria-hidden="true">
+          {patient.profile_picture && failedPhoto !== patient.profile_picture
+            ? <img src={patient.profile_picture} alt="" onError={() => setFailedPhoto(patient.profile_picture)} />
+            : <span>{patient.first_name?.charAt(0)}{patient.last_name?.charAt(0)}</span>}
         </div>
-      </div>
-
-      <div className="patient-profile">
-        <div className="profile-header">
-          <div className="profile-info">
-            <div className="profile-avatar">{patient.first_name.charAt(0)}{patient.last_name.charAt(0)}</div>
-            <div className="profile-details">
-              <h2>{patient.first_name} {patient.last_name}</h2>
-              <div className="profile-id">Patient ID: {patient.patient_id}</div>
-              <span className={`profile-status status-${patient.status}`}>{patient.status === 'active' ? 'Active' : 'Inactive'}</span>
-            </div>
+        <div className="record-identity">
+          <p>Patient profile</p>
+          <h1>{patient.first_name} {patient.last_name}</h1>
+          <div className="record-meta"><span>Patient ID {patient.patient_id}</span>
+            <span className={patient.status === 'active' ? 'record-active' : 'record-inactive'}>{patient.status === 'active' ? 'Active' : 'Inactive'}</span>
           </div>
-          <div className="profile-actions">
-            {!editMode && <button className="btn btn-warning" onClick={() => setEditMode(true)}><i className="fas fa-edit"></i> Edit Profile</button>}
-            <button className="btn btn-secondary" onClick={() => setShowResetModal(true)}><i className="fas fa-key"></i> Reset Password</button>
-            <button className={`btn ${patient.status === 'active' ? 'btn-danger' : 'btn-success'}`} onClick={handleToggleStatus}>
-              <i className={`fas fa-${patient.status === 'active' ? 'ban' : 'check'}`}></i> {patient.status === 'active' ? 'Deactivate' : 'Activate'}
+        </div>
+        <button type="button" className="record-button record-primary" ref={editButton} disabled={editMode} onClick={() => {
+          setEditForm({
+            first_name: patient.first_name || '', last_name: patient.last_name || '',
+            email: patient.email || '', contact_no: patient.contact_no || '',
+            birthday: patient.birthday || '', address: patient.address || '',
+          });
+          setEditMode(true);
+        }}><Pencil size={16} /> Edit profile</button>
+      </header>
+      <nav className="record-links" aria-label="Patient profile sections">
+        <a href="#record-details">Profile details</a><a href="#record-account">Account</a><a href="#record-history">Treatment history</a>
+      </nav>
+      <div id="record-details" className="record-layout">
+        {editMode ? (
+          <form className="record-card record-edit" onSubmit={handleEditPatient}>
+            <h2><Pencil /> Edit profile</h2>
+            <fieldset disabled={isSubmitting}>
+              {[
+                ['first_name', 'First name', 'text'], ['last_name', 'Last name', 'text'],
+                ['birthday', 'Birthday', 'date'], ['contact_no', 'Contact number', 'tel'],
+                ['email', 'Email', 'email'], ['address', 'Address', 'textarea'],
+              ].map(([field, label, type]) => (
+                <label key={field} className={['email', 'address'].includes(field) ? 'record-wide' : undefined}>
+                  {label}
+                  {type === 'textarea'
+                    ? <textarea rows="2" value={editForm[field]} onChange={e => setEditForm({ ...editForm, [field]: e.target.value })} />
+                    : <input type={type} value={editForm[field]} autoFocus={field === 'first_name'}
+                        onChange={e => setEditForm({ ...editForm, [field]: e.target.value })}
+                        required={['first_name', 'last_name', 'email'].includes(field)}
+                        readOnly={field === 'email' && !isSuperAdmin} maxLength={field === 'email' ? 254 : undefined} />}
+                  {field === 'email' && <small>{isSuperAdmin ? 'Changing this email changes the login address. The password stays the same.' : 'Only the super admin can change the login email.'}</small>}
+                </label>
+              ))}
+            </fieldset>
+            <div className="record-actions">
+              <button type="submit" className="record-button record-primary" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save changes'}</button>
+              <button type="button" className="record-button" disabled={isSubmitting} onClick={() => { setEditMode(false); requestAnimationFrame(() => editButton.current?.focus()); }}>Cancel</button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <section className="record-card">
+              <h2><UserRound /> Personal details</h2>
+              <dl><div><dt>First name</dt><dd>{patient.first_name}</dd></div>
+                <div><dt>Last name</dt><dd>{patient.last_name}</dd></div>
+                <div><dt>Birthday</dt><dd>{patient.birthday ? new Date(patient.birthday + 'T00:00:00').toLocaleDateString() : 'N/A'}</dd></div>
+                <div><dt>Age</dt><dd>{patient.age != null ? `${patient.age} years old` : 'N/A'}</dd></div></dl>
+            </section>
+            <section className="record-card">
+              <h2><Contact /> Contact information</h2>
+              <dl><div><dt>Email</dt><dd>{patient.email}</dd></div>
+                <div><dt>Contact number</dt><dd>{patient.contact_no || 'N/A'}</dd></div>
+                <div><dt>Address</dt><dd>{patient.address || 'N/A'}</dd></div></dl>
+            </section>
+          </>
+        )}
+        <section id="record-account" className="record-card">
+          <h2><ShieldCheck /> Account details</h2>
+          <dl><div><dt>Account created</dt><dd>{new Date(patient.date_created).toLocaleString()}</dd></div>
+            <div><dt>Email verified</dt><dd>{patient.email_verified ? 'Yes' : 'No'}</dd></div></dl>
+          <div className="record-actions">
+            <button type="button" className="record-button" onClick={() => setShowResetModal(true)}><KeyRound size={15} /> Reset password</button>
+            <button type="button" className={`record-button ${patient.status === 'active' ? 'record-danger' : ''}`} onClick={handleToggleStatus}>
+              {patient.status === 'active' ? <CircleOff size={15} /> : <CircleCheck size={15} />} {patient.status === 'active' ? 'Deactivate' : 'Activate'}
             </button>
           </div>
-        </div>
-
-        <div className="profile-sections">
-          <div className="personal-info-section">
-            <h3 className="section-title">Personal Information</h3>
-            {editMode ? (
-              <form onSubmit={handleEditPatient}>
-                <div className="form-row">
-                  <div className="form-group"><label>First Name</label><input type="text" className="form-control" value={editForm.first_name} onChange={e => setEditForm({...editForm, first_name: e.target.value})} required /></div>
-                  <div className="form-group"><label>Last Name</label><input type="text" className="form-control" value={editForm.last_name} onChange={e => setEditForm({...editForm, last_name: e.target.value})} required /></div>
-                </div>
-                <div className="form-group"><label>Email</label><input type="email" className="form-control" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} readOnly={!isSuperAdmin} disabled={isSubmitting} maxLength={254} required /><small>{isSuperAdmin ? 'Changing this email changes the login address. The password stays the same.' : 'Only the super admin can change the login email.'}</small></div>
-                <div className="form-group"><label>Contact Number</label><input type="tel" className="form-control" value={editForm.contact_no} onChange={e => setEditForm({...editForm, contact_no: e.target.value})} /></div>
-                <div className="form-group"><label>Address</label><textarea className="form-control" rows="2" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} /></div>
-                <div className="form-group"><label>Birthday</label><input type="date" className="form-control" value={editForm.birthday} onChange={e => setEditForm({...editForm, birthday: e.target.value})} /></div>
-                <div className="form-actions"><button type="button" className="btn btn-secondary" onClick={() => setEditMode(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save Changes'}</button></div>
-              </form>
-            ) : (
-              <div className="info-grid">
-                <div><label>First Name:</label><div>{patient.first_name}</div></div>
-                <div><label>Last Name:</label><div>{patient.last_name}</div></div>
-                <div><label>Email:</label><div>{patient.email}</div></div>
-                <div><label>Contact:</label><div>{patient.contact_no || 'N/A'}</div></div>
-                <div><label>Address:</label><div>{patient.address || 'N/A'}</div></div>
-                <div><label>Birthday:</label><div>{patient.birthday ? new Date(patient.birthday).toLocaleDateString() : 'N/A'}</div></div>
-                <div><label>Age:</label><div>{patient.age ? `${patient.age} years old` : 'N/A'}</div></div>
-                <div><label>Account Created:</label><div>{new Date(patient.date_created).toLocaleString()}</div></div>
-                <div><label>Email Verified:</label><div>{patient.email_verified ? 'Yes' : 'No'}</div></div>
-              </div>
-            )}
-          </div>
-        </div>
+        </section>
       </div>
-
-      <PatientTreatmentHistory key={patient.patient_id} patientId={patient.patient_id} />
+      <div id="record-history"><PatientTreatmentHistory key={patient.patient_id} patientId={patient.patient_id} /></div>
 
       {/* Reset Password Modal */}
       {showResetModal && (

@@ -3,7 +3,7 @@
   border-radius: 12px;
   padding: 25px;
   margin-bottom: 30px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 5px 15px rgba(5, 28, 67,0.1);
 }
 .reports-page .filter-grid {
   display: grid;
@@ -33,20 +33,20 @@
   background: white;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 5px 15px rgba(5, 28, 67,0.1);
   text-align: center;
-  border-top: 4px solid #354D70;
+  border-top: 4px solid var(--clinic-navy);
 }
 .reports-page .summary-value {
   font-family: 'Montserrat', sans-serif;
   font-size: 2rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   margin-bottom: 5px;
 }
 .reports-page .summary-label {
   font-size: 0.9rem;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -54,11 +54,11 @@
   background: white;
   border-radius: 12px;
   margin-bottom: 30px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 5px 15px rgba(5, 28, 67,0.1);
   overflow: hidden;
 }
 .reports-page .section-header {
-  background: linear-gradient(135deg, #354D70, #4d83d4);
+  background: linear-gradient(135deg, var(--clinic-navy), var(--clinic-blue));
   color: white;
   padding: 20px;
   display: flex;
@@ -66,6 +66,7 @@
   align-items: center;
 }
 .reports-page .section-header h3 {
+  color: white;
   font-family: 'Montserrat', sans-serif;
   font-size: 1.3rem;
   margin: 0;
@@ -84,18 +85,18 @@
   justify-content: space-between;
   align-items: center;
   padding: 15px;
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
   border-radius: 8px;
-  border-left: 4px solid #354D70;
+  border-left: 4px solid var(--clinic-navy);
 }
 .reports-page .stat-label {
   font-size: 0.9rem;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
 }
 .reports-page .stat-value {
   font-family: 'Montserrat', sans-serif;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-size: 1.1rem;
 }
 .reports-page .charts-grid {
@@ -123,18 +124,18 @@
   font-size: 0.9rem;
 }
 .reports-page .data-table th {
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
   padding: 12px 15px;
   text-align: left;
   font-weight: 600;
-  color: #2c3e50;
-  border-bottom: 2px solid #e9ecef;
+  color: var(--clinic-ink);
+  border-bottom: 2px solid var(--clinic-line);
   text-transform: uppercase;
   font-size: 0.8rem;
 }
 .reports-page .data-table td {
   padding: 12px 15px;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--clinic-line);
   color: #495057;
 }
 .reports-page .badge {
@@ -151,7 +152,7 @@
 .reports-page .report-footer {
   text-align: center;
   padding: 20px;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
   font-size: 0.9rem;
 }
 .reports-page .btn-sm { padding: 6px 12px; font-size: 0.8rem; }

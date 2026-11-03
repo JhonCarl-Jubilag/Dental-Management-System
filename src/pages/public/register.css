@@ -7,14 +7,14 @@
 .register-container {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   line-height: 1.6;
-  color: #333;
+  color: var(--clinic-ink);
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
   position: relative;
-  background: #B4DDE1;
+  background: var(--clinic-mist);
 }
 
 #canvas {
@@ -36,7 +36,7 @@
 .form-wrapper {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 50px rgba(5, 28, 67, 0.2);
   backdrop-filter: blur(10px);
   padding: 25px;
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -49,14 +49,14 @@
 }
 
 .form-header h1 {
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-size: 2rem;
   font-weight: 600;
   margin-bottom: 8px;
 }
 
 .form-header p {
-  color: #7f8c8d;
+  color: var(--clinic-muted);
   font-size: 0.9rem;
 }
 
@@ -88,7 +88,7 @@
 .form-group label {
   margin-bottom: 6px;
   font-weight: 500;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-size: 0.95rem;
 }
 
@@ -96,26 +96,26 @@
 .form-group select,
 .form-group textarea {
   padding: 9px 12px;
-  border: 2px solid #e8eeef;
+  border: 2px solid var(--clinic-tint);
   border-radius: 8px;
   font-size: 1rem;
   transition: all 0.3s ease;
-  background-color: #f8f9fa;
+  background-color: var(--clinic-canvas);
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--clinic-blue);
   background-color: white;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 105, 168, 0.1);
 }
 
 .form-group input.error,
 .form-group select.error,
 .form-group textarea.error {
-  border-color: #e74c3c;
+  border-color: var(--clinic-danger);
   background-color: #fee;
 }
 
@@ -139,14 +139,14 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #3498db, #2980b9);
+  background: linear-gradient(135deg, var(--clinic-blue), var(--clinic-blue));
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2980b9, #1f639b);
+  background: linear-gradient(135deg, var(--clinic-blue), var(--clinic-blue-hover));
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+  box-shadow: 0 5px 15px rgba(0, 105, 168, 0.3);
 }
 
 .btn-primary:disabled {
@@ -158,7 +158,7 @@
 .btn-link {
   background: none;
   border: none;
-  color: #3498db;
+  color: var(--clinic-blue);
   text-decoration: underline;
   cursor: pointer;
   font-size: 0.9rem;
@@ -166,7 +166,7 @@
 }
 
 .btn-link:hover {
-  color: #2980b9;
+  color: var(--clinic-blue);
 }
 
 /* Alert styles */
@@ -203,18 +203,18 @@
 .validation-message {
   font-size: 0.8rem;
   margin-top: 4px;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
 }
 
 .validation-message.error {
-  color: #e74c3c;
+  color: var(--clinic-danger);
 }
 
 /* Password strength indicator */
 .password-strength {
   margin-top: 5px;
   height: 4px;
-  background-color: #ecf0f1;
+  background-color: var(--clinic-canvas);
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -226,7 +226,7 @@
 }
 
 .strength-bar.weak {
-  background-color: #e74c3c;
+  background-color: var(--clinic-danger);
 }
 
 .strength-bar.medium {
@@ -234,12 +234,12 @@
 }
 
 .strength-bar.strong {
-  background-color: #27ae60;
+  background-color: var(--clinic-success);
 }
 
 .strength-text {
   font-size: 0.7rem;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
   margin-top: 2px;
   display: block;
 }
@@ -249,16 +249,16 @@
   text-align: center;
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #ecf0f1;
+  border-top: 1px solid var(--clinic-canvas);
 }
 
 .form-footer p {
   margin-bottom: 10px;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
 }
 
 .form-footer a {
-  color: #3498db;
+  color: var(--clinic-blue);
   text-decoration: none;
   font-weight: 500;
 }
@@ -331,12 +331,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
   transition: color 0.3s ease;
 }
 
 .password-toggle-btn:hover {
-  color: #3498db;
+  color: var(--clinic-blue);
 }
 
 .password-toggle-btn:focus {

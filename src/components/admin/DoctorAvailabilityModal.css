@@ -1,63 +1,79 @@
 .doctor-availability-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  padding: 24px;
-  display: grid;
-  place-items: center;
-  background: rgba(24, 42, 65, 0.55);
+  position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center;
+  padding: clamp(8px, 3vw, 32px); background: rgb(5 28 67 / 52%);
 }
-
 .doctor-availability-dialog {
-  width: min(960px, 100%);
-  max-height: 90vh;
-  overflow-y: auto;
-  border-radius: 18px;
-  background: #fff;
-  color: #354d70;
-  box-shadow: 0 20px 60px rgba(24, 42, 65, 0.2);
-  padding: 28px;
+  box-sizing: border-box; width: min(850px, 100%); min-width: 0; max-height: 92vh;
+  max-height: min(92dvh, 920px); display: flex; flex-direction: column;
+  overflow: hidden; background: white; border-radius: 20px; color: var(--clinic-ink);
+  box-shadow: 0 24px 80px rgb(5 28 67 / 25%); --dav-gutter: clamp(16px, 4vw, 32px);
 }
-
-.doctor-availability-dialog .doctor-availability-heading,
-.doctor-availability-dialog .doctor-availability-section-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+.doctor-availability-dialog :is(h2,h3,h4,p) { margin: 0; }
+.doctor-availability-heading, .doctor-availability-footer {
+  display: flex; align-items: center; gap: 14px; flex: none;
+  padding: 20px var(--dav-gutter); border-bottom: 1px solid var(--clinic-line);
 }
-
-.doctor-availability-dialog h2 { margin: 0 0 8px; font-size: 24px; color: #354d70; }
-.doctor-availability-dialog h3 { margin: 0 0 16px; font-size: 18px; color: #354d70; }
-.doctor-availability-dialog p { line-height: 1.5; margin: 8px 0 16px; }
-.doctor-availability-dialog .doctor-availability-notice { padding: 14px; border-radius: 10px; background: #edf6fa; font-size: 14px; }
-.doctor-availability-dialog .doctor-availability-error { padding: 14px; background: #fff0ef; color: #9c332b; border-radius: 10px; margin-bottom: 16px; }
-.doctor-availability-dialog .doctor-availability-columns { display: grid; grid-template-columns: 280px 1fr; gap: 28px; }
-.doctor-availability-dialog fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-.doctor-availability-dialog label { display: block; font-weight: 600; margin: 16px 0 6px; }
-.doctor-availability-dialog input { box-sizing: border-box; display: block; width: 100%; padding: 10px 12px; background: #fff; color: #354d70; border: 1px solid #ced9e5; border-radius: 8px; font: inherit; }
-.doctor-availability-dialog button { cursor: pointer; border: 1px solid #ced9e5; border-radius: 8px; background: #fff; color: #354d70; padding: 9px 14px; font: inherit; line-height: 1.25; }
-.doctor-availability-dialog button:hover:not(:disabled) { background: #edf3f9; }
-.doctor-availability-dialog button:disabled { opacity: 0.55; cursor: not-allowed; }
-.doctor-availability-dialog button:focus-visible,
-.doctor-availability-dialog input:focus-visible { outline: 3px solid #78a8e8; outline-offset: 2px; }
-.doctor-availability-dialog .doctor-availability-primary { background: #354d70; color: #fff; border-color: #354d70; }
-.doctor-availability-dialog .doctor-availability-primary:hover:not(:disabled) { background: #263c5b; }
-.doctor-availability-dialog .doctor-availability-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.doctor-availability-dialog .doctor-availability-periods { min-width: 0; }
-.doctor-availability-dialog .doctor-availability-period { padding: 16px; border: 1px solid #e0e8ef; border-radius: 10px; margin: 0 0 12px; line-height: 1.6; }
-.doctor-availability-dialog .doctor-availability-enabled,
-.doctor-availability-dialog .doctor-availability-disabled { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 13px; margin-top: 6px; background: #e5f7ed; color: #197346; }
-.doctor-availability-dialog .doctor-availability-disabled { background: #eef1f5; color: #58677a; }
-.doctor-availability-dialog .doctor-availability-appointments { border-top: 1px solid #e0e8ef; padding-top: 20px; margin-top: 24px; }
-.doctor-availability-dialog .doctor-availability-appointment { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 12px 0; border-bottom: 1px solid #edf1f5; }
-.doctor-availability-dialog .doctor-availability-appointment time { margin-left: auto; }
-.doctor-availability-dialog .doctor-availability-footer { display: flex; justify-content: flex-end; padding-top: 20px; }
-
-@media (max-width: 640px) {
-  .doctor-availability-overlay { padding: 12px; }
-  .doctor-availability-dialog { padding: 20px; max-height: 94vh; }
-  .doctor-availability-dialog .doctor-availability-columns { grid-template-columns: 1fr; gap: 24px; }
-  .doctor-availability-dialog .doctor-availability-appointment { flex-direction: column; }
-  .doctor-availability-dialog .doctor-availability-appointment time { margin-left: 0; }
+.dav-emblem { display: grid; place-items: center; flex: none; width: 48px; height: 48px; border-radius: 14px; background: var(--clinic-tint); color: var(--clinic-blue); }
+.dav-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.doctor-availability-kicker { font-size: .7rem; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; color: var(--clinic-blue); }
+.doctor-availability-dialog h2 { font-size: clamp(1.2rem, 3vw, 1.55rem); line-height: 1.25; color: var(--clinic-navy); }
+.dav-title p, .doctor-availability-footer p { display: flex; align-items: center; gap: 6px; color: var(--clinic-muted); font-size: .8rem; }
+.dav-title p { margin-top: 5px; }
+.dav-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 24px; padding: 24px var(--dav-gutter); }
+.doctor-availability-dialog h3 { font-size: 1.05rem; line-height: 1.4; color: var(--clinic-navy); }
+.doctor-availability-form { padding: 18px; border: 1px solid var(--clinic-line); background: var(--clinic-canvas); border-radius: 14px; }
+.doctor-availability-dialog fieldset { min-width: 0; margin: 12px 0 0; padding: 0; border: 0; }
+.dav-fields { display: grid; grid-template-columns: 1.3fr 1fr 1fr auto; align-items: end; gap: 12px; }
+.dav-fields > div { min-width: 0; }
+.doctor-availability-dialog label { display: block; font-size: .8rem; font-weight: 650; margin-bottom: 5px; }
+.doctor-availability-dialog input, .doctor-availability-dialog button {
+  box-sizing: border-box; border: 1px solid var(--clinic-line); border-radius: 8px;
+  background: white; color: var(--clinic-navy); font: inherit; font-size: .86rem;
+}
+.doctor-availability-dialog input { width: 100%; min-width: 0; height: 42px; padding: 6px 9px; }
+.doctor-availability-dialog button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 7px 12px; font-weight: 600; cursor: pointer; transition: background-color .15s, border-color .15s; }
+.doctor-availability-heading button { width: 38px; height: 38px; padding: 0; border-radius: 50%; }
+.doctor-availability-dialog button:hover:not(:disabled) { background: var(--clinic-canvas); border-color: var(--clinic-blue); }
+.doctor-availability-dialog .doctor-availability-primary { min-height: 42px; background: var(--clinic-blue); border-color: var(--clinic-blue); color: white; }
+.doctor-availability-dialog .doctor-availability-primary:hover:not(:disabled) { background: var(--clinic-blue-hover); }
+.doctor-availability-dialog :is(button,input):disabled { opacity: .58; cursor: not-allowed; }
+.doctor-availability-dialog :is(button,input):focus-visible { outline: 3px solid var(--clinic-blue); outline-offset: 2px; }
+.doctor-availability-dialog .dav-hint { font-size: .8rem; color: var(--clinic-muted); margin-top: 8px; }
+.doctor-availability-actions, .doctor-availability-section-heading, .doctor-availability-day h4, .doctor-availability-period, .doctor-availability-time { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.doctor-availability-section-heading, .doctor-availability-day h4, .doctor-availability-period { justify-content: space-between; }
+.doctor-availability-day { margin-top: 12px; border: 1px solid var(--clinic-line); border-radius: 12px; overflow: hidden; }
+.doctor-availability-day h4 { padding: 10px 16px; background: var(--clinic-canvas); font-size: .88rem; color: var(--clinic-navy); }
+.doctor-availability-day h4 span { font-size: .75rem; color: var(--clinic-muted); font-weight: 500; }
+.doctor-availability-period { padding: 12px 16px; border-top: 1px solid var(--clinic-line); }
+.doctor-availability-time { gap: 12px; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.doctor-availability-enabled, .doctor-availability-disabled, .dav-status { display: inline-flex; align-items: center; gap: 6px; border-radius: 20px; padding: 4px 9px; font-size: .74rem; font-weight: 600; background: var(--clinic-canvas); color: var(--clinic-muted); }
+.doctor-availability-enabled { color: var(--clinic-success); background: #e5f7ed; }
+.doctor-availability-time span::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.doctor-availability-dialog .dav-empty { margin-top: 12px; padding: 18px; display: grid; justify-items: center; gap: 4px; text-align: center; border: 1px dashed var(--clinic-line); border-radius: 12px; color: var(--clinic-muted); font-size: .85rem; }
+.dav-empty svg { color: var(--clinic-blue); margin-bottom: 4px; }
+.doctor-availability-appointment { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; border-bottom: 1px solid var(--clinic-line); padding: 12px 0; font-size: .85rem; }
+.doctor-availability-appointment div { flex: 1; display: grid; gap: 3px; overflow-wrap: anywhere; }
+.doctor-availability-appointment div span, .doctor-availability-appointment time { color: var(--clinic-muted); }
+.dav-status { text-transform: capitalize; }
+.doctor-availability-footer { justify-content: space-between; border: 0; border-top: 1px solid var(--clinic-line); padding-block: 14px; }
+.doctor-availability-footer svg { flex: none; }
+.doctor-availability-error { padding: 12px; border-radius: 8px; background: #fff0ef; color: var(--clinic-danger); overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .dav-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dav-fields > :first-child, .dav-fields > .doctor-availability-actions { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+  .doctor-availability-dialog { border-radius: 14px; max-height: 96vh; max-height: 96dvh; }
+  .doctor-availability-heading { padding-block: 12px; gap: 9px; }
+  .dav-emblem { width: 36px; height: 36px; border-radius: 10px; }
+  .dav-body { padding-block: 16px; gap: 20px; }
+  .doctor-availability-form { padding: 12px; }
+  .doctor-availability-appointment time { width: 100%; }
+}
+@media (max-height: 420px) {
+  .doctor-availability-dialog { display: block; overflow-y: auto; }
+  .dav-body { overflow: visible; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .doctor-availability-dialog button { transition: none; }
 }

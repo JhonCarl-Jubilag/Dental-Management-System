@@ -187,11 +187,7 @@ const Profile = () => {
       <nav className="modern-nav">
         <div className="nav-container">
           <Link to="/profile" className="logo">
-            <img src={DentalLogo} alt="Fifthcusp Dental Clinic Logo" className="logo-image" />
-            <div className="logo-text-wrapper">
-              <span className="logo-main-text">Fifthcusp</span>
-              <span className="logo-sub-text">Dental Clinic</span>
-            </div>
+            <img src={DentalLogo} alt="Diolata Dental Clinic Logo" className="logo-image" />
           </Link>
 
           <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>

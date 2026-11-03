@@ -14,22 +14,22 @@
   border-radius: 16px;
   padding: 20px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  border: 1px solid #eef2f6;
+  box-shadow: 0 2px 8px rgba(5, 28, 67,0.05);
+  border: 1px solid var(--clinic-canvas);
 }
 
 .manage-inventory-page .stat-card.warning .stat-number {
-  color: #e74c3c;
+  color: var(--clinic-danger);
 }
 
 .manage-inventory-page .stat-number {
   font-size: 2rem;
   font-weight: 700;
-  color: #354D70;
+  color: var(--clinic-navy);
 }
 
 .manage-inventory-page .stat-label {
-  color: #7f8c8d;
+  color: var(--clinic-muted);
   margin-top: 8px;
   font-size: 0.85rem;
   text-transform: uppercase;
@@ -42,7 +42,7 @@
   border-radius: 16px;
   padding: 20px;
   margin-bottom: 30px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(5, 28, 67,0.05);
 }
 
 .manage-inventory-page .filter-grid {
@@ -66,7 +66,7 @@
 
 .manage-inventory-page .form-control {
   padding: 10px 12px;
-  border: 2px solid #e9ecef;
+  border: 2px solid var(--clinic-line);
   border-radius: 8px;
   font-size: 0.9rem;
   transition: all 0.3s;
@@ -75,31 +75,31 @@
 
 .manage-inventory-page .form-control:focus {
   outline: none;
-  border-color: #4d83d4;
-  box-shadow: 0 0 0 3px rgba(77,131,212,0.1);
+  border-color: var(--clinic-blue);
+  box-shadow: 0 0 0 3px rgba(0, 105, 168,0.1);
 }
 
 /* Table Container */
 .manage-inventory-page .table-container {
   background: white;
   border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(5, 28, 67,0.05);
   overflow: hidden;
 }
 
 .manage-inventory-page .table-header {
   padding: 20px;
-  border-bottom: 1px solid #eef2f6;
+  border-bottom: 1px solid var(--clinic-canvas);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
 }
 
 .manage-inventory-page .table-header h3 {
   margin: 0;
   font-size: 1.1rem;
-  color: #1a2a3a;
+  color: var(--clinic-sidebar);
 }
 
 /* Data Table */
@@ -109,12 +109,12 @@
 }
 
 .manage-inventory-page .data-table th {
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
   padding: 12px 15px;
   text-align: left;
   font-weight: 600;
-  color: #2c3e50;
-  border-bottom: 2px solid #e9ecef;
+  color: var(--clinic-ink);
+  border-bottom: 2px solid var(--clinic-line);
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -122,7 +122,7 @@
 
 .manage-inventory-page .data-table td {
   padding: 12px 15px;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--clinic-line);
   color: #495057;
   vertical-align: middle;
 }
@@ -138,13 +138,13 @@
 }
 
 .manage-inventory-page .low-stock-value {
-  color: #e74c3c;
+  color: var(--clinic-danger);
   font-weight: bold;
 }
 
 /* Badges */
 .manage-inventory-page .category-badge {
-  background: #e3f2fd;
+  background: var(--clinic-tint);
   color: #1565c0;
   padding: 4px 10px;
   border-radius: 20px;
@@ -188,28 +188,28 @@
 }
 
 .manage-inventory-page .btn-primary {
-  background: linear-gradient(135deg, #354D70, #4d83d4);
+  background: linear-gradient(135deg, var(--clinic-navy), var(--clinic-blue));
   color: white;
 }
 
 .manage-inventory-page .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(53,77,112,0.2);
+  box-shadow: 0 4px 12px rgba(8, 38, 90,0.2);
 }
 
 .manage-inventory-page .btn-secondary {
-  background: #6c757d;
+  background: var(--clinic-muted);
   color: white;
 }
 
 .manage-inventory-page .btn-success {
-  background: #28a745;
+  background: var(--clinic-success);
   color: white;
 }
 
 .manage-inventory-page .btn-warning {
   background: #ffc107;
-  color: #212529;
+  color: var(--clinic-ink);
 }
 
 .manage-inventory-page .btn-info {
@@ -218,7 +218,7 @@
 }
 
 .manage-inventory-page .btn-danger {
-  background: #dc3545;
+  background: var(--clinic-danger);
   color: white;
 }
 
@@ -242,12 +242,12 @@
   justify-content: center;
   gap: 10px;
   padding: 15px;
-  border-top: 1px solid #eef2f6;
+  border-top: 1px solid var(--clinic-canvas);
 }
 
 .manage-inventory-page .page-link {
   padding: 6px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--clinic-line);
   background: white;
   border-radius: 4px;
   cursor: pointer;
@@ -266,15 +266,15 @@
 .manage-inventory-page .loading-placeholder {
   text-align: center;
   padding: 40px 20px;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
 }
 
 .manage-inventory-page .spinner-small {
   display: inline-block;
   width: 20px;
   height: 20px;
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid #354D70;
+  border: 2px solid var(--clinic-canvas);
+  border-top: 2px solid var(--clinic-navy);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-right: 8px;
@@ -285,7 +285,7 @@
 .manage-inventory-page .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
 }
 
 /* Modal */
@@ -295,7 +295,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(5, 28, 67,0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -323,7 +323,7 @@
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #eef2f6;
+  border-bottom: 1px solid var(--clinic-canvas);
 }
 
 .manage-inventory-page .modal-close {
@@ -331,7 +331,7 @@
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #999;
+  color: var(--clinic-muted);
 }
 
 .manage-inventory-page .modal-footer {
@@ -340,7 +340,7 @@
   gap: 10px;
   margin-top: 25px;
   padding-top: 15px;
-  border-top: 1px solid #eef2f6;
+  border-top: 1px solid var(--clinic-canvas);
 }
 
 /* Form inside modal */
@@ -359,7 +359,7 @@
   display: block;
   font-weight: 600;
   margin-bottom: 6px;
-  color: #2c3e50;
+  color: var(--clinic-ink);
 }
 
 /* Dashboard header with user info (shared style) */
@@ -375,11 +375,11 @@
 .header-title h1 {
   font-size: 1.8rem;
   margin: 0;
-  color: #1a2a3a;
+  color: var(--clinic-sidebar);
 }
 
 .welcome-message {
-  color: #7f8c8d;
+  color: var(--clinic-muted);
   margin: 5px 0 0;
 }
 
@@ -393,16 +393,16 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
   padding: 8px 15px;
   border-radius: 40px;
-  border: 1px solid #eef2f6;
+  border: 1px solid var(--clinic-canvas);
 }
 
 .user-avatar {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #354D70, #4d83d4);
+  background: linear-gradient(135deg, var(--clinic-navy), var(--clinic-blue));
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -418,12 +418,12 @@
 
 .user-name {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--clinic-ink);
 }
 
 .user-role {
   font-size: 0.7rem;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
 }
 
 /* Responsive */
@@ -461,5 +461,5 @@
 }
 
 .manage-inventory-page .stat-card.warning .stat-number {
-  color: #e74c3c;
+  color: var(--clinic-danger);
 }

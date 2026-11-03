@@ -9,6 +9,18 @@ import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import './manageServices.css';
 
+const serviceValues = form => {
+  const price = Number(form.price);
+  const duration = Number(form.duration_minutes);
+  if (form.price === '' || !Number.isFinite(price) || price < 0) {
+    throw new Error('Enter a valid service price of zero or more.');
+  }
+  if (!Number.isSafeInteger(duration) || duration <= 0) {
+    throw new Error('Enter a booking duration in whole minutes greater than zero.');
+  }
+  return { price, duration_minutes: duration };
+};
+
 const ManageServices = () => {
   const { user, userType, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -22,7 +34,8 @@ const ManageServices = () => {
   const [formData, setFormData] = useState({
     service_name: '',
     description: '',
-    price: ''
+    price: '',
+    duration_minutes: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
@@ -116,6 +129,7 @@ const ManageServices = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const values = serviceValues(formData);
       const { data: existing } = await supabase
         .from('services')
         .select('service_id')
@@ -131,7 +145,7 @@ const ManageServices = () => {
       const { error } = await supabase.from('services').insert([{
         service_name: formData.service_name.trim(),
         description: formData.description.trim() || null,
-        price: parseFloat(formData.price),
+        ...values,
         status: 'active'
       }]);
 
@@ -139,7 +153,7 @@ const ManageServices = () => {
 
       toast.success('Service added successfully!');
       setShowAddModal(false);
-      setFormData({ service_name: '', description: '', price: '' });
+      setFormData({ service_name: '', description: '', price: '', duration_minutes: '' });
       fetchServices();
     } catch (err) {
       toast.error(err.message);
@@ -152,6 +166,7 @@ const ManageServices = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const values = serviceValues(formData);
       const { data: existing } = await supabase
         .from('services')
         .select('service_id')
@@ -170,7 +185,7 @@ const ManageServices = () => {
         .update({
           service_name: formData.service_name.trim(),
           description: formData.description.trim() || null,
-          price: parseFloat(formData.price),
+          ...values,
           status: formData.status
         })
         .eq('service_id', selectedService.service_id);
@@ -180,7 +195,7 @@ const ManageServices = () => {
       toast.success('Service updated successfully!');
       setShowEditModal(false);
       setSelectedService(null);
-      setFormData({ service_name: '', description: '', price: '' });
+      setFormData({ service_name: '', description: '', price: '', duration_minutes: '' });
       fetchServices();
     } catch (err) {
       toast.error(err.message);
@@ -222,7 +237,7 @@ const ManageServices = () => {
   };
 
   const openAddModal = () => {
-    setFormData({ service_name: '', description: '', price: '' });
+    setFormData({ service_name: '', description: '', price: '', duration_minutes: '' });
     setShowAddModal(true);
   };
 
@@ -231,7 +246,8 @@ const ManageServices = () => {
     setFormData({
       service_name: service.service_name,
       description: service.description || '',
-      price: service.price,
+      price: service.price ?? '',
+      duration_minutes: service.duration_minutes ?? '',
       status: service.status
     });
     setShowEditModal(true);
@@ -353,8 +369,9 @@ const ManageServices = () => {
               <thead>
                 <tr>
                   <th style={{ width: '20%', padding: '12px 15px', textAlign: 'left' }}>Service Name</th>
-                  <th style={{ width: '45%', padding: '12px 15px', textAlign: 'left' }}>Description</th>
+                  <th style={{ width: '35%', padding: '12px 15px', textAlign: 'left' }}>Description</th>
                   <th style={{ width: '10%', padding: '12px 15px', textAlign: 'left' }}>Price</th>
+                  <th style={{ width: '10%', padding: '12px 15px', textAlign: 'left' }}>Duration</th>
                   <th style={{ width: '10%', padding: '12px 15px', textAlign: 'center' }}>Status</th>
                   <th style={{ width: '15%', padding: '12px 15px', textAlign: 'left' }}>Actions</th>
                 </tr>
@@ -362,7 +379,7 @@ const ManageServices = () => {
               <tbody>
                 {services.length === 0 ? (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '60px', color: '#7f8c8d' }}>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '60px', color: '#50657a' }}>
                       No services found
                     </td>
                   </tr>
@@ -372,11 +389,14 @@ const ManageServices = () => {
                       <td style={{ width: '20%', padding: '12px 15px', verticalAlign: 'middle' }}>
                         <strong>{service.service_name}</strong>
                       </td>
-                      <td style={{ width: '45%', padding: '12px 15px', verticalAlign: 'middle', wordBreak: 'break-word' }}>
+                      <td style={{ width: '35%', padding: '12px 15px', verticalAlign: 'middle', wordBreak: 'break-word' }}>
                         {service.description || '—'}
                       </td>
                       <td style={{ width: '10%', padding: '12px 15px', verticalAlign: 'middle' }}>
                         ₱{Number(service.price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ width: '10%', padding: '12px 15px', verticalAlign: 'middle' }}>
+                        {service.duration_minutes} min
                       </td>
                       <td style={{ width: '10%', padding: '12px 15px', textAlign: 'center', verticalAlign: 'middle' }}>
                         <span className={`status-badge status-${service.status}`}>
@@ -442,6 +462,11 @@ const ManageServices = () => {
                   <label>Price (₱) *</label>
                   <input type="number" className="form-control" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} min="0" step="0.01" required />
                 </div>
+                <div className="form-group">
+                  <label htmlFor="add-service-duration">Booking duration (minutes) *</label>
+                  <input id="add-service-duration" type="number" className="form-control" value={formData.duration_minutes} onChange={e => setFormData({ ...formData, duration_minutes: e.target.value })} min="1" step="1" required />
+                  <small>Time to reserve for one visit. Some treatments require multiple visits.</small>
+                </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
@@ -475,6 +500,11 @@ const ManageServices = () => {
                 <div className="form-group">
                   <label>Price (₱) *</label>
                   <input type="number" className="form-control" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} min="0" step="0.01" required />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="edit-service-duration">Booking duration (minutes) *</label>
+                  <input id="edit-service-duration" type="number" className="form-control" value={formData.duration_minutes} onChange={e => setFormData({ ...formData, duration_minutes: e.target.value })} min="1" step="1" required />
+                  <small>Changes affect new bookings. Existing appointments retain their reserved duration.</small>
                 </div>
                 <div className="form-group">
                   <label>Status *</label>

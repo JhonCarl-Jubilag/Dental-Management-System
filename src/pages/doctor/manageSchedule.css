@@ -14,19 +14,19 @@
 .manage-schedule-page .card {
   background: white;
   border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(5, 28, 67,0.05);
   overflow: hidden;
   transition: box-shadow 0.2s, transform 0.2s;
-  border: 1px solid #eef2f6;
+  border: 1px solid var(--clinic-canvas);
 }
 
 .manage-schedule-page .card:hover {
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 20px rgba(5, 28, 67,0.1);
   transform: translateY(-2px);
 }
 
 .manage-schedule-page .card-header {
-  background: linear-gradient(135deg, #354D70, #4d83d4);
+  background: linear-gradient(135deg, var(--clinic-navy), var(--clinic-blue));
   color: white;
   padding: 18px 24px;
 }
@@ -51,7 +51,7 @@
   display: block;
   font-weight: 600;
   margin-bottom: 6px;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -60,7 +60,7 @@
 .manage-schedule-page .form-control {
   width: 100%;
   padding: 10px 14px;
-  border: 2px solid #e9ecef;
+  border: 2px solid var(--clinic-line);
   border-radius: 10px;
   font-size: 0.95rem;
   transition: all 0.2s;
@@ -69,9 +69,9 @@
 
 .manage-schedule-page .form-control:focus {
   outline: none;
-  border-color: #4d83d4;
+  border-color: var(--clinic-blue);
   background: white;
-  box-shadow: 0 0 0 3px rgba(77,131,212,0.1);
+  box-shadow: 0 0 0 3px rgba(0, 105, 168,0.1);
 }
 
 .manage-schedule-page .form-row {
@@ -82,7 +82,7 @@
 
 .manage-schedule-page .form-hint {
   font-size: 0.7rem;
-  color: #6c757d;
+  color: var(--clinic-muted);
   margin-top: 5px;
   display: block;
 }
@@ -103,18 +103,18 @@
 }
 
 .manage-schedule-page .btn-primary {
-  background: linear-gradient(135deg, #354D70, #4d83d4);
+  background: linear-gradient(135deg, var(--clinic-navy), var(--clinic-blue));
   color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(5, 28, 67,0.1);
 }
 
 .manage-schedule-page .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(53,77,112,0.2);
+  box-shadow: 0 4px 12px rgba(8, 38, 90,0.2);
 }
 
 .manage-schedule-page .btn-danger {
-  background: #e74c3c;
+  background: var(--clinic-danger);
   color: white;
 }
 
@@ -134,7 +134,7 @@
 }
 
 .manage-schedule-page .btn-success {
-  background: #27ae60;
+  background: var(--clinic-success);
   color: white;
 }
 
@@ -156,7 +156,7 @@
 
 .manage-schedule-page .appointment-item {
   padding: 15px;
-  border: 1px solid #eef2f6;
+  border: 1px solid var(--clinic-canvas);
   border-radius: 12px;
   margin-bottom: 12px;
   background: #fafbfc;
@@ -164,7 +164,7 @@
 }
 
 .manage-schedule-page .appointment-item:hover {
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
   border-color: #d4dcf0;
 }
 
@@ -179,16 +179,16 @@
 
 .manage-schedule-page .appointment-patient {
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-size: 1rem;
 }
 
 .manage-schedule-page .appointment-time {
   font-size: 0.75rem;
-  background: #e9ecef;
+  background: var(--clinic-line);
   padding: 4px 10px;
   border-radius: 30px;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-weight: 600;
 }
 
@@ -241,8 +241,8 @@
   margin: 0 0 12px 0;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #354D70;
-  border-left: 4px solid #4d83d4;
+  color: var(--clinic-navy);
+  border-left: 4px solid var(--clinic-blue);
   padding-left: 12px;
 }
 
@@ -251,7 +251,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 14px 18px;
-  border: 1px solid #eef2f6;
+  border: 1px solid var(--clinic-canvas);
   border-radius: 12px;
   margin-bottom: 10px;
   background: white;
@@ -259,7 +259,7 @@
 }
 
 .manage-schedule-page .availability-item:hover {
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
   border-color: #d4dcf0;
 }
 
@@ -272,7 +272,7 @@
 
 .manage-schedule-page .time-range {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   background: #eef2fa;
   padding: 5px 12px;
   border-radius: 30px;
@@ -288,14 +288,14 @@
 .manage-schedule-page .empty-state {
   text-align: center;
   padding: 40px 20px;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
 }
 
 .manage-schedule-page .empty-state i {
   font-size: 2.5rem;
   margin-bottom: 12px;
   opacity: 0.6;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
 }
 
 .manage-schedule-page .helper-text {

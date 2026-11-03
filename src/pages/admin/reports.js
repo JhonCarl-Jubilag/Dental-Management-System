@@ -529,11 +529,11 @@ const Reports = () => {
       pdf.setProperties({
         title: `${reportTitle} - ${startDate} to ${endDate}`,
         subject: 'Clinic Analytics Report',
-        author: 'Fifthcusp Dental Clinic',
+        author: 'Diolata Dental Clinic',
         keywords: 'report, analytics, dental clinic',
-        creator: 'Fifthcusp System',
+        creator: 'Diolata System',
       });
-      pdf.save(`Fifthcusp_${reportTitle}_${startDate}_to_${endDate}.pdf`);
+      pdf.save(`Diolata_${reportTitle}_${startDate}_to_${endDate}.pdf`);
     } catch (err) {
       console.error('PDF generation error:', err);
       toast.error('Failed to generate PDF. Please try again.');
@@ -653,7 +653,7 @@ const Reports = () => {
           {/* Financial Reports */}
           {displayedFilters?.reportType === 'financial' && (
             <div className="report-section">
-              <div className="section-header"><h3>💰 Financial Summary</h3></div>
+              <div className="section-header"><h3> Financial Summary</h3></div>
               <div className="section-body">
                 <div className="stats-grid">
                   <div className="stat-item"><span className="stat-label">Total Revenue</span><span className="stat-value">{formatCurrency(financialData.summary.totalRevenue)}</span></div>
@@ -667,7 +667,7 @@ const Reports = () => {
                       <Line
                         data={{
                           labels: financialData.dailyRevenue.map(d => d.date),
-                          datasets: [{ label: 'Daily Revenue', data: financialData.dailyRevenue.map(d => d.daily_revenue), borderColor: '#354D70', backgroundColor: 'rgba(53,77,112,0.1)', fill: true, tension: 0.4 }]
+                          datasets: [{ label: 'Daily Revenue', data: financialData.dailyRevenue.map(d => d.daily_revenue), borderColor: '#08265a', backgroundColor: 'rgba(8, 38, 90,0.1)', fill: true, tension: 0.4 }]
                         }}
                         options={barOptions}
                       />
@@ -678,7 +678,7 @@ const Reports = () => {
                       <Doughnut
                         data={{
                           labels: financialData.paymentMethods.map(p => p.payment_method),
-                          datasets: [{ data: financialData.paymentMethods.map(p => p.total_amount), backgroundColor: ['#354D70', '#4d83d4', '#667eea', '#f093fb'], borderWidth: 0 }]
+                          datasets: [{ data: financialData.paymentMethods.map(p => p.total_amount), backgroundColor: ['#08265a', '#0069a8', '#32abe8', '#90ccec'], borderWidth: 0 }]
                         }}
                         options={chartOptions}
                       />
@@ -725,12 +725,12 @@ const Reports = () => {
                 <div className="charts-grid">
                   <div className="chart-container">
                     {appointmentData.byDay.length > 0 && (
-                      <Bar data={{ labels: appointmentData.byDay.map(d => d.day_name), datasets: [{ label: 'Appointments', data: appointmentData.byDay.map(d => d.appointment_count), backgroundColor: '#354D70' }] }} options={chartOptions} />
+                      <Bar data={{ labels: appointmentData.byDay.map(d => d.day_name), datasets: [{ label: 'Appointments', data: appointmentData.byDay.map(d => d.appointment_count), backgroundColor: '#08265a' }] }} options={chartOptions} />
                     )}
                   </div>
                   <div className="chart-container">
                     {appointmentData.byTime.length > 0 && (
-                      <Pie data={{ labels: appointmentData.byTime.map(t => t.time_slot), datasets: [{ data: appointmentData.byTime.map(t => t.appointment_count), backgroundColor: ['#354D70', '#4d83d4', '#667eea'] }] }} options={chartOptions} />
+                      <Pie data={{ labels: appointmentData.byTime.map(t => t.time_slot), datasets: [{ data: appointmentData.byTime.map(t => t.appointment_count), backgroundColor: ['#08265a', '#0069a8', '#32abe8'] }] }} options={chartOptions} />
                     )}
                   </div>
                 </div>
@@ -768,12 +768,12 @@ const Reports = () => {
                 <div className="charts-grid">
                   <div className="chart-container">
                     {patientData.demographics.length > 0 && (
-                      <Bar data={{ labels: patientData.demographics.map(d => d.age_group), datasets: [{ label: 'Patients', data: patientData.demographics.map(d => d.patient_count), backgroundColor: '#354D70' }] }} options={chartOptions} />
+                      <Bar data={{ labels: patientData.demographics.map(d => d.age_group), datasets: [{ label: 'Patients', data: patientData.demographics.map(d => d.patient_count), backgroundColor: '#08265a' }] }} options={chartOptions} />
                     )}
                   </div>
                   <div className="chart-container">
                     {patientData.newPatients.length > 0 && (
-                      <Line data={{ labels: patientData.newPatients.map(n => n.month), datasets: [{ label: 'New Patients', data: patientData.newPatients.map(n => n.new_patients), borderColor: '#354D70', fill: true }] }} options={chartOptions} />
+                      <Line data={{ labels: patientData.newPatients.map(n => n.month), datasets: [{ label: 'New Patients', data: patientData.newPatients.map(n => n.new_patients), borderColor: '#08265a', fill: true }] }} options={chartOptions} />
                     )}
                   </div>
                 </div>
@@ -837,12 +837,12 @@ const Reports = () => {
                 <div className="charts-grid">
                   <div className="chart-container">
                     {doctorPerformanceData.performance.length > 0 && (
-                      <Bar data={{ labels: doctorPerformanceData.performance.map(d => d.doctor_name), datasets: [{ label: 'Revenue Generated', data: doctorPerformanceData.performance.map(d => d.total_revenue_generated), backgroundColor: '#354D70' }] }} options={barOptions} />
+                      <Bar data={{ labels: doctorPerformanceData.performance.map(d => d.doctor_name), datasets: [{ label: 'Revenue Generated', data: doctorPerformanceData.performance.map(d => d.total_revenue_generated), backgroundColor: '#08265a' }] }} options={barOptions} />
                     )}
                   </div>
                   <div className="chart-container">
                     {doctorPerformanceData.satisfaction.length > 0 && (
-                      <Radar data={{ labels: doctorPerformanceData.satisfaction.map(d => d.doctor_name), datasets: [{ label: 'Repeat Rate %', data: doctorPerformanceData.satisfaction.map(d => d.repeat_rate), backgroundColor: 'rgba(53,77,112,0.2)', borderColor: '#354D70' }] }} options={{ responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 20 } } } }} />
+                      <Radar data={{ labels: doctorPerformanceData.satisfaction.map(d => d.doctor_name), datasets: [{ label: 'Repeat Rate %', data: doctorPerformanceData.satisfaction.map(d => d.repeat_rate), backgroundColor: 'rgba(8, 38, 90,0.2)', borderColor: '#08265a' }] }} options={{ responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 20 } } } }} />
                     )}
                   </div>
                 </div>
@@ -863,7 +863,7 @@ const Reports = () => {
 
           <div className="report-footer">
             <p>Report generated on {new Date().toLocaleString()} | Period: {formatDate(displayedFilters?.startDate)} to {formatDate(displayedFilters?.endDate)} | {displayedFilters?.doctorId === 'all' ? 'All Doctors' : 'Doctor Filtered'}</p>
-            <p>© {new Date().getFullYear()} Fifthcusp Dental Clinic. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Diolata Dental Clinic. All rights reserved.</p>
           </div>
         </div>
         </AdminDataRegion>

@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import ClinicMap from '../../components/common/ClinicMap';
 import './landing.css';
+import heroPhoto from '../../assets/bg2.jpg';
 import DentalLogo from '../../assets/DentalLogo.png';
 
 import { 
+  ArrowUpRight, ChevronDown, Clock3, Info, MapPin, Menu, Search, X,
   ClipboardCheck,   
   Sparkles,         
   Activity,        
@@ -19,13 +21,15 @@ import {
   BriefcaseMedical  
 } from 'lucide-react';
 
+const initialServiceCount = 6;
+
 const Landing = () => {
-  const navigate = useNavigate();
   const { user, userType, userDetails, signOut } = useAuth();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showAllServices, setShowAllServices] = useState(false);
+  const [serviceQuery, setServiceQuery] = useState('');
+  const [servicesExpanded, setServicesExpanded] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -47,7 +51,7 @@ const Landing = () => {
     if (name.includes('xray') || name.includes('x-ray')) return <Scan size={42} className="text-blue-600" />;
     
     // Cleaning & Esthetics
-    if (name.includes('cleaning') || name.includes('fluoride')) return <Sparkles size={42} className="text-blue-600" />;
+    if (name.includes('cleaning') || name.includes('fluoride') || name.includes('prophylaxis') || name.includes('scaling')) return <Sparkles size={42} className="text-blue-600" />;
     if (name.includes('whitening')) return <Sparkles size={42} className="text-blue-500" />;
     
     // Restorative & Prosthodontics (Crowns, Bridges, Implants, Fillings)
@@ -56,6 +60,10 @@ const Landing = () => {
       name.includes('bridge') || 
       name.includes('implant') || 
       name.includes('filling') ||
+      name.includes('restoration') ||
+      name.includes('inlay') || name.includes('onlay') ||
+      name.includes('prosthodontics') || name.includes('attachments') || name.includes('veneers') ||
+      name.includes('orthodontics') ||
       name.includes('dentures') ||
       name.includes('braces')
     ) {
@@ -63,11 +71,12 @@ const Landing = () => {
     }
     
     // Specialized & Surgical Care
-    if (name.includes('pediatric') || name.includes('child')) return <Baby size={42} className="text-blue-600" />;
+    if (name.includes('pediatric') || name.includes('pedodontics') || name.includes('child')) return <Baby size={42} className="text-blue-600" />;
     if (name.includes('emergency')) return <ShieldAlert size={42} className="text-red-500" />;
     if (
       name.includes('surgery') || 
       name.includes('extraction') || 
+      name.includes('grafting') || name.includes('flap') ||
       name.includes('root') || 
       name.includes('rct')
     ) {
@@ -95,81 +104,20 @@ const Landing = () => {
 
       if (error) throw error;
       
-      if (data && data.length > 0) {
-        setServices(data);
-      } else {
-        setServices(getFallbackServices());
-      }
+      setServices(data || []);
     } catch (error) {
       console.error('Error fetching services:', error);
-      setError('Unable to load services. Showing sample services instead.');
-      toast.error('Unable to load services. Showing sample services instead.');
-      setServices(getFallbackServices());
+      setError('Unable to load the current services. Please reload or contact the clinic.');
+      toast.error('Unable to load the current services. Please reload to retry.');
+      setServices([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const getFallbackServices = () => {
-    return [
-      { 
-        service_id: 1, 
-        service_name: 'Dental Checkup', 
-        description: 'Comprehensive oral examination including visual inspection, periodontal screening, and oral cancer screening. Recommended every 6 months.', 
-        price: 500.00 
-      },
-      { 
-        service_id: 2, 
-        service_name: 'Teeth Cleaning', 
-        description: 'Professional cleaning to remove plaque, tartar, and stains. Includes polishing and fluoride treatment for stronger enamel.', 
-        price: 800.00 
-      },
-      { 
-        service_id: 3, 
-        service_name: 'Tooth Filling', 
-        description: 'Restore teeth damaged by decay using tooth-colored composite resin material that matches your natural tooth color.', 
-        price: 1200.00 
-      },
-      { 
-        service_id: 4, 
-        service_name: 'Root Canal Treatment', 
-        description: 'Remove infected pulp, clean and seal the tooth to save it from extraction. Includes temporary crown.', 
-        price: 5000.00 
-      },
-      { 
-        service_id: 5, 
-        service_name: 'Tooth Extraction', 
-        description: 'Simple or surgical removal of damaged or problematic teeth. Local anesthesia included for comfort.', 
-        price: 1500.00 
-      },
-      { 
-        service_id: 6, 
-        service_name: 'Teeth Whitening', 
-        description: 'Professional bleaching treatment to lighten teeth and remove stains. Custom take-home trays or in-office treatment available.', 
-        price: 3500.00 
-      },
-      { 
-        service_id: 7, 
-        service_name: 'Dental Crown', 
-        description: 'Custom-made cap placed over damaged tooth to restore shape, size, and strength. Available in porcelain or metal.', 
-        price: 8000.00 
-      },
-      { 
-        service_id: 8, 
-        service_name: 'Dental Bridge', 
-        description: 'Replace missing teeth by anchoring artificial teeth to adjacent natural teeth. Restores smile and chewing function.', 
-        price: 15000.00 
-      },
-      { 
-        service_id: 9, 
-        service_name: 'Dental Implant', 
-        description: 'Permanent solution for missing teeth. Titanium post surgically placed in jawbone with natural-looking crown.', 
-        price: 45000.00 
-      }
-    ];
-  };
-
-  const displayedServices = showAllServices ? services : services.slice(0, 6);
+  const searchTerm = serviceQuery.trim().toLowerCase();
+  const matchingServices = services.filter(service => service.service_name.toLowerCase().includes(searchTerm));
+  const displayedServices = searchTerm || servicesExpanded ? matchingServices : matchingServices.slice(0, initialServiceCount);
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -212,6 +160,7 @@ const Landing = () => {
     if (lowerMessage.includes('procedure') || lowerMessage.includes('service') || lowerMessage.includes('treatment') ||
         lowerMessage.includes('what do you offer') || lowerMessage.includes('dental procedure') ||
         lowerMessage.includes('offer')) {
+      if (services.length === 0) return 'Please contact the clinic for its current services while the service list is unavailable.';
       const serviceList = services.slice(0, 5).map(s => s.service_name).join(', ');
       return `We offer a comprehensive range of dental procedures including ${serviceList}, and more. You can view all our detailed services above.`;
     }
@@ -266,18 +215,14 @@ const Landing = () => {
       <nav className="modern-nav">
         <div className="nav-container">
           <Link to="/" className="logo">
-            <img src={DentalLogo} alt="Fifthcusp Dental Clinic Logo" className="logo-image" />
-            <div className="logo-text-wrapper">
-              <span className="logo-main-text">Fifthcusp</span>
-              <span className="logo-sub-text">Dental Clinic</span>
-            </div>
+            <img src={DentalLogo} alt="Diolata Dental Clinic Logo" className="logo-image" />
           </Link>
 
-          <button className="mobile-menu-btn" onClick={toggleMobileMenu}>
-            <i className={`fas fa-${mobileMenuOpen ? 'times' : 'bars'}`}></i>
+          <button className="mobile-menu-btn" aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileMenuOpen} aria-controls="landing-menu" onClick={toggleMobileMenu}>
+            {mobileMenuOpen ? <X /> : <Menu />}
           </button>
 
-          <div className={`nav-menu ${mobileMenuOpen ? 'active' : ''}`}>
+          <div id="landing-menu" className={`nav-menu ${mobileMenuOpen ? 'active' : ''}`}>
             <ul className="nav-links">
               <li><a href="#services" onClick={() => setMobileMenuOpen(false)}>Services</a></li>
               <li><a href="#about" onClick={() => setMobileMenuOpen(false)}>About Us</a></li>
@@ -286,7 +231,7 @@ const Landing = () => {
 
             {user && userType === 'patient' ? (
               <div className="user-menu">
-                <button className="user-dropdown-btn" onClick={toggleUserDropdown}>
+                <button className="user-dropdown-btn" aria-expanded={userDropdownOpen} onClick={toggleUserDropdown}>
                   <i className="fas fa-user-circle"></i>
                   {userDetails?.first_name || 'User'}
                   <i className={`fas fa-chevron-${userDropdownOpen ? 'up' : 'down'}`}></i>
@@ -331,127 +276,106 @@ const Landing = () => {
 
       {/* Hero Section */}
       <header className="landing-header">
-        <div className="hero hero-with-bg">
-          <div className="hero-overlay"></div>
+        <div className="welcome-layout container-wide">
           <div className="hero-content">
-            <h1>Your Smile is Our Priority</h1>
-            <p>Experience world-class dental care with our team of expert professionals</p>
+            <span className="section-kicker">Diolata Dental Clinic</span>
+            <h1>Your Smile is <em>Our Priority</em></h1>
+            <p>Providing thoughtful care for healthier, happier smiles.</p>
             <div className="cta-buttons">
               {user && userType === 'patient' ? (
                 <Link to="/book-appointment" className="btn-landing btn-success">Book New Appointment</Link>
               ) : (
                 <>
-                  <Link to="/register" className="btn-landing btn-primary">Book Your Appointment</Link>
+                  <Link to="/register" className="btn-landing btn-primary">Book Your Appointment <ArrowUpRight size={17} aria-hidden="true" /></Link>
                   <a href="#services" className="btn-landing btn-secondary">View Our Services</a>
                 </>
               )}
             </div>
           </div>
+          <figure className="welcome-photo">
+            <img src={heroPhoto} alt="A dentist speaking with a patient in a treatment room" />
+            <figcaption><MapPin size={16} aria-hidden="true" /> Imus City, Cavite</figcaption>
+          </figure>
         </div>
       </header>
+      <main>
 
       {/* Services Section */}
       <section id="services" className="section section-light services-section">
         <div className="container-wide">
-          <div className="section-title">
-            <h2>Our Dental Services</h2>
-            <p>Comprehensive dental care solutions tailored to your needs</p>
-            
-            {error && (
-              <div className="error-message">
-                <i className="fas fa-exclamation-circle"></i> {error}
-              </div>
-            )}
-            
-            <div className={`service-category-tag ${user && userType === 'patient' ? '' : 'info'}`}>
-              <i className={`fas fa-${user && userType === 'patient' ? 'check-circle' : 'exclamation-circle'}`}></i>
-              {user && userType === 'patient' 
-                ? "You're logged in! Book appointments directly"
-                : "Register or login to book appointments"}
+          <header className="catalog-intro">
+            <div className="section-title">
+              <span className="section-kicker">01 / Treatments</span>
+              <h2>Our Dental Services</h2>
+              <p>Comprehensive dental care solutions tailored to your needs</p>
             </div>
-          </div>
+            <p className="catalog-booking-note">
+              <Info size={16} aria-hidden="true" />
+              {user && userType === 'patient'
+                ? "You're logged in! Book appointments directly"
+                : <> <Link to="/register">Register</Link> or <Link to="/login">login</Link> to book appointments</>}
+            </p>
+          </header>
 
           {loading ? (
-            <div className="loading-container">
+            <div className="loading-container" role="status">
               <div className="loading-spinner"></div>
               <p>Loading our dental services...</p>
             </div>
+          ) : error ? (
+            <div className="error-message" role="alert">{error}</div>
+          ) : services.length === 0 ? (
+            <div className="no-services">
+              <h3>No services available at the moment</h3>
+              <p>Please check back later or contact us for more information.</p>
+            </div>
           ) : (
             <>
-              <div className="services-grid">
-                {displayedServices.map((service, index) => (
-                  <div 
-                    className="service-card" 
-                    key={service.service_id}
-                    role="link"
-                    tabIndex={0}
-                    onClick={() => navigate(`/service/${service.service_id}`)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') navigate(`/service/${service.service_id}`);
-                    }}
-                  >
-                    <div 
-                      className="service-icon" 
-                      style={{
-                        backgroundColor: '#eff6ff', 
-                        width: '120px', 
-                        height: '70px', 
-                        borderRadius: '1rem', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        margin: '0 auto 1.5rem auto'
-                      }}
-                    >
-                      {getServiceIcon(service.service_name)}
+              <div className="catalog-tools">
+                <h3 aria-live="polite">{searchTerm ? 'Search results' : 'All services'} <span>{matchingServices.length}</span></h3>
+                <label className="catalog-search">
+                  <Search size={18} aria-hidden="true" />
+                  <input type="search" aria-label="Search services by name" placeholder="Search services by name" value={serviceQuery} onChange={event => setServiceQuery(event.target.value)} />
+                </label>
+              </div>
+              {displayedServices.length === 0 && (
+                <p className="catalog-empty">No matching services. <button type="button" onClick={() => setServiceQuery('')}>Show all services</button></p>
+              )}
+              <div className="catalog-grid" id="service-catalog">
+                {displayedServices.map(service => (
+                  <Link className="treatment-card" key={service.service_id} to={`/service/${service.service_id}`}>
+                    <div className="treatment-top">
+                      <span className="treatment-symbol" aria-hidden="true">{getServiceIcon(service.service_name)}</span>
+                      <span className="treatment-duration"><Clock3 size={15} aria-hidden="true" /> {service.duration_minutes} mins</span>
                     </div>
-
-                    <h3>{service.service_name}</h3>
-                    <p className="service-description">
-                      {service.description?.substring(0, 120) || 'Professional dental service'}
-                      {service.description?.length > 120 ? '...' : ''}
-                    </p>
-                    
-                    <div className="service-price">
-                      ₱{Number(service.price).toLocaleString('en-PH', { 
-                        minimumFractionDigits: 2, 
-                        maximumFractionDigits: 2 
-                      })}
+                    <span className="treatment-specialist">Specialist</span>
+                    <h4>{service.service_name}</h4>
+                    <p>{service.description || 'Professional dental service'}</p>
+                    <div className="treatment-bottom">
+                      <strong>₱{Number(service.price).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                      <span>View Details <ArrowUpRight size={17} aria-hidden="true" /></span>
                     </div>
-                    
-                    <div className="service-features">
-                      <span className="feature-badge">
-                        <i className="fas fa-clock"></i> 30-60 mins
-                      </span>
-                      <span className="feature-badge">
-                        <i className="fas fa-user-md"></i> Specialist
-                      </span>
-                    </div>
-                    
-                    <div className="service-action">
-                      View Details <i className="fas fa-arrow-right"></i>
-                    </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
-
-              {services.length > 6 && (
-                <div className="see-more-container">
-                  <button 
-                    className="btn-see-more"
-                    onClick={() => setShowAllServices(!showAllServices)}
+              {!searchTerm && services.length > initialServiceCount && (
+                <div className="catalog-toggle-row">
+                  <button
+                    type="button"
+                    className="catalog-toggle"
+                    aria-expanded={servicesExpanded}
+                    aria-controls="service-catalog"
+                    onClick={event => {
+                      const button = event.currentTarget;
+                      setServicesExpanded(!servicesExpanded);
+                      if (servicesExpanded) {
+                        requestAnimationFrame(() => button.scrollIntoView({ block: 'nearest', behavior: 'instant' }));
+                      }
+                    }}
                   >
-                    {showAllServices ? 'Show Less' : `See All ${services.length} Services`}
-                    <i className={`fas fa-chevron-${showAllServices ? 'up' : 'down'}`}></i>
+                    {servicesExpanded ? 'Show Less' : 'View All Services'}
+                    <ChevronDown size={17} aria-hidden="true" />
                   </button>
-                </div>
-              )}
-
-              {services.length === 0 && !loading && (
-                <div className="no-services">
-                  <i className="fas fa-tooth"></i>
-                  <h3>No services available at the moment</h3>
-                  <p>Please check back later or contact us for more information.</p>
                 </div>
               )}
             </>
@@ -463,6 +387,7 @@ const Landing = () => {
       <section id="about" className="section">
         <div className="container-wide">
           <div className="section-title">
+            <span className="section-kicker">02 / About us</span>
             <h2>Visit Our Clinic</h2>
             <p>Conveniently located in the heart of Imus City, Cavite</p>
           </div>
@@ -504,6 +429,7 @@ const Landing = () => {
       <section id="chatbot" className="section chatbot-section">
         <div className="container-wide">
           <div className="section-title">
+            <span className="section-kicker">03 / Patient support</span>
             <h2>24/7 AI Dental Assistant</h2>
             <p>Get instant answers about clinic hours, procedures, and post-care</p>
           </div>
@@ -514,7 +440,7 @@ const Landing = () => {
               <p>Available anytime - even outside clinic hours</p>
             </div>
             
-            <div className="chatbot-messages" id="chatbot-messages">
+            <div className="chatbot-messages" id="chatbot-messages" role="log" aria-label="Dental assistant conversation">
               {chatMessages.map((message, index) => (
                 <div key={index} className={`message ${message.sender}`}>
                   <div className="message-content">{message.text}</div>
@@ -525,6 +451,7 @@ const Landing = () => {
             <form className="chatbot-input" onSubmit={handleChatSubmit}>
               <input
                 type="text"
+                aria-label="Message the dental assistant"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder="Ask about clinic hours, procedures, or aftercare..."
@@ -538,12 +465,14 @@ const Landing = () => {
         </div>
       </section>
 
+      </main>
+
       {/* Footer */}
       <footer className="footer">
         <div className="container-wide">
           <div className="footer-content">
             <div className="footer-section">
-              <h3>Fifthcusp Dental Clinic</h3>
+              <h3>Diolata Dental Clinic</h3>
               <p>Providing quality dental care for a healthier, happier smile.</p>
             </div>
             
@@ -580,7 +509,7 @@ const Landing = () => {
           </div>
           
           <div className="footer-bottom">
-            <p>&copy; {new Date().getFullYear()} Fifthcusp Dental Clinic. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Diolata Dental Clinic. All rights reserved.</p>
           </div>
         </div>
       </footer>

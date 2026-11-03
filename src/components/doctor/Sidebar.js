@@ -11,13 +11,11 @@ const DoctorSidebar = ({ onLogout }) => {
    <div className="sidebar">
   <div className="sidebar-header">
     <Link to="/admin/dashboard" className="logo">
-      <img 
-        src={DentalLogo} 
-        alt="Fifthcusp Dental Clinic Logo" 
-        className="logo-image"
-      />
+      <picture>
+          <source media="(max-width: 992px)" srcSet={process.env.PUBLIC_URL + "/logo192.png"} />
+          <img src={DentalLogo} alt="Diolata Dental Clinic" className="logo-image" />
+        </picture>
       <div className="logo-text">
-        <h2>Fifthcusp</h2>
         <p>Doctor Portal</p>
       </div>
     </Link>

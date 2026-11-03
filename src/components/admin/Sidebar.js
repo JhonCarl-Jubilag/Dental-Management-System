@@ -15,13 +15,11 @@ const Sidebar = ({ onLogout }) => {
 <div className="sidebar">
   <div className="sidebar-header">
     <div className="logo">
-          <img 
-            src={DentalLogo} 
-            alt="Fifthcusp Dental Clinic Logo" 
-            className="logo-image"
-          />
+          <picture>
+          <source media="(max-width: 992px)" srcSet={process.env.PUBLIC_URL + "/logo192.png"} />
+          <img src={DentalLogo} alt="Diolata Dental Clinic" className="logo-image" />
+        </picture>
           <div className="logo-text">
-            <h2>Fifthcusp</h2>
             <p>{roleLabel(userType)}</p>
           </div>
       </div>
@@ -87,7 +85,7 @@ const Sidebar = ({ onLogout }) => {
         {isOwner(userType) && <li>
           <Link to="/admin/staff" className={`sidebar-link ${isActive('/admin/staff') ? 'active' : ''}`}>
             <i className="fas fa-user-shield nav-icon"></i>
-            <span>Staff account</span>
+            <span>Staff accounts</span>
           </Link>
         </li>}
         <li>

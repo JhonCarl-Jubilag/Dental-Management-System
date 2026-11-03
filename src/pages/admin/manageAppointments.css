@@ -10,18 +10,18 @@
   border-radius: 12px;
   padding: 20px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(5, 28, 67,0.05);
+  border: 1px solid var(--clinic-line);
 }
 
 .manage-appointments-page .stat-number {
   font-size: 2rem;
   font-weight: 700;
-  color: #354D70;
+  color: var(--clinic-navy);
 }
 
 .manage-appointments-page .stat-label {
-  color: #7f8c8d;
+  color: var(--clinic-muted);
   font-size: 0.85rem;
   margin-top: 5px;
 }
@@ -31,7 +31,7 @@
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 30px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(5, 28, 67,0.05);
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -47,13 +47,13 @@
 .manage-appointments-page .filter-group label {
   font-weight: 600;
   margin-bottom: 5px;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-size: 0.85rem;
 }
 
 .manage-appointments-page .form-control {
   padding: 8px 12px;
-  border: 2px solid #e9ecef;
+  border: 2px solid var(--clinic-line);
   border-radius: 8px;
   font-size: 0.9rem;
   font-family: inherit;
@@ -62,7 +62,7 @@
 
 .manage-appointments-page .form-control:focus {
   outline: none;
-  border-color: #4d83d4;
+  border-color: var(--clinic-blue);
 }
 
 .manage-appointments-page .btn {
@@ -76,17 +76,17 @@
 }
 
 .manage-appointments-page .btn-primary {
-  background: linear-gradient(135deg, #354D70, #4d83d4);
+  background: linear-gradient(135deg, var(--clinic-navy), var(--clinic-blue));
   color: white;
 }
 
 .manage-appointments-page .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(53,77,112,0.2);
+  box-shadow: 0 4px 12px rgba(8, 38, 90,0.2);
 }
 
 .manage-appointments-page .btn-secondary {
-  background: #6c757d;
+  background: var(--clinic-muted);
   color: white;
 }
 
@@ -100,15 +100,15 @@
 }
 
 .manage-appointments-page .btn-success {
-  background: #28a745;
+  background: var(--clinic-success);
   color: white;
 }
 .manage-appointments-page .btn-warning {
   background: #ffc107;
-  color: #212529;
+  color: var(--clinic-ink);
 }
 .manage-appointments-page .btn-danger {
-  background: #dc3545;
+  background: var(--clinic-danger);
   color: white;
 }
 .manage-appointments-page .btn-info {
@@ -119,18 +119,18 @@
 .manage-appointments-page .appointments-list {
   background: white;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(5, 28, 67,0.05);
   overflow: hidden;
 }
 
 .manage-appointments-page .appointment-card {
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--clinic-line);
   padding: 20px;
   transition: background 0.2s;
 }
 
 .manage-appointments-page .appointment-card:hover {
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
 }
 
 .manage-appointments-page .appointment-header {
@@ -149,24 +149,24 @@
 .manage-appointments-page .appointment-patient {
   font-size: 1.3rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-family: 'Montserrat', sans-serif;
 }
 
 .manage-appointments-page .appointment-doctor {
-  color: #354D70;
+  color: var(--clinic-navy);
   font-weight: 600;
   margin: 5px 0;
 }
 
 .manage-appointments-page .appointment-service {
-  color: #354D70;
+  color: var(--clinic-navy);
   font-weight: 500;
   margin: 5px 0;
 }
 
 .manage-appointments-page .price-tag {
-  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  background: linear-gradient(135deg, var(--clinic-success), #2ecc71);
   color: white;
   padding: 4px 12px;
   border-radius: 20px;
@@ -176,7 +176,7 @@
 }
 
 .manage-appointments-page .appointment-datetime {
-  background: #354D70;
+  background: var(--clinic-navy);
   color: white;
   padding: 12px 20px;
   border-radius: 10px;
@@ -216,17 +216,17 @@
 }
 
 .manage-appointments-page .details-section {
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
   border-radius: 10px;
   padding: 15px;
-  border-left: 4px solid #4d83d4;
+  border-left: 4px solid var(--clinic-blue);
 }
 
 .manage-appointments-page .details-section h4 {
   margin: 0 0 12px 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -240,14 +240,14 @@
 
 .manage-appointments-page .patient-info-label {
   font-size: 0.75rem;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
   text-transform: uppercase;
   font-weight: 600;
 }
 
 .manage-appointments-page .patient-info-value {
   font-size: 0.9rem;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-weight: 500;
   word-break: break-word;
 }
@@ -267,13 +267,13 @@
   gap: 8px;
   margin-top: 20px;
   padding-top: 15px;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--clinic-line);
 }
 
 .manage-appointments-page .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
 }
 .manage-appointments-page .empty-state i {
   font-size: 3rem;
@@ -288,8 +288,8 @@
 .manage-appointments-page .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
+  border: 4px solid var(--clinic-canvas);
+  border-top: 4px solid var(--clinic-blue);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 20px;
@@ -305,7 +305,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(5, 28, 67,0.5);
   z-index: 1100;
   display: flex;
   align-items: center;
@@ -327,14 +327,14 @@
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--clinic-line);
 }
 .manage-appointments-page .modal-close {
   background: none;
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
 }
 .manage-appointments-page .modal-footer {
   display: flex;
@@ -342,7 +342,7 @@
   gap: 10px;
   margin-top: 20px;
   padding-top: 15px;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--clinic-line);
 }
 .manage-appointments-page .form-group {
   margin-bottom: 20px;
@@ -364,7 +364,7 @@
 .manage-appointments-page .reject-reason-box {
   margin-top: 20px;
   padding-top: 15px;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--clinic-line);
 }
 
 @media (max-width: 768px) {
@@ -405,8 +405,8 @@
 .spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #354D70;
+  border: 4px solid var(--clinic-canvas);
+  border-top: 4px solid var(--clinic-navy);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 20px;
@@ -418,7 +418,7 @@
 }
 
 .manage-appointments-page .appointment-card {
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--clinic-line);
   background: white;
   transition: all 0.3s ease;
 }
@@ -433,7 +433,7 @@
 }
 
 .manage-appointments-page .appointment-header-compact:hover {
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
 }
 
 .manage-appointments-page .compact-info {
@@ -448,12 +448,12 @@
   align-items: center;
   gap: 8px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-size: 1rem;
 }
 
 .manage-appointments-page .compact-patient i {
-  color: #4d83d4;
+  color: var(--clinic-blue);
   font-size: 1.1rem;
 }
 
@@ -461,12 +461,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #6c757d;
+  color: var(--clinic-muted);
   font-size: 0.9rem;
 }
 
 .manage-appointments-page .compact-doctor i {
-  color: #28a745;
+  color: var(--clinic-success);
   font-size: 0.9rem;
 }
 
@@ -474,7 +474,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #6c757d;
+  color: var(--clinic-muted);
   font-size: 0.85rem;
 }
 
@@ -489,14 +489,14 @@
 }
 
 .manage-appointments-page .expand-icon {
-  color: #6c757d;
+  color: var(--clinic-muted);
   transition: transform 0.3s ease;
   font-size: 0.9rem;
 }
 
 .manage-appointments-page .appointment-expanded-content {
   padding: 0 20px 20px 20px;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--clinic-line);
   animation: slideDown 0.3s ease;
 }
 
@@ -515,7 +515,7 @@
   display: flex;
   gap: 20px;
   padding: 15px 0;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--clinic-line);
   margin-bottom: 15px;
 }
 
@@ -528,23 +528,23 @@
 
 .manage-appointments-page .service-label {
   font-weight: 600;
-  color: #6c757d;
+  color: var(--clinic-muted);
   font-size: 0.85rem;
 }
 
 .manage-appointments-page .service-value {
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-weight: 500;
 }
 
 .manage-appointments-page .price-value {
-  color: #28a745;
+  color: var(--clinic-success);
   font-weight: 600;
   font-size: 1rem;
 }
 
 .manage-appointments-page .expanded-remarks-preview {
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
   padding: 12px;
   border-radius: 8px;
   margin-bottom: 15px;
@@ -552,7 +552,7 @@
 
 .manage-appointments-page .remarks-label {
   font-weight: 600;
-  color: #354D70;
+  color: var(--clinic-navy);
   margin-bottom: 8px;
   font-size: 0.85rem;
   display: flex;
@@ -577,19 +577,19 @@
 .manage-appointments-page .detail-row {
   display: flex;
   padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--clinic-canvas);
 }
 
 .manage-appointments-page .detail-label {
   width: 140px;
   font-weight: 600;
-  color: #6c757d;
+  color: var(--clinic-muted);
   font-size: 0.85rem;
 }
 
 .manage-appointments-page .detail-value {
   flex: 1;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-weight: 500;
 }
 
@@ -641,14 +641,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-top: 1px solid #e9ecef;
-  background: #f8f9fa;
+  border-top: 1px solid var(--clinic-line);
+  background: var(--clinic-canvas);
   flex-wrap: wrap;
   gap: 15px;
 }
 
 .manage-appointments-page .pagination-info {
-  color: #6c757d;
+  color: var(--clinic-muted);
   font-size: 0.85rem;
   font-weight: 500;
 }
@@ -663,12 +663,12 @@
 .manage-appointments-page .pagination-btn {
   padding: 8px 16px;
   background: white;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--clinic-line);
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
-  color: #354D70;
+  color: var(--clinic-navy);
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
@@ -676,9 +676,9 @@
 }
 
 .manage-appointments-page .pagination-btn:hover:not(:disabled) {
-  background: #354D70;
+  background: var(--clinic-navy);
   color: white;
-  border-color: #354D70;
+  border-color: var(--clinic-navy);
   transform: translateY(-1px);
 }
 
@@ -698,12 +698,12 @@
   height: 36px;
   padding: 0 8px;
   background: white;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--clinic-line);
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
-  color: #6c757d;
+  color: var(--clinic-muted);
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -711,19 +711,19 @@
 }
 
 .manage-appointments-page .pagination-number:hover {
-  background: #e9ecef;
-  border-color: #354D70;
+  background: var(--clinic-line);
+  border-color: var(--clinic-navy);
 }
 
 .manage-appointments-page .pagination-number.active {
-  background: #354D70;
+  background: var(--clinic-navy);
   color: white;
-  border-color: #354D70;
+  border-color: var(--clinic-navy);
 }
 
 .manage-appointments-page .pagination-dots {
   padding: 0 8px;
-  color: #6c757d;
+  color: var(--clinic-muted);
   font-size: 0.85rem;
 }
 
@@ -754,7 +754,7 @@
 }
 
 .manage-appointments-page .admin-appointment-card {
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--clinic-line);
   background: white;
   transition: all 0.3s ease;
 }
@@ -769,7 +769,7 @@
 }
 
 .manage-appointments-page .admin-appointment-header-compact:hover {
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
 }
 
 .manage-appointments-page .admin-compact-info {
@@ -784,12 +784,12 @@
   align-items: center;
   gap: 8px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   font-size: 1rem;
 }
 
 .manage-appointments-page .admin-compact-patient i {
-  color: #4d83d4;
+  color: var(--clinic-blue);
   font-size: 1.1rem;
 }
 
@@ -797,12 +797,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #6c757d;
+  color: var(--clinic-muted);
   font-size: 0.9rem;
 }
 
 .manage-appointments-page .admin-compact-doctor i {
-  color: #28a745;
+  color: var(--clinic-success);
   font-size: 0.9rem;
 }
 
@@ -810,7 +810,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #6c757d;
+  color: var(--clinic-muted);
   font-size: 0.85rem;
 }
 
@@ -825,14 +825,14 @@
 }
 
 .manage-appointments-page .admin-expand-icon {
-  color: #6c757d;
+  color: var(--clinic-muted);
   transition: transform 0.3s ease;
   font-size: 0.9rem;
 }
 
 .manage-appointments-page .admin-appointment-expanded-content {
   padding: 0 20px 20px 20px;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--clinic-line);
   animation: adminSlideDown 0.3s ease;
 }
 
@@ -851,12 +851,12 @@
   display: flex;
   gap: 20px;
   padding: 15px 0;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--clinic-line);
   margin-bottom: 15px;
 }
 
 .manage-appointments-page .admin-expanded-remarks-preview {
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
   padding: 12px;
   border-radius: 8px;
   margin-bottom: 15px;
@@ -868,7 +868,7 @@
   gap: 8px;
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--clinic-line);
 }
 
 @media (max-width: 768px) {

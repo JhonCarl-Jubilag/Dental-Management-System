@@ -1,5 +1,30 @@
 import { supabase } from './supabase';
-import { formatClinicTime, toClinicDateTimeInput } from '../utils/clinicScheduling';
+import { formatClinicTime, getClinicDate, toClinicDateTimeInput } from '../utils/clinicScheduling';
+
+export const loadDoctorBookingMonth = async ({ doctorId, serviceId, month, leadMinutes }) => {
+  const { data, error } = await supabase.rpc('get_booking_month_slots', {
+    p_doctor_id: Number(doctorId), p_service_id: Number(serviceId), p_month: month + '-01',
+  });
+  if (!error) return data || [];
+  // Older deployments already support date queries and the times-only RPC.
+  // Only fall back when the monthly function is missing from the API schema.
+  if (error.code !== 'PGRST202') throw error;
+
+  const [year, number] = month.split('-').map(Number);
+  const nextMonth = new Date(Date.UTC(year, number, 1)).toISOString().slice(0, 10);
+  const { data: availability, error: availabilityError } = await supabase.from('doctor_availability')
+    .select('available_date').eq('doctor_id', doctorId).eq('is_available', true)
+    .gte('available_date', [month + '-01', getClinicDate()].sort().at(-1))
+    .lt('available_date', nextMonth).order('available_date');
+  if (availabilityError) throw availabilityError;
+
+  const dates = [...new Set((availability || []).map(row => row.available_date))];
+  const days = await Promise.all(dates.map(async date => {
+    const slots = await loadDoctorBookingSlots({ doctorId, serviceId, date, leadMinutes });
+    return { booking_date: date, times: slots.map(slot => slot.time) };
+  }));
+  return days.filter(day => day.times.length > 0);
+};
 
 // Shared by patient and walk-in booking, including their final pre-save check.
 export const loadDoctorBookingSlots = async ({ doctorId, serviceId, date, interval = 30, leadMinutes = 0, excludeAppointmentId = null, targetTime = null }) => {

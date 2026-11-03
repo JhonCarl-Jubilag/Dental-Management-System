@@ -11,7 +11,7 @@
   margin-bottom: 16px;
   border-radius: 8px;
   background: #eef4fb;
-  color: #354d70;
+  color: var(--clinic-navy);
 }
 
 .admin-dashboard .admin-data-region__error {

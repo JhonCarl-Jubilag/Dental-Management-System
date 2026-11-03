@@ -137,15 +137,9 @@ const Login = () => {
         <div className="form-wrapper">
           <div className="form-header">
             <div className="logo-container">
-              <div className="system-logo-placeholder">
-                <img src={DentalLogo} alt="Fifthcusp Logo" />
-              </div>
-              <div className="logo-text-wrapp">
-                <span className="logo-system-name">Fifthcusp</span>
-                <span className="logo-sub-name">Dental Clinic</span>
-              </div>
+              <img src={DentalLogo} alt="Diolata Dental Clinic" className="login-wordmark" />
             </div>
-            <p className="subtitle">Sign in to your FifthCusp account</p>
+            <p className="subtitle">Sign in to your Clinic account</p>
           </div>
 
           {(accountError || roleError || location.state?.dentistLoginRetired) && <div className="alert alert-error" role="alert">{accountError || roleError || 'Dentist logins have been retired. Clinic staff manage dentist records.'}</div>}

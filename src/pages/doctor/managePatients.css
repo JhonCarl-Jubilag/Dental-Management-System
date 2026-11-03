@@ -6,7 +6,7 @@
   background: white;
   padding: 10px 20px;
   border-radius: 10px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(5, 28, 67,0.05);
   font-size: 0.9rem;
 }
 
@@ -16,8 +16,8 @@
 
 .manage-patients-page .btn-back {
   margin-left: auto;
-  background: #f0f2f5;
-  color: #354D70;
+  background: var(--clinic-canvas);
+  color: var(--clinic-navy);
   padding: 6px 14px;
   border-radius: 20px;
   text-decoration: none;
@@ -49,7 +49,7 @@
 
 .manage-patients-page .btn-outline {
   background: white;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--clinic-line);
   color: #495057;
   padding: 8px 16px;
   border-radius: 8px;
@@ -59,8 +59,8 @@
 }
 
 .manage-patients-page .btn-outline:hover {
-  background: #f8f9fa;
-  border-color: #354D70;
+  background: var(--clinic-canvas);
+  border-color: var(--clinic-navy);
 }
 
 .manage-patients-page .patients-grid {
@@ -73,14 +73,14 @@
   background: white;
   border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 8px rgba(5, 28, 67,0.04);
   transition: all 0.2s;
-  border: 1px solid #eef2f6;
+  border: 1px solid var(--clinic-canvas);
 }
 
 .manage-patients-page .patient-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 20px rgba(5, 28, 67,0.08);
 }
 
 .manage-patients-page .patient-card-header {
@@ -93,7 +93,7 @@
 .manage-patients-page .patient-avatar {
   width: 55px;
   height: 55px;
-  background: linear-gradient(135deg, #354D70, #4d83d4);
+  background: linear-gradient(135deg, var(--clinic-navy), var(--clinic-blue));
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -107,12 +107,12 @@
 .manage-patients-page .patient-name {
   font-weight: 700;
   font-size: 1rem;
-  color: #1e2a3a;
+  color: var(--clinic-sidebar);
 }
 
 .manage-patients-page .patient-email {
   font-size: 0.75rem;
-  color: #6c757d;
+  color: var(--clinic-muted);
   word-break: break-word;
 }
 
@@ -127,13 +127,13 @@
 
 .manage-patients-page .patient-info i {
   width: 20px;
-  color: #4d83d4;
+  color: var(--clinic-blue);
 }
 
 .manage-patients-page .patient-stats {
   display: flex;
   justify-content: flex-start;
-  border-top: 1px solid #eef2f6;
+  border-top: 1px solid var(--clinic-canvas);
   padding-top: 12px;
   margin-top: 5px;
 }
@@ -142,7 +142,7 @@
   display: flex;
   align-items: baseline;
   gap: 5px;
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
   padding: 6px 12px;
   border-radius: 30px;
 }
@@ -150,23 +150,23 @@
 .manage-patients-page .stat-number {
   font-weight: 700;
   font-size: 1rem;
-  color: #354D70;
+  color: var(--clinic-navy);
 }
 
 .manage-patients-page .stat-label {
   font-size: 0.7rem;
-  color: #6c757d;
+  color: var(--clinic-muted);
   text-transform: uppercase;
 }
 
 .manage-patients-page .btn-view {
   display: block;
   text-align: center;
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
   padding: 10px;
   border-radius: 40px;
   margin-top: 16px;
-  color: #354D70;
+  color: var(--clinic-navy);
   font-weight: 600;
   font-size: 0.85rem;
   text-decoration: none;
@@ -174,7 +174,7 @@
 }
 
 .manage-patients-page .btn-view:hover {
-  background: #e9ecef;
+  background: var(--clinic-line);
 }
 
 .manage-patients-page .patient-profile {
@@ -187,13 +187,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 6px rgba(5, 28, 67,0.04);
 }
 
 .manage-patients-page .profile-avatar {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #354D70, #4d83d4);
+  background: linear-gradient(135deg, var(--clinic-navy), var(--clinic-blue));
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -223,7 +223,7 @@
 
 .manage-patients-page .contact-info i {
   width: 20px;
-  color: #4d83d4;
+  color: var(--clinic-blue);
 }
 
 .manage-patients-page .profile-stats {
@@ -233,7 +233,7 @@
 }
 
 .manage-patients-page .stat-item {
-  background: #f8f9fa;
+  background: var(--clinic-canvas);
   padding: 8px 16px;
   border-radius: 30px;
   text-align: center;
@@ -243,12 +243,12 @@
 .manage-patients-page .stat-item .stat-number {
   font-size: 1.2rem;
   font-weight: 700;
-  color: #354D70;
+  color: var(--clinic-navy);
 }
 
 .manage-patients-page .stat-item .stat-label {
   font-size: 0.65rem;
-  color: #6c757d;
+  color: var(--clinic-muted);
 }
 
 /* Compact history filters */
@@ -285,13 +285,13 @@
   border-radius: 12px;
   padding: 16px 20px;
   margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  border: 1px solid #eef2f6;
+  box-shadow: 0 1px 3px rgba(5, 28, 67,0.05);
+  border: 1px solid var(--clinic-canvas);
   transition: box-shadow 0.2s;
 }
 
 .manage-patients-page .appointment-card-compact:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(5, 28, 67,0.05);
 }
 
 .manage-patients-page .appointment-main {
@@ -312,7 +312,7 @@
 
 .manage-patients-page .service-info strong {
   font-size: 1rem;
-  color: #1e2a3a;
+  color: var(--clinic-sidebar);
 }
 
 .manage-patients-page .service-info .price {
@@ -331,7 +331,7 @@
   text-align: center;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #2c3e50;
+  color: var(--clinic-ink);
   min-width: 110px;
 }
 
@@ -361,15 +361,15 @@
 .manage-patients-page .appointment-footer {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid #eef2f6;
+  border-top: 1px solid var(--clinic-canvas);
   font-size: 0.75rem;
-  color: #6c757d;
+  color: var(--clinic-muted);
 }
 
 .manage-patients-page .appointment-footer .booked-on i,
 .manage-patients-page .appointment-footer .remarks i {
   margin-right: 5px;
-  color: #4d83d4;
+  color: var(--clinic-blue);
 }
 
 .manage-patients-page .appointment-footer .remarks {
@@ -392,7 +392,7 @@
   font-size: 3rem;
   margin-bottom: 15px;
   opacity: 0.5;
-  color: #7f8c8d;
+  color: var(--clinic-muted);
 }
 
 @media (max-width: 768px) {
@@ -434,8 +434,8 @@
 .loading-spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #354D70;
+  border: 4px solid var(--clinic-canvas);
+  border-top: 4px solid var(--clinic-navy);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 15px;

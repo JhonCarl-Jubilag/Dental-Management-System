@@ -368,17 +368,18 @@ const ManageDoctors = () => {
             </div>
           </div>
         </div>
-        <div className="provider-cutover-notice">
-          <p>Dentists are managed as clinic profiles. New profiles do not receive login accounts.</p>
-          {setupError && <p role="alert">{setupError}</p>}
-          {!providerSetup?.ready && !setupError && <p>Provider editing is waiting for the Owner to finish retiring legacy dentist logins. Scheduling remains available.</p>}
-          <button type="button" className="btn btn-secondary" disabled={isSubmitting} onClick={loadProviderSetup}>Refresh provider setup</button>
-          {isSuperAdmin && providerSetup?.candidates?.some(candidate => !candidate.disabled) && <details>
-            <summary>Review legacy dentist sign-ins</summary>
-            <ul>{providerSetup.candidates.map(candidate => <li key={candidate.auth_user_id}>Dr. {candidate.first_name} {candidate.last_name} — {candidate.email} ({candidate.disabled ? 'Already disabled' : 'Will be retired'})</li>)}</ul>
-            <button type="button" className="btn btn-warning" disabled={isSubmitting} onClick={retireDentistLogins}>Retire reviewed dentist logins</button>
-          </details>}
-        </div>
+        {(setupError || providerSetup?.ready === false) && (
+          <div className="provider-cutover-notice">
+            {setupError && <p role="alert">{setupError}</p>}
+            {!providerSetup?.ready && !setupError && <p>Provider editing is waiting for the Owner to finish retiring legacy dentist logins. Scheduling remains available.</p>}
+            <button type="button" className="btn btn-secondary" disabled={isSubmitting} onClick={loadProviderSetup}>Refresh provider setup</button>
+            {isSuperAdmin && providerSetup?.candidates?.some(candidate => !candidate.disabled) && <details>
+              <summary>Review legacy dentist sign-ins</summary>
+              <ul>{providerSetup.candidates.map(candidate => <li key={candidate.auth_user_id}>Dr. {candidate.first_name} {candidate.last_name} — {candidate.email} ({candidate.disabled ? 'Already disabled' : 'Will be retired'})</li>)}</ul>
+              <button type="button" className="btn btn-warning" disabled={isSubmitting} onClick={retireDentistLogins}>Retire reviewed dentist logins</button>
+            </details>}
+          </div>
+        )}
         <AdminDataRegion loading={loading} hasLoaded={hasLoaded} error={loadError} label="Doctors" onRetry={fetchData}>
 
 

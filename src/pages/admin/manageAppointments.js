@@ -581,9 +581,9 @@ const ManageAppointments = () => {
                               <button className="btn btn-danger btn-sm" onClick={() => handleCancel(app)}>Cancel</button>
                             </>
                           )}
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(app)}>Delete Appointment</button>
                           {app.status === 'cancelled' && (
                             <>
-                              {isSuperAdmin && <button className="btn btn-danger btn-sm" onClick={() => handleDelete(app)}>Delete Permanently</button>}
                               <button className="btn btn-info btn-sm" onClick={() => openRemarksModal(app)}>View Remarks</button>
                             </>
                           )}

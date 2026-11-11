@@ -37,7 +37,7 @@
   background-repeat: no-repeat;
   filter: blur(15px);
   opacity: 0;
-  animation: backgroundFade 20s infinite;
+  animation: backgroundFade 20s infinite, backgroundBlur 20s infinite;
   transform: scale(1.1);
 }
 
@@ -45,6 +45,9 @@
   background-color: var(--clinic-mist);
   background-image: linear-gradient(135deg, var(--clinic-mist) 0%, #89C7CC 100%);
   animation-delay: 0s;
+  /* Keep an opaque image beneath every transition, including the loop. */
+  opacity: 1;
+  animation-name: backgroundBlur;
 }
 
 .slide:nth-child(2) {
@@ -63,6 +66,7 @@
   background-color: #D1E9F5;
   background-image: linear-gradient(135deg, #D1E9F5 0%, #A9CFE6 100%);
   animation-delay: 15s;
+  animation-name: backgroundLoopFade, backgroundBlur;
 }
 
 .color-overlay {
@@ -76,12 +80,36 @@
 }
 
 @keyframes backgroundFade {
-  0%, 25% {
+  0%, 100% {
     opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 1;
+    /* Hide only after the next image has finished fading in above it. */
+    animation-timing-function: steps(1, end);
+  }
+  30% {
+    opacity: 0;
+  }
+}
+
+@keyframes backgroundLoopFade {
+  0%, 30%, 100% {
+    opacity: 0;
+  }
+  5%, 25% {
+    opacity: 1;
+  }
+}
+
+@keyframes backgroundBlur {
+  0%, 25% {
     filter: blur(20px);
   }
   5%, 20% {
-    opacity: 1;
     filter: blur(12px);
   }
 }
@@ -96,7 +124,7 @@
   z-index: 1;
 }
 
-.form-wrapper {
+:where(.login-container) .form-wrapper {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 12px;
   box-shadow: 0 20px 50px rgba(5, 28, 67, 0.2);
@@ -105,7 +133,7 @@
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.form-header {
+:where(.login-container) .form-header {
   text-align: center;
   margin-bottom: 30px;
 }
@@ -165,26 +193,26 @@
   margin-top: 3px;
 }
 
-.auth-form {
+:where(.login-container) .auth-form {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-.form-group {
+:where(.login-container) .form-group {
   display: flex;
   flex-direction: column;
   position: relative;
 }
 
-.form-group label {
+:where(.login-container) .form-group label {
   margin-bottom: 8px;
   font-weight: 500;
   color: var(--clinic-ink);
   font-size: 0.95rem;
 }
 
-.form-group input {
+:where(.login-container) .form-group input {
   padding: 12px 16px;
   border: 2px solid var(--clinic-tint);
   border-radius: 8px;
@@ -193,19 +221,19 @@
   background-color: var(--clinic-canvas);
 }
 
-.form-group input:focus {
+:where(.login-container) .form-group input:focus {
   outline: none;
   border-color: var(--clinic-blue);
   background-color: white;
   box-shadow: 0 0 0 3px rgba(0, 105, 168, 0.1);
 }
 
-.form-group input.error {
+:where(.login-container) .form-group input.error {
   border-color: var(--clinic-danger);
   background-color: #fee;
 }
 
-.form-group input:disabled {
+:where(.login-container) .form-group input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -253,24 +281,24 @@
   color: #721c24;
 }
 
-.validation-message {
+:where(.login-container) .validation-message {
   font-size: 0.8rem;
   margin-top: 4px;
   color: var(--clinic-muted);
 }
 
-.validation-message.error {
+:where(.login-container) .validation-message.error {
   color: var(--clinic-danger);
 }
 
-.form-footer {
+:where(.login-container) .form-footer {
   text-align: center;
   margin-top: 25px;
   padding-top: 20px;
   border-top: 1px solid var(--clinic-canvas);
 }
 
-.form-footer p {
+:where(.login-container) .form-footer p {
   margin-bottom: 10px;
 }
 
@@ -278,13 +306,13 @@
   color: var(--clinic-muted);
 }
 
-.form-footer a {
+:where(.login-container) .form-footer a {
   color: var(--clinic-blue);
   text-decoration: none;
   font-weight: 500;
 }
 
-.form-footer a:hover {
+:where(.login-container) .form-footer a:hover {
   text-decoration: underline;
 }
 
@@ -431,7 +459,7 @@
     padding: 10px;
   }
   
-  .form-wrapper {
+  :where(.login-container) .form-wrapper {
     padding: 30px 25px;
   }
   
@@ -596,3 +624,9 @@
 .password-toggle-btn:active svg {
   transform: scale(0.95);
 }
+/* Page-owned form rhythm; shared buttons retain their existing appearance. */
+.login-container .auth-form { gap: 16px; }
+.login-container .form-row { gap: 16px; margin-bottom: 0; }
+.login-container .form-row > .form-group { flex: 1; min-width: 0; margin-bottom: 0; }
+.login-container .form-group > label { margin-bottom: 8px; font-size: 14px; line-height: 1.5; text-align: left; }
+.login-container .form-group :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { min-height: 44px; font-size: 16px; line-height: 1.5; font-family: inherit; }

@@ -6,7 +6,7 @@ jest.mock('react-router-dom', () => ({ useNavigate: () => jest.fn(), useParams: 
 jest.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: { email: 'staff@example.com' }, userType: 'admin' }) }));
 jest.mock('../../services/supabase', () => ({ supabase: { from: jest.fn() } }));
 jest.mock('../../components/admin/Sidebar', () => () => null);
-jest.mock('../../components/admin/PatientTreatmentHistory', () => () => null);
+jest.mock('../../components/admin/PatientTreatmentRecords', () => () => null);
 
 test('opens a patient without photo support and discards a cancelled staff edit', async () => {
   const patient = { patient_id: 7, first_name: 'Mira', last_name: 'Lee', email: 'patient@example.com', status: 'active', date_created: '2025-04-15' };

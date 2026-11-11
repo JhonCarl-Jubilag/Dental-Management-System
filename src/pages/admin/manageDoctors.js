@@ -346,7 +346,7 @@ const ManageDoctors = () => {
   if (!user || (!isClinicUser(userType))) return null;
 
   return (
-    <div className="admin-dashboard">
+    <div className="admin-dashboard admin-doctors">
       <Sidebar onLogout={handleLogout} />
 
       <div className="main-content">

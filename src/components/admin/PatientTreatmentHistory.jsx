@@ -14,7 +14,7 @@ const formatDateTime = value => new Date(value).toLocaleString('en-US', {
   timeZone: CLINIC_TIME_ZONE, dateStyle: 'medium', timeStyle: 'short',
 });
 
-const PatientTreatmentHistory = ({ patientId }) => {
+const PatientTreatmentHistory = ({ patientId, onDirtyChange, onBusyChange }) => {
   const { user, userType } = useAuth();
   const allowed = Boolean(user && isClinicUser(userType));
   const [appointments, setAppointments] = useState([]);
@@ -30,6 +30,9 @@ const PatientTreatmentHistory = ({ patientId }) => {
   const [conflict, setConflict] = useState(false);
   const request = useRef(0);
   const savingRef = useRef(false);
+
+  useEffect(() => { onDirtyChange?.(Boolean(editing && note.trim())); }, [editing, note, onDirtyChange]);
+  useEffect(() => { onBusyChange?.(saving); }, [saving, onBusyChange]);
 
   const load = useCallback(async () => {
     if (!allowed || !patientId) return;
@@ -106,7 +109,7 @@ const PatientTreatmentHistory = ({ patientId }) => {
   return (
     <section className="clinic-patient-history" aria-labelledby="clinic-patient-history-title" aria-busy={loading}>
       <div className="clinic-patient-history-heading">
-        <div><h2 id="clinic-patient-history-title">Appointment & treatment history</h2><p>All treating dentists · Philippine time. Only completed appointments indicate completed services.</p></div>
+        <div><h2 id="clinic-patient-history-title">Appointments and scheduling notes</h2><p>All treating dentists · Philippine time. Completed status may be automatic; clinical procedures are documented in Treatment Records.</p></div>
         <button type="button" disabled={loading || saving} onClick={refresh}>Refresh history</button>
       </div>
       <div className="clinic-patient-history-filters">

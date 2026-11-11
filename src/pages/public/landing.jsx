@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
-import ClinicMap from '../../components/common/ClinicMap';
 import './landing.css';
-import heroPhoto from '../../assets/bg2.jpg';
+import hmoPhoto from '../../assets/landing-slideshow/HMO.jpg';
+import clinicPhoto1 from '../../assets/landing-slideshow/bg1.jpeg';
+import clinicPhoto2 from '../../assets/landing-slideshow/bg2.jpeg';
+import clinicPhoto3 from '../../assets/landing-slideshow/bg3.jpeg';
+import clinicPhoto4 from '../../assets/landing-slideshow/bg4.jpeg';
+import clinicPhoto5 from '../../assets/landing-slideshow/bg5.jpeg';
 import DentalLogo from '../../assets/DentalLogo.png';
 
 import { 
-  ArrowUpRight, ChevronDown, Clock3, Info, MapPin, Menu, Search, X,
+  ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Pause, Play, Clock3, Info, MapPin, Menu, Search, X,
   ClipboardCheck,   
   Sparkles,         
   Activity,        
@@ -22,6 +26,114 @@ import {
 } from 'lucide-react';
 
 const initialServiceCount = 6;
+
+const heroSlides = [
+  { src: hmoPhoto, alt: 'List of HMO accredited providers' },
+  { src: clinicPhoto1, alt: 'Clinic lounge and waiting area' },
+  { src: clinicPhoto2, alt: 'Clinic entrance' },
+  { src: clinicPhoto3, alt: 'Dental treatment room' },
+  { src: clinicPhoto4, alt: 'Clinic waiting area seating' },
+  { src: clinicPhoto5, alt: 'Dental chair and treatment equipment' },
+];
+
+export function HeroSlideshow() {
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [slideStatus, setSlideStatus] = useState({});
+  const [isPaused, setIsPaused] = useState(false);
+  const previousSlide = (activeSlide - 1 + heroSlides.length) % heroSlides.length;
+  const nextSlide = (activeSlide + 1) % heroSlides.length;
+  const activeSettled = Boolean(slideStatus[activeSlide]);
+  const nextLoaded = slideStatus[nextSlide] === 'loaded';
+
+  // Restart the delay after navigation so each selected image gets a full turn.
+  useEffect(() => {
+    if (isPaused || !activeSettled || !nextLoaded) return;
+    const timer = window.setTimeout(() => setActiveSlide(nextSlide), 6000);
+    return () => window.clearTimeout(timer);
+  }, [activeSlide, activeSettled, nextSlide, nextLoaded, isPaused]);
+
+  return (
+    <figure className="welcome-photo" aria-label="Clinic photos and HMO accreditation" aria-roledescription="carousel">
+      <div className="welcome-slides">
+        <div className={`welcome-hmo-backdrop ${activeSlide === 0 ? 'is-active' : ''}`} style={{ backgroundImage: `url(${hmoPhoto})` }} aria-hidden="true" />
+        {heroSlides.map((slide, index) => {
+          const isNeighbor = index === previousSlide || index === nextSlide;
+          const shouldRequest = index === activeSlide || slideStatus[index] || (isNeighbor && activeSettled);
+          if (!shouldRequest) return null;
+          return (
+            <img
+              key={slide.src}
+              src={slide.src}
+              alt={slide.alt}
+              className={`${index === 0 ? 'welcome-hmo-image' : ''} ${index === activeSlide ? 'is-active' : ''}`}
+              aria-hidden={index !== activeSlide}
+              fetchPriority={index === 0 ? 'high' : 'low'}
+              onLoad={() => setSlideStatus(status => ({ ...status, [index]: 'loaded' }))}
+              onError={() => setSlideStatus(status => ({ ...status, [index]: 'failed' }))}
+            />
+          );
+        })}
+      </div>
+      <button type="button" className="welcome-slide-control welcome-slide-previous" aria-label="Previous image" disabled={slideStatus[previousSlide] !== 'loaded'} onClick={() => setActiveSlide(previousSlide)}>
+        <ChevronLeft size={22} aria-hidden="true" />
+      </button>
+      <button type="button" className="welcome-slide-control welcome-slide-next" aria-label="Next image" disabled={!nextLoaded} onClick={() => setActiveSlide(nextSlide)}>
+        <ChevronRight size={22} aria-hidden="true" />
+      </button>
+      <button type="button" className="welcome-slide-control welcome-slide-playback" aria-label={isPaused ? 'Resume slideshow' : 'Pause slideshow'} onClick={() => setIsPaused(paused => !paused)}>
+        {isPaused ? <Play size={16} aria-hidden="true" /> : <Pause size={16} aria-hidden="true" />}
+      </button>
+      <span className="welcome-slide-announcement" aria-live={isPaused ? 'polite' : 'off'} aria-atomic="true">
+        {activeSlide + 1} of {heroSlides.length}: {heroSlides[activeSlide].alt}
+      </span>
+      <figcaption><MapPin size={16} aria-hidden="true" /> Imus City, Cavite</figcaption>
+    </figure>
+  );
+}
+
+function DeferredClinicMap() {
+  const slot = useRef(null);
+  const [MapComponent, setMapComponent] = useState(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    let observer;
+
+    const loadMap = () => {
+      observer?.disconnect();
+      import('../../components/common/ClinicMap')
+        .then(module => { if (mounted) setMapComponent(() => module.default); })
+        .catch(() => { if (mounted) setFailed(true); });
+    };
+
+    if (typeof IntersectionObserver === 'function' && slot.current) {
+      observer = new IntersectionObserver(entries => {
+        if (entries.some(entry => entry.isIntersecting)) loadMap();
+      }, { rootMargin: '300px 0px' });
+      observer.observe(slot.current);
+    } else {
+      loadMap();
+    }
+
+    return () => {
+      mounted = false;
+      observer?.disconnect();
+    };
+  }, []);
+
+  return (
+    <div ref={slot} className="info-image clinic-map-slot">
+      {MapComponent ? <MapComponent /> : (
+        <div className="clinic-map-placeholder">
+          <p role="status">{failed ? 'Clinic map is temporarily unavailable.' : 'Loading clinic map…'}</p>
+          <a href="https://www.google.com/maps/dir/?api=1&destination=Diolata%20Dental%20Clinic%2C%20Imus%20City%2C%20Cavite"
+            target="_blank" rel="noopener noreferrer">Get directions</a>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const Landing = () => {
   const { user, userType, userDetails, signOut } = useAuth();
@@ -37,7 +149,7 @@ const Landing = () => {
   // Chatbot state
   const [chatMessages, setChatMessages] = useState([
     {
-      text: "Hello! I'm your 24/7 AI dental assistant. I can provide instant information about clinic hours, common dental procedures, post-treatment care, and answer frequently asked questions. Support is available even outside clinic hours. How can I help you today?",
+      text: "Hello! I'm your 24/7 ChatBot dental assistant. I can provide instant information about clinic hours, common dental procedures, post-treatment care, and answer frequently asked questions. Support is available even outside clinic hours. How can I help you today?",
       sender: 'bot'
     }
   ]);
@@ -292,10 +404,7 @@ const Landing = () => {
               )}
             </div>
           </div>
-          <figure className="welcome-photo">
-            <img src={heroPhoto} alt="A dentist speaking with a patient in a treatment room" />
-            <figcaption><MapPin size={16} aria-hidden="true" /> Imus City, Cavite</figcaption>
-          </figure>
+          <HeroSlideshow />
         </div>
       </header>
       <main>
@@ -313,7 +422,7 @@ const Landing = () => {
               <Info size={16} aria-hidden="true" />
               {user && userType === 'patient'
                 ? "You're logged in! Book appointments directly"
-                : <> <Link to="/register">Register</Link> or <Link to="/login">login</Link> to book appointments</>}
+                : <> <Link to="/register">Register</Link> or <Link to="/login">loginyou</Link> to book appointments</>}
             </p>
           </header>
 
@@ -418,9 +527,7 @@ const Landing = () => {
               </div>
             </div>
             
-            <div className="info-image">
-              <ClinicMap />
-            </div>
+            <DeferredClinicMap />
           </div>
         </div>
       </section>
@@ -430,7 +537,7 @@ const Landing = () => {
         <div className="container-wide">
           <div className="section-title">
             <span className="section-kicker">03 / Patient support</span>
-            <h2>24/7 AI Dental Assistant</h2>
+            <h2>24/7 ChatBot Dental Assistant</h2>
             <p>Get instant answers about clinic hours, procedures, and post-care</p>
           </div>
           
@@ -501,9 +608,9 @@ const Landing = () => {
               <h3>Contact Info</h3>
               <ul className="footer-links">
                 <li><i className="fas fa-map-marker-alt"></i> Tanzang Luma 2, Imus City, Cavite</li>
-                <li><i className="fas fa-phone"></i> (02) 1234-5678</li>
-                <li><i className="fas fa-envelope"></i> info@fifthcuspclinic.com</li>
-                <li><i className="fas fa-clock"></i> Mon-Fri: 8AM-6PM, Sat: 9AM-2PM</li>
+                <li><i className="fas fa-phone"></i> 046-4723054 / 0930-482-0352</li>
+                <li><i className="fas fa-envelope"></i> diolatadental.clinic@yahoo.com.ph</li>
+                <li><i className="fas fa-clock"></i> Mon-Sat: 9AM-6PM, Sun: Closed </li>
               </ul>
             </div>
           </div>

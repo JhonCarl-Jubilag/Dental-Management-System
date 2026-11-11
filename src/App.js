@@ -31,9 +31,13 @@ import Billing from './pages/admin/manageBilling';
 import Reports from './pages/admin/reports';
 import ManageInventory from './pages/admin/manageInventory';
 import ManageStaff from './pages/admin/manageStaff';
+import DailyTimeRecords from './pages/admin/dailyTimeRecords';
+import ClinicSettings from './pages/admin/clinicSettings';
 
 // Keep shared button styles after page styles, independent of retired pages.
 import './App.css';
+import './components/admin/AdminLayout.css';
+import './pages/public/PublicUI.css';
 
 const ProtectedRoute = ({ children, allowedUserType }) => {
   const { user, userType, loading, registrationIncomplete, accountError } = useAuth();
@@ -154,9 +158,21 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
+      <Route path="/admin/attendance" element={
+        <ProtectedRoute allowedUserType="admin">
+          <DailyTimeRecords />
+        </ProtectedRoute>
+      } />
+
       <Route path="/admin/staff" element={
         <ProtectedRoute allowedUserType="super_admin">
           <ManageStaff />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/admin/settings" element={
+        <ProtectedRoute allowedUserType="super_admin">
+          <ClinicSettings />
         </ProtectedRoute>
       } />
 

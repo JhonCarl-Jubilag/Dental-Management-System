@@ -7,7 +7,26 @@ import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
 import './manageStaff.css';
 
-const emptyForm = { first_name: '', last_name: '', email: '', password: '', confirm_password: '' };
+const staffPasswordLimits = { minLength: 12, maxLength: 4096 };
+const emptyPasswords = { password: '', confirm_password: '' };
+const emptyForm = { first_name: '', last_name: '', email: '', ...emptyPasswords };
+const StaffPasswordFields = ({ prefix, label, values, setValues }) => (
+  <>
+    <div className="staff-form-field">
+      <label htmlFor={`${prefix}-password`}>{label}</label>
+      <input id={`${prefix}-password`} type="password" required {...staffPasswordLimits}
+        autoComplete="new-password" aria-describedby={`${prefix}-password-hint`}
+        value={values.password} onChange={event => setValues({ ...values, password: event.target.value })} />
+      <small id={`${prefix}-password-hint`}>At least {staffPasswordLimits.minLength} characters.</small>
+    </div>
+    <div className="staff-form-field">
+      <label htmlFor={`${prefix}-confirm-password`}>Confirm password</label>
+      <input id={`${prefix}-confirm-password`} type="password" required {...staffPasswordLimits}
+        autoComplete="new-password" value={values.confirm_password}
+        onChange={event => setValues({ ...values, confirm_password: event.target.value })} />
+    </div>
+  </>
+);
 const staffSnapshot = profile => Object.fromEntries(['first_name', 'last_name', 'email', 'status'].map(key => [key, profile[key]]));
 const manageStaffAccount = async body => {
   const { data, error } = await supabase.functions.invoke('manage-staff-account', { body });
@@ -36,6 +55,7 @@ const ManageStaff = () => {
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [editNames, setEditNames] = useState({ first_name: '', last_name: '' });
   const [editEmail, setEditEmail] = useState('');
+  const [editPasswords, setEditPasswords] = useState(emptyPasswords);
   const [nameSnapshot, setNameSnapshot] = useState(null);
   const saving = useRef(false);
   const request = useRef(0);
@@ -64,6 +84,7 @@ const ManageStaff = () => {
   const closeForm = () => {
     setMode(null); setSelectedStaff(null); setForm(emptyForm);
     setEditNames({ first_name: '', last_name: '' }); setEditEmail(''); setNameSnapshot(null);
+    setEditPasswords(emptyPasswords);
   };
   const openEdit = staff => {
     setSelectedStaff(staff); setEditNames({ first_name: staff.first_name, last_name: staff.last_name });
@@ -131,6 +152,32 @@ const ManageStaff = () => {
     finally { saving.current = false; setBusy(false); }
   };
 
+  const savePassword = async event => {
+    event.preventDefault();
+    if (!allowed || !selectedStaff?.linked || saving.current || mode !== 'edit') return;
+    if (editPasswords.password !== editPasswords.confirm_password) {
+      toast.error('Passwords do not match.');
+      return;
+    }
+    saving.current = true;
+    setBusy(true);
+    try {
+      await manageStaffAccount({
+        action: 'change_password',
+        admin_id: selectedStaff.admin_id,
+        expected_email: selectedStaff.email,
+        password: editPasswords.password,
+      });
+      setEditPasswords(emptyPasswords);
+      toast.success('Staff login password updated.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      saving.current = false;
+      setBusy(false);
+    }
+  };
+
   if (authLoading || !allowed) return null;
   return (
     <div className="admin-dashboard">
@@ -162,13 +209,7 @@ const ManageStaff = () => {
               <div className="staff-form-field staff-form-field-wide">
                 <label htmlFor="staff-email">Email</label><input id="staff-email" type="email" required maxLength={254} autoComplete="off" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} />
               </div>
-              <div className="staff-form-field">
-                <label htmlFor="staff-password">Password</label><input id="staff-password" type="password" required minLength={12} maxLength={4096} autoComplete="new-password" aria-describedby="staff-password-hint" value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} />
-                <small id="staff-password-hint">At least 12 characters.</small>
-              </div>
-              <div className="staff-form-field">
-                <label htmlFor="staff-confirm-password">Confirm password</label><input id="staff-confirm-password" type="password" required minLength={12} maxLength={4096} autoComplete="new-password" value={form.confirm_password} onChange={event => setForm({ ...form, confirm_password: event.target.value })} />
-              </div>
+              <StaffPasswordFields prefix="staff" label="Password" values={form} setValues={setForm} />
             </div>
             <div className="staff-form-actions">
               <small>No invitation email is sent.</small>
@@ -201,6 +242,21 @@ const ManageStaff = () => {
                 <input id="staff-edit-email" type="email" required maxLength={254} autoComplete="off" aria-describedby="staff-email-hint" value={editEmail} onChange={event => setEditEmail(event.target.value)} />
                 <small id="staff-email-hint">Changing this address also changes the Staff login email.</small></div>
               <button type="submit" className="staff-submit-button" disabled={editEmail.trim().toLowerCase() === selectedStaff.email.toLowerCase()}>Update email</button>
+            </fieldset>
+          </form>
+          <form onSubmit={savePassword} className="staff-password-editor" aria-labelledby="staff-password-heading">
+            <fieldset disabled={busy}>
+              <div className="staff-form-grid">
+                <div className="staff-form-field staff-form-field-wide">
+                  <h3 id="staff-password-heading">Change password</h3>
+                  <small>Login account: {selectedStaff.email}</small>
+                </div>
+                <StaffPasswordFields prefix="staff-edit" label="New password"
+                  values={editPasswords} setValues={setEditPasswords} />
+              </div>
+              <div className="staff-name-actions">
+                <button type="submit" className="staff-submit-button">Change password</button>
+              </div>
             </fieldset>
           </form>
         </section>}

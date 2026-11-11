@@ -1,0 +1,68 @@
+/* Verification screens only. Login, registration and password pages use their original styles. */
+:is(.verify-reset-container, .verify-container) {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: var(--clinic-navy);
+}
+:is(.verify-reset-container) .form-wrapper,
+.verify-container .verify-card {
+  border: 1px solid #d3e0e5;
+  border-radius: 18px;
+  box-shadow: 0 12px 36px #0b284714;
+  background: #fff;
+}
+:is(.verify-reset-container) .form-header h1,
+:is(.verify-reset-container) .form-header h2,
+.verify-container .verify-header h1 {
+  font-family: inherit;
+  color: var(--clinic-navy);
+  font-weight: 650;
+  letter-spacing: -.035em;
+  line-height: 1.2;
+}
+:is(.verify-reset-container) .form-group > label {
+  color: var(--clinic-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+:is(.verify-reset-container) .form-group :is(input:not([type=checkbox]):not([type=radio]), select, textarea) {
+  min-height: 44px;
+  border: 1px solid #adc3cd;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--clinic-ink);
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+}
+:is(.verify-reset-container) .btn,
+.verify-container .verify-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 11px 20px;
+  border: 1px solid #adc3cd;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--clinic-navy);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  box-shadow: none;
+  transition: background-color .15s, border-color .15s;
+}
+:is(.verify-reset-container) .btn-primary,
+.verify-container .verify-btn-primary { background: var(--clinic-navy); color: white; border-color: var(--clinic-navy); }
+:is(.verify-reset-container) .btn:hover:not(:disabled),
+.verify-container .verify-btn:hover:not(:disabled) { background: #13566b; border-color: #13566b; color: #fff; transform: none; box-shadow: none; }
+:is(.verify-reset-container, .verify-container) :is(button, a, input, select):focus-visible { outline: 3px solid #17667d; outline-offset: 3px; }
+:is(.verify-reset-container, .verify-container) button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+:is(.verify-reset-container) .form-footer { border-color: #d3e0e5; color: var(--clinic-muted); }
+:is(.verify-reset-container) .form-footer a { color: #135d73; text-underline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  :is(.verify-reset-container, .verify-container) * { transition-duration: 0s; }
+}

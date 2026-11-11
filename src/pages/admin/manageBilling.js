@@ -8,6 +8,9 @@ import { supabase } from '../../services/supabase';
 import { completeFinishedAppointments, completePaidAppointment } from '../../services/appointmentCompletion';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
+import BillingStatement from '../../components/admin/BillingStatement';
+import { getBillingStatus, formatStatementDate } from '../../services/billingStatement';
+import { getClinicDate } from '../../utils/clinicScheduling';
 import './manageBilling.css';
 
 const billingSnapshotFields = ['appointment_id', 'total_amount', 'discount', 'discount_id_no',
@@ -69,7 +72,7 @@ const ManageBilling = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showStatementModal, setShowStatementModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const billingWriteInProgress = useRef(false);
@@ -90,7 +93,7 @@ const ManageBilling = () => {
     amount_paid: 0,
     payment_method: 'cash',
     reference_number: '',
-    payment_date: new Date().toISOString().split('T')[0],
+    payment_date: getClinicDate(),
     remarks: ''
   });
   const [editForm, setEditForm] = useState({
@@ -164,7 +167,7 @@ const ManageBilling = () => {
 
       let filtered = billingData || [];
       if (statusFilter === 'pending') {
-        filtered = filtered.filter(b => b.balance > 0 && b.amount_paid === 0);
+        filtered = filtered.filter(b => b.balance > 0 && Number(b.amount_paid) === 0);
       } else if (statusFilter === 'paid') {
         filtered = filtered.filter(b => b.balance <= 0 && b.amount_paid > 0);
       } else if (statusFilter === 'partial') {
@@ -232,7 +235,7 @@ const ManageBilling = () => {
       amount_paid: 0,
       payment_method: 'cash',
       reference_number: '',
-      payment_date: new Date().toISOString().split('T')[0],
+      payment_date: getClinicDate(),
       remarks: ''
     });
     setAllowsPartial(false);
@@ -335,7 +338,7 @@ const ManageBilling = () => {
       else if (discount_type === 'pwd') finalRemarks = `[Discount Applied]: PWD (20%) - ₱${discount.toFixed(2)} | ID: ${discount_id_no}\n${finalRemarks}`;
       else if (discount_type === 'manual') finalRemarks = `[Discount Applied]: Manual Discount - ₱${discount.toFixed(2)}\n${finalRemarks}`;
       if (amount_paid > 0) {
-        const paymentDateFormatted = new Date(payment_date).toLocaleString();
+        const paymentDateFormatted = formatStatementDate(payment_date);
         const refNote = payment_method !== 'cash' ? ` Ref: ${reference_number}` : '';
         finalRemarks += `\n\n[Initial Payment ${paymentDateFormatted}]: ₱${amount_paid.toFixed(2)} via ${payment_method}${refNote}`;
       }
@@ -486,7 +489,7 @@ const ManageBilling = () => {
       const { data: savedBill, error: updateError } = await matchBillingSnapshot(supabase.from('billing')
         .update({ amount_paid: newPaidCents / 100, balance: newBalance, payment_method,
           reference_number: payment_method !== 'cash' ? reference_number.trim() : null,
-          payment_date: new Date().toISOString().split('T')[0],
+          payment_date: getClinicDate(),
           remarks: (bill.remarks || '') + paymentRecord })
         .eq('billing_id', billing_id), bill)
         .select('billing_id, appointment_id').maybeSingle();
@@ -546,16 +549,8 @@ const ManageBilling = () => {
     navigate('/login');
   };
 
-  const getStatusClass = (record) => {
-    if (record.amount_paid === 0) return 'status-pending';
-    if (record.balance > 0) return 'status-partial';
-    return 'status-paid';
-  };
-  const getStatusText = (record) => {
-    if (record.amount_paid === 0) return 'Pending';
-    if (record.balance > 0) return 'Partial';
-    return 'Paid';
-  };
+  const getStatusClass = record => getBillingStatus(record).className;
+  const getStatusText = record => getBillingStatus(record).label;
   const getAppointmentStatusClass = (status) => {
     switch (status) {
       case 'pending': return 'status-pending';
@@ -580,14 +575,14 @@ const ManageBilling = () => {
   const adminInitial = adminName.charAt(0).toUpperCase();
 
   return (
-    <div className="admin-dashboard">
+    <div className="admin-dashboard admin-billing">
       <Sidebar onLogout={handleLogout} />
 
       <div className="main-content manage-billing-page">
         <div className="dashboard-header">
           <div className="header-title">
             <h1>Billing Management</h1>
-            <p className="welcome-message">Manage payments, discounts, and invoices</p>
+            <p className="welcome-message">Manage payments, discounts, and billing statements</p>
           </div>
           <div className="header-actions">
             <button className="btn btn-primary" disabled={loading || !hasLoaded || isSubmitting} onClick={() => setShowCreateModal(true)}>
@@ -677,7 +672,7 @@ const ManageBilling = () => {
                         <td>
                           <div className="action-button">
                             <button className="btn btn-info btn-sm" onClick={() => { setSelectedRecord(record); setShowViewModal(true); }}>View</button>
-                            <button className="btn btn-primary btn-sm" onClick={() => { setSelectedRecord(record); setShowInvoiceModal(true); }}>Invoice</button>
+                            <button className="btn btn-primary btn-sm" onClick={() => { setSelectedRecord(record); setShowStatementModal(true); }}>Statement</button>
                             
                             {record.archived ? (
                               <button className="btn btn-success btn-sm" onClick={() => handleRestore(record.billing_id)}>
@@ -718,7 +713,7 @@ const ManageBilling = () => {
                                     amount_paid: record.amount_paid,
                                     payment_method: record.payment_method,
                                     reference_number: record.reference_number || '',
-                                    payment_date: record.payment_date || new Date().toISOString().split('T')[0],
+                                    payment_date: record.payment_date || getClinicDate(),
                                     remarks: record.remarks || ''
                                   });
                                   setAllowsPartial(service.price >= 3000);
@@ -885,45 +880,9 @@ const ManageBilling = () => {
         </div>
       )}
 
-      {/* INVOICE MODAL */}
-      {showInvoiceModal && selectedRecord && (
-        <div className="modal active" onClick={e => e.target === e.currentTarget && setShowInvoiceModal(false)}>
-          <div className="modal-content invoice-modal-content">
-            <div className="modal-header"><h3>Invoice</h3><button className="modal-close" onClick={() => setShowInvoiceModal(false)}>&times;</button></div>
-            <div className="invoice-scroll-container" id="invoiceContent">
-              <div className="invoice-wrapper">
-                <div className="invoice-header">
-                  <div className="clinic-info"><div className="clinic-name">Diolata Dental Clinic</div><div className="clinic-address">123 Dental St., Imus, Cavite</div><div className="clinic-contact">info@fifthcusp.com | (02) 1234-5678</div></div>
-                  <div className="invoice-title"><div className="invoice-badge">TAX INVOICE</div><div className="invoice-number">INV-{String(selectedRecord.billing_id).padStart(6, '0')}</div><div className="invoice-date">Date: {new Date(selectedRecord.payment_date || selectedRecord.created_at).toLocaleDateString()}</div><span className={`status-badge-invoice ${selectedRecord.balance === 0 ? (selectedRecord.amount_paid > 0 ? 'status-paid' : 'status-pending') : 'status-partial'}`}>{selectedRecord.balance === 0 ? (selectedRecord.amount_paid > 0 ? 'PAID' : 'PENDING') : 'PARTIAL'}</span></div>
-                </div>
-                <div className="info-grid">
-                  <div className="info-box"><div className="info-box-title">Bill To</div><div className="info-box-name">{selectedRecord.patients.first_name} {selectedRecord.patients.last_name}</div><div className="info-box-text">{selectedRecord.patients.email}</div><div className="info-box-text">{selectedRecord.patients.contact_no || 'N/A'}</div><div className="info-box-text">{selectedRecord.patients.address || 'N/A'}</div></div>
-                  <div className="info-box"><div className="info-box-title">Appointment Details</div><div className="info-box-row"><span className="info-label">Service:</span><span className="info-value">{selectedRecord.appointments.services.service_name}</span></div><div className="info-box-row"><span className="info-label">Doctor:</span><span className="info-value">Dr. {selectedRecord.doctors.first_name} {selectedRecord.doctors.last_name}</span></div><div className="info-box-row"><span className="info-label">Date:</span><span className="info-value">{new Date(selectedRecord.appointments.appointment_datetime).toLocaleString()}</span></div></div>
-                </div>
-                <div className="amount-table-wrapper">
-                  <table className="amount-table">
-                    <thead><tr className="amount-table-header"><th>Description</th><th className="text-right">Amount</th></tr></thead>
-                    <tbody>
-                      <tr className="amount-row"><td>{selectedRecord.appointments.services.service_name}</td><td className="text-right">₱{selectedRecord.total_amount.toFixed(2)}</td></tr>
-                      {selectedRecord.discount > 0 && (<tr className="amount-row discount"><td>Discount {selectedRecord.discount_id_no && <span className="discount-tag">{selectedRecord.remarks?.toLowerCase().includes('senior') ? 'Senior' : selectedRecord.remarks?.toLowerCase().includes('pwd') ? 'PWD' : 'Applied'}</span>}</td><td className="text-right discount-amount">-₱{selectedRecord.discount.toFixed(2)}</td></tr>)}
-                      <tr className="amount-row total"><td>Total After Discount</td><td className="text-right">₱{(selectedRecord.total_amount - selectedRecord.discount).toFixed(2)}</td></tr>
-                      <tr className="amount-row paid"><td>Amount Paid</td><td className="text-right">₱{selectedRecord.amount_paid.toFixed(2)}</td></tr>
-                      <tr className="amount-row balance"><td>Remaining Balance</td><td className="text-right"><span className={selectedRecord.balance > 0 ? 'balance-has' : 'balance-zero'}>₱{selectedRecord.balance.toFixed(2)}</span></td></tr>
-                    </tbody>
-                  </table>
-                </div>
-                {selectedRecord.payment_method && selectedRecord.amount_paid > 0 && (
-                  <div className="info-section"><div className="section-header">Payment Information</div><div className="info-row-group"><div className="info-row-item"><span className="item-label">Method:</span><span className="item-value">{selectedRecord.payment_method.toUpperCase()}</span></div>{selectedRecord.reference_number && (<div className="info-row-item"><span className="item-label">Reference #:</span><span className="item-value">{selectedRecord.reference_number}</span></div>)}<div className="info-row-item"><span className="item-label">Date:</span><span className="item-value">{selectedRecord.payment_date ? new Date(selectedRecord.payment_date).toLocaleDateString() : 'N/A'}</span></div></div></div>
-                )}
-                {selectedRecord.remarks && (<div className="info-section"><div className="section-header">Remarks</div><div className="remarks-text">{selectedRecord.remarks}</div></div>)}
-                <div className="invoice-footer"><div className="footer-thanks">Thank you for choosing Diolata Dental Clinic!</div><div className="footer-note">Please keep this invoice for your records.</div></div>
-              </div>
-            </div>
-            <div className="modal-footer"><button className="btn btn-primary" onClick={() => window.print()}>Print Invoice</button><button className="btn btn-secondary" onClick={() => setShowInvoiceModal(false)}>Close</button></div>
-          </div>
-        </div>
+      {showStatementModal && selectedRecord && (
+        <BillingStatement key={selectedRecord.billing_id} billingId={selectedRecord.billing_id} onClose={() => setShowStatementModal(false)} />
       )}
-
       <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );

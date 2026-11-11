@@ -1,383 +1,114 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
+import { CLINIC_TIME_ZONE, formatClinicDate, formatClinicDateTime, getClinicDate } from '../../utils/clinicScheduling';
 import { supabase } from '../../services/supabase';
+import { DASHBOARD_PAGE_SIZE, loadTodaySchedule, loadPendingRequests, loadSupplyAlerts, loadUnbilledAlert } from '../../services/dashboardDaily';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
+import StaffTimeCard from '../../components/admin/StaffTimeCard';
 import './dashboard.css';
+
+// Account/day/page changes invalidate older responses; tab focus keeps the view.
+const useDashboardSection = (key, read) => {
+  const [snapshot, setSnapshot] = useState({ key: null, data: null, loading: false, error: null });
+  const request = useRef(0), context = useRef(key), reader = useRef(read);
+  context.current = key; reader.current = read;
+  const refresh = useCallback(async () => {
+    const identity = context.current;
+    if (!identity) return;
+    const version = ++request.current, isCurrent = () => version === request.current && context.current === identity;
+    setSnapshot(previous => ({ key: identity, data: previous.key === identity ? previous.data : null, loading: true, error: null }));
+    try { const data = await reader.current(isCurrent); if (isCurrent()) setSnapshot({ key: identity, data, loading: false, error: null }); }
+    catch (error) { if (isCurrent()) setSnapshot(previous => ({ ...previous, key: identity, loading: false, error })); }
+  }, []);
+  useEffect(() => { refresh(); return () => { request.current += 1; }; }, [key, refresh]);
+  return { ...(snapshot.key === key ? snapshot : { data: null, loading: Boolean(key), error: null }), refresh };
+};
+const relation = value => Array.isArray(value) ? value[0] : value;
+const personName = value => { const person = relation(value); return [person?.first_name, person?.last_name].filter(Boolean).join(' ') || 'Not recorded'; };
+const timeLabel = value => new Date(value).toLocaleTimeString('en-US', { timeZone: CLINIC_TIME_ZONE, hour: 'numeric', minute: '2-digit' });
+const statusLabel = value => ({ pending: 'Pending', confirmed: 'Confirmed', completed: 'Completed', cancelled: 'Cancelled' }[value] || 'Not recorded');
 
 const AdminDashboard = () => {
   const { user, userType, loading: authLoading, signOut } = useAuth();
-  const navigate = useNavigate();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [hasLoaded, setHasLoaded] = useState(false);
-  const [loadError, setLoadError] = useState(null);
-  const [authChecked, setAuthChecked] = useState(false);
-  
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-  
-  const [dashboardData, setDashboardData] = useState({
-    totalPatients: 0,
-    totalDoctors: 0,
-    totalAppointments: 0,
-    todayAppointments: 0,
-    pendingAppointments: 0,
-    totalRevenue: 0,
-    todayRevenue: 0,
-    avgRevenuePerAppointment: 0,
-    newPatientsMonth: 0,
-    conversionRate: 0,
-    totalOutstanding: 0,
-    unpaidInvoices: 0,
-    patientGrowthRate: 0,
-    revenueGrowthRate: 0
-  });
-
-  const [recentAppointments, setRecentAppointments] = useState([]);
-  const isMounted = useRef(true);
-  const isSuperAdmin = isOwner(userType);
-
-  const totalPages = Math.ceil(recentAppointments.length / itemsPerPage);
-  const paginatedAppointments = recentAppointments.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
-
-  const goToPrevPage = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-
-  // Reset to page 1 when new data arrives
+  const navigate = useNavigate(), allowed = Boolean(user && !authLoading && isClinicUser(userType));
+  const [today, setToday] = useState(getClinicDate), [pagination, setPagination] = useState({ key: '', page: 1 }), [expanded, setExpanded] = useState(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false), [logoutError, setLogoutError] = useState('');
+  const context = allowed ? [user.id, userType, today].join(':') : null;
+  const page = pagination.key === context ? pagination.page : 1, scheduleKey = context ? `${context}:${page}` : null;
+  const schedule = useDashboardSection(scheduleKey, isCurrent => loadTodaySchedule(supabase, today, page, isCurrent));
+  const pending = useDashboardSection(context, isCurrent => loadPendingRequests(supabase, new Date(), isCurrent));
+  const supplies = useDashboardSection(context, isCurrent => loadSupplyAlerts(supabase, isCurrent));
+  const unbilled = useDashboardSection(context, isCurrent => loadUnbilledAlert(supabase, new Date(), isCurrent));
   useEffect(() => {
-    setCurrentPage(1);
-  }, [recentAppointments]);
-
+    if (!authLoading && !allowed) navigate(user ? '/' : '/login', { replace: true });
+  }, [authLoading, allowed, user, navigate]);
   useEffect(() => {
-    if (!authLoading && !authChecked) {
-      if (!user) {
-        navigate('/login', { replace: true });
-      } else if (!isClinicUser(userType)) {
-        navigate('/', { replace: true });
-      } else {
-        setAuthChecked(true);
-      }
-    }
-  }, [user, userType, authLoading, navigate, isSuperAdmin, authChecked]);
-
-  const fetchDashboardData = useCallback(async () => {
-    if (!isMounted.current) return;
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const [
-        { count: totalPatients },
-        { count: totalDoctors },
-        { count: totalAppointments },
-        { count: todayAppointments },
-        { count: pendingAppointments },
-        revenueResult,
-        todayRevenueResult,
-        avgRevenueResult,
-        { count: newPatientsMonth },
-        outstandingResult,
-        recentAppointmentsResult,
-        growthRateResult,
-        revenueGrowthResult
-      ] = await Promise.all([
-        supabase.from('patients').select('patient_id', { count: 'exact', head: true }),
-        supabase.from('doctors').select('doctor_id', { count: 'exact', head: true }),
-        supabase.from('appointments').select('*', { count: 'exact', head: true }),
-        supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('appointment_datetime', new Date().toISOString().split('T')[0]),
-        supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('billing').select('amount_paid'),
-        supabase.from('billing').select('amount_paid').gte('payment_date', new Date().toISOString().split('T')[0]),
-        supabase.from('billing').select('amount_paid').gt('amount_paid', 0),
-        supabase.from('patients').select('patient_id', { count: 'exact', head: true }).gte('date_created', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
-        supabase.from('billing').select('balance').gt('balance', 0),
-        supabase.from('appointments').select('*, patients(first_name, last_name), doctors(first_name, last_name), services(service_name)').order('created_at', { ascending: false }).limit(10),
-        supabase.from('patients').select('date_created').gte('date_created', new Date(new Date().setMonth(new Date().getMonth() - 2)).toISOString()),
-        supabase.from('billing').select('amount_paid, payment_date').gte('payment_date', new Date(new Date().setMonth(new Date().getMonth() - 2)).toISOString())
-      ]);
-
-      if (!isMounted.current) return;
-
-      const totalRevenue = revenueResult.data?.reduce((sum, item) => sum + (item.amount_paid || 0), 0) || 0;
-      const todayRevenueVal = todayRevenueResult.data?.reduce((sum, item) => sum + (item.amount_paid || 0), 0) || 0;
-      const avgRevenue = avgRevenueResult.data?.length ? totalRevenue / avgRevenueResult.data.length : 0;
-      const totalOutstanding = outstandingResult.data?.reduce((sum, item) => sum + (item.balance || 0), 0) || 0;
-      const unpaidInvoices = outstandingResult.data?.filter(item => item.balance > 0).length || 0;
-
-      const nonPending = totalAppointments - pendingAppointments;
-      const conversionRate = totalAppointments ? ((nonPending / totalAppointments) * 100).toFixed(1) : 0;
-
-      setDashboardData({
-        totalPatients: totalPatients || 0,
-        totalDoctors: totalDoctors || 0,
-        totalAppointments: totalAppointments || 0,
-        todayAppointments: todayAppointments || 0,
-        pendingAppointments: pendingAppointments || 0,
-        totalRevenue: totalRevenue,
-        todayRevenue: todayRevenueVal,
-        avgRevenuePerAppointment: avgRevenue,
-        newPatientsMonth: newPatientsMonth || 0,
-        conversionRate: conversionRate,
-        totalOutstanding: totalOutstanding,
-        unpaidInvoices: unpaidInvoices,
-        patientGrowthRate: calculateGrowthRate(growthRateResult.data),
-        revenueGrowthRate: calculateRevenueGrowth(revenueGrowthResult.data)
-      });
-
-      if (recentAppointmentsResult.data) {
-        const appointments = recentAppointmentsResult.data.map(apt => ({
-          patient: `${apt.patients?.first_name || ''} ${apt.patients?.last_name || ''}`,
-          doctor: `Dr. ${apt.doctors?.first_name || ''} ${apt.doctors?.last_name || ''}`,
-          service: apt.services?.service_name || '',
-          datetime: apt.appointment_datetime,
-          status: apt.status
-        }));
-        setRecentAppointments(appointments);
-      }
-
-      setHasLoaded(true);
-
-    } catch (error) {
-      setLoadError(error);
-      console.error('Error fetching dashboard data:', error);
-    } finally {
-      if (isMounted.current) setLoading(false);
-    }
+    // A new clinic day refreshes the schedule; there is no focus reload.
+    const timer = window.setInterval(() => setToday(previous => { const date = getClinicDate(); return previous === date ? previous : date; }), 60000);
+    return () => window.clearInterval(timer);
   }, []);
-
-  const calculateGrowthRate = (data) => {
-    if (!data || data.length < 2) return 0;
-    const currentMonth = data.filter(d => new Date(d.date_created).getMonth() === new Date().getMonth()).length;
-    const lastMonth = data.filter(d => new Date(d.date_created).getMonth() === new Date().getMonth() - 1).length;
-    return lastMonth ? ((currentMonth - lastMonth) / lastMonth * 100).toFixed(1) : currentMonth ? 100 : 0;
-  };
-
-  const calculateRevenueGrowth = (data) => {
-    if (!data || data.length < 2) return 0;
-    const currentMonth = data.filter(d => new Date(d.payment_date).getMonth() === new Date().getMonth()).reduce((sum, d) => sum + (d.amount_paid || 0), 0);
-    const lastMonth = data.filter(d => new Date(d.payment_date).getMonth() === new Date().getMonth() - 1).reduce((sum, d) => sum + (d.amount_paid || 0), 0);
-    return lastMonth ? ((currentMonth - lastMonth) / lastMonth * 100).toFixed(1) : currentMonth ? 100 : 0;
-  };
-
   useEffect(() => {
-    isMounted.current = true;
-    return () => { isMounted.current = false; };
-  }, []);
-
-  useEffect(() => {
-    if (authChecked && user && (isClinicUser(userType))) {
-      fetchDashboardData();
-    }
-  }, [authChecked, user, userType, isSuperAdmin, fetchDashboardData]);
-
+    if (schedule.data && page > schedule.data.pages) setPagination({ key: context, page: schedule.data.pages });
+  }, [schedule.data, page, context]);
+  const refreshAll = () => {
+    setExpanded(null); const date = getClinicDate();
+    if (date !== today) { setToday(date); return; }
+    schedule.refresh(); pending.refresh(); supplies.refresh(); unbilled.refresh();
+  };
   const handleLogout = async () => {
-    setIsLoggingOut(true);
-    await signOut();
-    navigate('/login');
+    setIsLoggingOut(true); setLogoutError('');
+    try { const result = await signOut(); if (result?.success === false) throw new Error(); navigate('/login'); }
+    catch { setLogoutError('Could not log out. Please retry.'); setIsLoggingOut(false); }
   };
-
-  if (authLoading) {
-    return (
-      <div className="admin-loading">
-        <div className="loading-spinner"></div>
-        <p>Loading dashboard...</p>
+  if (!allowed) return null;
+  const name = isOwner(userType) ? 'Owner' : user.email?.split('@')[0] || 'Staff';
+  const refreshing = [schedule, pending, supplies, unbilled].some(section => section.loading);
+  const allClear = supplies.data?.count === 0 && unbilled.data?.count === 0 && !supplies.error && !unbilled.error && !supplies.loading && !unbilled.loading;
+  return <div className="admin-dashboard">
+    <Sidebar onLogout={handleLogout} />
+    <main className="main-content clinic-daily-dashboard">
+      <header className="daily-heading"><div><span className="daily-eyebrow">{roleLabel(userType)}</span><h1>Welcome back, {name}</h1><p>Here’s what needs your attention at the clinic today.</p><time dateTime={today}>{formatClinicDate(today)} · Philippines</time></div><button type="button" onClick={refreshAll} disabled={refreshing || isLoggingOut}><i className="fas fa-sync-alt" aria-hidden="true" /> {refreshing ? 'Refreshing…' : 'Refresh dashboard'}</button></header>
+      {logoutError && <p className="daily-error" role="alert">{logoutError}</p>}
+      <StaffTimeCard />
+      <div className="daily-workspace">
+        <section className="daily-panel daily-schedule" aria-labelledby="daily-schedule-heading">
+          <header className="daily-panel-heading"><div><span className="daily-eyebrow">Your daily schedule</span><h2 id="daily-schedule-heading">Today’s appointments</h2></div><Link to="/admin/appointments">Manage appointments →</Link></header>
+          <AdminDataRegion loading={schedule.loading} hasLoaded={Boolean(schedule.data)} error={schedule.error} label="Today’s appointments" onRetry={schedule.refresh}>
+            {schedule.data && <>
+              {schedule.data.rows.length ? <div className="daily-table-scroll" tabIndex={0} aria-label="Today’s appointment schedule"><table><thead><tr><th scope="col">Time</th><th scope="col">Patient</th><th scope="col">Dentist / Service</th><th scope="col">Status</th><th scope="col"><span className="daily-accessible">Appointment details</span></th></tr></thead><tbody>
+                {schedule.data.rows.map(appointment => { const open = expanded?.key === scheduleKey && expanded.id === appointment.appointment_id; return <React.Fragment key={appointment.appointment_id}>
+                  <tr><td className="daily-time">{timeLabel(appointment.appointment_datetime)}</td><td>{personName(appointment.patients)}</td><td><strong>{relation(appointment.services)?.service_name || 'Service not recorded'}</strong><small>{relation(appointment.doctors) ? `Dr. ${personName(appointment.doctors)}` : 'Dentist not recorded'}</small></td><td><span className={`daily-status daily-status-${['pending', 'confirmed', 'completed', 'cancelled'].includes(appointment.status) ? appointment.status : 'unknown'}`}>{statusLabel(appointment.status)}</span></td><td><button type="button" className="daily-view" aria-label={`${open ? 'Hide' : 'View'} appointment #${appointment.appointment_id}`} aria-expanded={open} aria-controls={`daily-appointment-${appointment.appointment_id}`} onClick={() => setExpanded(open ? null : { key: scheduleKey, id: appointment.appointment_id })}>{open ? 'Hide' : 'View'}</button></td></tr>
+                  {open && <tr className="daily-detail"><td colSpan={5}><div id={`daily-appointment-${appointment.appointment_id}`}><strong>Appointment #{appointment.appointment_id}</strong><p>{formatClinicDateTime(appointment.appointment_datetime)}{appointment.appointment_end && Number.isFinite(Date.parse(appointment.appointment_end)) ? ` – ${timeLabel(appointment.appointment_end)}` : ''} · Philippines</p><div>{appointment.patient_id && <Link to={`/admin/patients/${appointment.patient_id}`}>View patient record</Link>}<Link to="/admin/appointments">Open appointment management</Link></div></div></td></tr>}
+                </React.Fragment>; })}
+              </tbody></table></div> : <div className="daily-empty"><i className="far fa-calendar-check" aria-hidden="true" /><h3>No appointments scheduled today</h3><p>You can review upcoming requests or create a booking.</p><Link to="/admin/manual-booking">Book an appointment →</Link></div>}
+              {schedule.data.count > DASHBOARD_PAGE_SIZE && <nav className="daily-pagination" aria-label="Today’s schedule pages"><button type="button" disabled={page <= 1} onClick={() => setPagination({ key: context, page: page - 1 })}>Previous</button><span>Page {page} of {schedule.data.pages}</span><button type="button" disabled={page >= schedule.data.pages} onClick={() => setPagination({ key: context, page: page + 1 })}>Next</button></nav>}
+              <p className="daily-updated">Last refreshed {timeLabel(schedule.data.refreshedAt)} · Scheduling status is shown here; completed status does not verify treatment documentation.</p>
+            </>}
+          </AdminDataRegion>
+        </section>
+        <aside className="daily-side">
+          <section className="daily-panel" aria-labelledby="daily-requests-heading"><header className="daily-panel-heading"><div><span className="daily-eyebrow">Next to review</span><h2 id="daily-requests-heading">Pending requests</h2></div></header>
+            <AdminDataRegion loading={pending.loading} hasLoaded={Boolean(pending.data)} error={pending.error} label="Pending requests" onRetry={pending.refresh}>
+              {pending.data && <>{pending.data.count ? <><p className="daily-context">{pending.data.count} upcoming {pending.data.count === 1 ? 'request awaits' : 'requests await'} confirmation.</p><ul className="daily-request-list">{pending.data.rows.map(appointment => <li key={appointment.appointment_id}><strong>{personName(appointment.patients)}</strong><span>{relation(appointment.services)?.service_name || 'Service not recorded'}</span><time>{formatClinicDateTime(appointment.appointment_datetime)}</time></li>)}</ul><Link className="daily-section-link" to="/admin/appointments">Review requests →</Link></> : <p className="daily-quiet">No upcoming requests awaiting confirmation.</p>}</>}
+            </AdminDataRegion>
+          </section>
+          <section className="daily-panel" aria-labelledby="daily-alerts-heading"><header className="daily-panel-heading"><div><span className="daily-eyebrow">Clinic reminders</span><h2 id="daily-alerts-heading">Needs attention</h2></div></header>
+            <AdminDataRegion loading={supplies.loading} hasLoaded={Boolean(supplies.data)} error={supplies.error} label="Supply alerts" onRetry={supplies.refresh}>
+              {supplies.data?.count > 0 && <div className="daily-alert"><h3>Supplies to review</h3><p>{supplies.data.count} {supplies.data.count === 1 ? 'item is' : 'items are'} at or below the reorder level.</p><ul>{supplies.data.rows.map(item => <li key={item.id}><span>{item.name}</span><strong className={item.outOfStock ? 'daily-stock-empty' : ''}>{item.outOfStock ? 'Out of stock' : 'Low stock'}</strong></li>)}</ul><Link to="/admin/inventory">Review inventory →</Link></div>}
+            </AdminDataRegion>
+            <AdminDataRegion loading={unbilled.loading} hasLoaded={Boolean(unbilled.data)} error={unbilled.error} label="Billing reminders" onRetry={unbilled.refresh}>
+              {unbilled.data?.count > 0 && <div className="daily-alert"><h3>Appointments awaiting billing</h3><p>{unbilled.data.count} past {unbilled.data.count === 1 ? 'appointment has' : 'appointments have'} no linked bill.</p><Link to="/admin/billing">Open billing →</Link></div>}
+            </AdminDataRegion>
+            {allClear && <p className="daily-quiet">No supply or billing alerts right now.</p>}
+          </section>
+        </aside>
       </div>
-    );
-  }
-
-
-  if (!user || (!isClinicUser(userType))) return null;
-
-  const adminName = isSuperAdmin ? 'Super Admin' : (user?.email?.split('@')[0] || 'Admin');
-  const adminInitial = adminName.charAt(0).toUpperCase();
-
-  return (
-    <div className="admin-dashboard">
-      <Sidebar onLogout={handleLogout} />
-
-      <div className="main-content">
-        <div className="dashboard-header">
-          <div className="header-title">
-            <h1>Dashboard</h1>
-            <p className="welcome-message">Welcome back, {adminName}! Here's your clinic overview</p>
-          </div>
-          <div className="header-actions">
-            <div className="user-info">
-              <div className="user-avatar">{adminInitial}</div>
-              <div className="user-details">
-                <div className="user-name">{adminName}</div>
-                <div className="user-role">{roleLabel(userType)}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <AdminDataRegion loading={loading} hasLoaded={hasLoaded} error={loadError} label="Analytics" onRetry={fetchDashboardData}>
-
-
-        {/* KPI Cards */}
-        <div className="kpi-grid">
-          <div className="kpi-card">
-            <div className="kpi-value">{dashboardData.conversionRate}%</div>
-            <div className="kpi-label">Conversion Rate</div>
-            <div className="kpi-trend trend-up">Booking to Completion</div>
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-value">₱{dashboardData.avgRevenuePerAppointment.toLocaleString()}</div>
-            <div className="kpi-label">Avg. Revenue/Visit</div>
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-value">{dashboardData.todayAppointments}</div>
-            <div className="kpi-label">Today's Appointments</div>
-            <div className="kpi-trend">{dashboardData.pendingAppointments} pending</div>
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-value">₱{dashboardData.totalOutstanding.toLocaleString()}</div>
-            <div className="kpi-label">Outstanding Balance</div>
-            <div className="kpi-trend trend-down">{dashboardData.unpaidInvoices} invoices</div>
-          </div>
-        </div>
-
-        {/* Analytics Cards */}
-        <div className="analytics-grid">
-          <div className="analytics-card patients">
-            <div className="analytics-header">
-              <div>
-                <div className="analytics-title">Total Patients</div>
-                <div className="analytics-value">{dashboardData.totalPatients.toLocaleString()}</div>
-                <div className={`analytics-trend ${dashboardData.patientGrowthRate >= 0 ? 'trend-up' : 'trend-down'}`}>
-                  {dashboardData.patientGrowthRate >= 0 ? '↗' : '↘'} {Math.abs(dashboardData.patientGrowthRate)}% growth
-                </div>
-              </div>
-              <div className="analytics-icon">👥</div>
-            </div>
-            <div className="analytics-detail">{dashboardData.newPatientsMonth} new patients this month</div>
-          </div>
-
-          <div className="analytics-card revenue">
-            <div className="analytics-header">
-              <div>
-                <div className="analytics-title">Total Revenue</div>
-                <div className="analytics-value">₱{dashboardData.totalRevenue.toLocaleString()}</div>
-                <div className={`analytics-trend ${dashboardData.revenueGrowthRate >= 0 ? 'trend-up' : 'trend-down'}`}>
-                  {dashboardData.revenueGrowthRate >= 0 ? '↗' : '↘'} {Math.abs(dashboardData.revenueGrowthRate)}% growth
-                </div>
-              </div>
-              <div className="analytics-icon">💰</div>
-            </div>
-            <div className="analytics-detail">₱{dashboardData.todayRevenue.toLocaleString()} revenue today</div>
-          </div>
-
-          <div className="analytics-card appointments">
-            <div className="analytics-header">
-              <div>
-                <div className="analytics-title">Total Appointments</div>
-                <div className="analytics-value">{dashboardData.totalAppointments.toLocaleString()}</div>
-                <div className="analytics-trend trend-up">↗ {dashboardData.conversionRate}% completed</div>
-              </div>
-              <div className="analytics-icon">📅</div>
-            </div>
-            <div className="analytics-detail">{dashboardData.todayAppointments} scheduled today</div>
-          </div>
-
-          <div className="analytics-card doctors">
-            <div className="analytics-header">
-              <div>
-                <div className="analytics-title">Active Doctors</div>
-                <div className="analytics-value">{dashboardData.totalDoctors}</div>
-                <div className="analytics-trend trend-up">↗ All available</div>
-              </div>
-              <div className="analytics-icon">👨‍⚕️</div>
-            </div>
-            <div className="analytics-detail">Ready to serve patients</div>
-          </div>
-        </div>
-
-        <div className="recent-section">
-          <div className="section-header">
-            <h3>📋 Recent Appointments</h3>
-          </div>
-          <div className="table-responsive">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Patient</th>
-                  <th>Doctor</th>
-                  <th>Service</th>
-                  <th>Date/Time</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedAppointments.length > 0 ? (
-                  paginatedAppointments.map((apt, idx) => (
-                    <tr key={idx}>
-                      <td>{apt.patient}</td>
-                      <td>{apt.doctor}</td>
-                      <td>{apt.service}</td>
-                      <td>{new Date(apt.datetime).toLocaleString()}</td>
-                      <td>
-                        <span className={`status-badge status-${apt.status}`}>
-                          {apt.status.toUpperCase()}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>
-                      No appointments found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {recentAppointments.length > itemsPerPage && (
-            <div className="pagination-controls">
-              <button 
-                onClick={goToPrevPage} 
-                disabled={currentPage === 1}
-                className="pagination-btn"
-              >
-                ← Previous
-              </button>
-              <span className="pagination-info">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button 
-                onClick={goToNextPage} 
-                disabled={currentPage === totalPages}
-                className="pagination-btn"
-              >
-                Next →
-              </button>
-            </div>
-          )}
-        </div>
-        </AdminDataRegion>
-      </div>
-
-      {isLoggingOut && (
-        <div className="logout-overlay">
-          <div className="logout-content">
-            <i className="fas fa-spinner fa-spin"></i>
-            <p>Logging out...</p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+      <section className="daily-quick-actions" aria-label="Quick actions"><div><h2>Quick actions</h2><p>Go straight to a common task.</p></div><nav aria-label="Common clinic tasks"><Link to="/admin/manual-booking"><i className="fas fa-calendar-plus" aria-hidden="true" /> Book Appointment</Link><Link to="/admin/patients"><i className="fas fa-search" aria-hidden="true" /> Find Patient</Link><Link to="/admin/billing"><i className="fas fa-receipt" aria-hidden="true" /> Open Billing</Link></nav></section>
+    </main>
+    {isLoggingOut && <div className="logout-overlay"><div className="logout-content"><p>Logging out…</p></div></div>}
+  </div>;
 };
-
 export default AdminDashboard;

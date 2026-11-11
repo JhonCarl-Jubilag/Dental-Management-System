@@ -1,17 +1,3 @@
-.header-title h1 {
-  font-family: 'Montserrat', sans-serif;
-  font-size: 2rem;
-  color: var(--clinic-sidebar);
-  margin: 0 0 8px 0;
-  font-weight: 700;
-}
-
-.welcome-message {
-  color: var(--clinic-muted);
-  font-size: 0.95rem;
-  margin: 0;
-}
-
 .patient-list-container .stats-grid,
 .patient-detail-container .stats-grid {
   display: grid;
@@ -72,7 +58,7 @@
   color: #555;
 }
 
-.patient-list-container .form-control {
+:where(.admin-patients) .patient-list-container .form-control {
   padding: 10px 12px;
   border: 2px solid var(--clinic-line);
   border-radius: 8px;
@@ -81,7 +67,7 @@
   background: white;
 }
 
-.patient-list-container .form-control:focus {
+:where(.admin-patients) .patient-list-container .form-control:focus {
   outline: none;
   border-color: var(--clinic-blue);
   box-shadow: 0 0 0 3px rgba(0, 105, 168,0.1);
@@ -374,7 +360,7 @@
   margin-bottom: 15px;
 }
 
-.patient-detail-container .profile-header {
+:where(.admin-patients) .patient-detail-container .profile-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -383,13 +369,13 @@
   gap: 20px;
 }
 
-.patient-detail-container .profile-info {
+:where(.admin-patients) .patient-detail-container .profile-info {
   display: flex;
   align-items: center;
   gap: 20px;
 }
 
-.patient-detail-container .profile-avatar {
+:where(.admin-patients) .patient-detail-container .profile-avatar {
   width: 80px;
   height: 80px;
   background: linear-gradient(135deg, var(--clinic-navy), var(--clinic-blue));
@@ -402,17 +388,17 @@
   color: white;
 }
 
-.patient-detail-container .profile-details h2 {
+:where(.admin-patients) .patient-detail-container .profile-details h2 {
   margin: 0;
   font-size: 1.8rem;
 }
 
-.patient-detail-container .profile-id {
+:where(.admin-patients) .patient-detail-container .profile-id {
   color: var(--clinic-muted);
   margin-bottom: 5px;
 }
 
-.patient-detail-container .profile-status {
+:where(.admin-patients) .patient-detail-container .profile-status {
   display: inline-block;
   padding: 4px 12px;
   border-radius: 20px;
@@ -420,7 +406,7 @@
   font-weight: 600;
 }
 
-.patient-detail-container .profile-sections {
+:where(.admin-patients) .patient-detail-container .profile-sections {
   display: grid;
   grid-template-columns: 1fr;
   gap: 30px;
@@ -433,7 +419,7 @@
   margin-bottom: 20px;
 }
 
-.patient-detail-container .section-title {
+:where(.admin-patients) .patient-detail-container .section-title {
   font-size: 1.2rem;
   border-bottom: 2px solid var(--clinic-line);
   padding-bottom: 10px;
@@ -441,13 +427,13 @@
   color: var(--clinic-ink);
 }
 
-.patient-detail-container .info-grid {
+:where(.admin-patients) .patient-detail-container .info-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 15px;
 }
 
-.patient-detail-container .info-grid div label {
+:where(.admin-patients) .patient-detail-container .info-grid div label {
   font-weight: 600;
   color: #495057;
   display: block;
@@ -487,7 +473,7 @@
   .patient-list-container .filter-grid {
     grid-template-columns: 1fr;
   }
-  .patient-detail-container .info-grid {
+  :where(.admin-patients) .patient-detail-container .info-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -525,7 +511,7 @@
   border: 1px solid var(--clinic-line);
 }
 
-.profile-header {
+:where(.admin-patients) .profile-header {
   background: var(--clinic-deep);
   padding: 20px;
   display: flex;
@@ -535,13 +521,13 @@
   gap: 15px;
 }
 
-.profile-info {
+:where(.admin-patients) .profile-info {
   display: flex;
   align-items: center;
   gap: 15px;
 }
 
-.profile-avatar {
+:where(.admin-patients) .profile-avatar {
   width: 50px;
   height: 50px;
   background: white;
@@ -554,18 +540,18 @@
   color: var(--clinic-deep);
 }
 
-.profile-details h2 {
+:where(.admin-patients) .profile-details h2 {
   color: white;
   margin: 0;
   font-size: 18px;
 }
 
-.profile-id {
+:where(.admin-patients) .profile-id {
   color: #bbb;
   font-size: 12px;
 }
 
-.profile-status {
+:where(.admin-patients) .profile-status {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 12px;
@@ -574,7 +560,7 @@
   color: var(--clinic-deep);
 }
 
-.profile-actions {
+:where(.admin-patients) .profile-actions {
   display: flex;
   gap: 8px;
 }
@@ -594,12 +580,12 @@
 .btn-success { background: var(--clinic-success); color: white; }
 .btn-primary { background: var(--clinic-deep); color: white; }
 
-.profile-sections {
+:where(.admin-patients) .profile-sections {
   padding: 20px;
   background: white;
 }
 
-.section-title {
+:where(.admin-patients) .section-title {
   font-size: 16px;
   font-weight: bold;
   margin: 0 0 15px 0;
@@ -607,40 +593,40 @@
   padding-left: 10px;
 }
 
-.info-grid {
+:where(.admin-patients) .info-grid {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.info-grid > div {
+:where(.admin-patients) .info-grid > div {
   display: flex;
   gap: 10px;
   padding: 8px 0;
   border-bottom: 1px solid #eee;
 }
 
-.info-grid label {
+:where(.admin-patients) .info-grid label {
   font-weight: bold;
   width: 100px;
   color: var(--clinic-deep);
 }
 
-.info-grid > div > div:last-child {
+:where(.admin-patients) .info-grid > div > div:last-child {
   color: var(--clinic-ink);
 }
 
-.form-row {
+:where(.admin-patients) .form-row {
   display: flex;
   gap: 10px;
   margin-bottom: 10px;
 }
 
-.form-group {
+:where(.admin-patients) .form-group {
   margin-bottom: 10px;
 }
 
-.form-group label {
+:where(.admin-patients) .form-group label {
   display: block;
   margin-bottom: 5px;
   font-weight: bold;
@@ -648,7 +634,7 @@
   color: var(--clinic-deep);
 }
 
-.form-control {
+:where(.admin-patients) .form-control {
   width: 100%;
   padding: 6px;
   border: 1px solid #ccc;
@@ -656,41 +642,41 @@
   box-sizing: border-box;
 }
 
-.form-control:focus {
+:where(.admin-patients) .form-control:focus {
   outline: none;
   border-color: var(--clinic-deep);
 }
 
-.form-actions {
+:where(.admin-patients) .form-actions {
   display: flex;
   gap: 10px;
   margin-top: 15px;
 }
 
 @media (max-width: 600px) {
-  .profile-header {
+  :where(.admin-patients) .profile-header {
     flex-direction: column;
     text-align: center;
   }
   
-  .profile-info {
+  :where(.admin-patients) .profile-info {
     flex-direction: column;
   }
   
-  .profile-actions {
+  :where(.admin-patients) .profile-actions {
     justify-content: center;
   }
   
-  .info-grid > div {
+  :where(.admin-patients) .info-grid > div {
     flex-direction: column;
     gap: 3px;
   }
   
-  .info-grid label {
+  :where(.admin-patients) .info-grid label {
     width: auto;
   }
   
-  .form-row {
+  :where(.admin-patients) .form-row {
     flex-direction: column;
     gap: 0;
   }

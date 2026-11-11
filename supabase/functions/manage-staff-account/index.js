@@ -42,10 +42,15 @@ Deno.serve(async req => {
       set_status: ['action', 'admin_id', 'expected_status', 'status'],
       update_names: ['action', 'admin_id', 'first_name', 'last_name', 'expected'],
       change_email: ['action', 'admin_id', 'new_email', 'expected_email'],
+      change_password: ['action', 'admin_id', 'password', 'expected_email'],
     };
     if (!Object.hasOwn(fieldsByAction, body.action)) throw new RequestError('Unsupported Staff action.');
     const allowedKeys = fieldsByAction[body.action];
     if (Object.keys(body).some(key => !allowedKeys.includes(key))) throw new RequestError('Unsupported Staff account fields.');
+    if ((body.action === 'create' || body.action === 'change_password')
+      && (typeof body.password !== 'string' || body.password.length < 12 || body.password.length > 4096)) {
+      throw new RequestError('Staff passwords must contain between 12 and 4096 characters.');
+    }
 
     const publicProfile = profile => profile ? {
       admin_id: profile.admin_id, first_name: profile.first_name, last_name: profile.last_name,
@@ -82,6 +87,20 @@ Deno.serve(async req => {
       const { data: patientConflict, error: conflictError } = await client.from('patients').select('patient_id')
         .eq('auth_user_id', staff.auth_user_id).maybeSingle();
       if (conflictError || patientConflict) throw new RequestError('The Staff login has a conflicting patient link. Review it before editing.', 409);
+
+      if (body.action === 'change_password') {
+        if (body.expected_email !== staff.email) {
+          throw new RequestError('The Staff login email changed. Refresh before retrying.', 409);
+        }
+        const { error: updateError } = await client.auth.admin.updateUserById(staff.auth_user_id, {
+          password: body.password,
+        });
+        if (updateError?.code === 'weak_password') {
+          throw new RequestError('Choose a stronger password that meets the clinic password requirements.');
+        }
+        if (updateError) throw new RequestError('Could not change the Staff password.', 502);
+        return response(200, { success: true });
+      }
 
       if (body.action === 'change_email') {
         const result = await changeAccountEmail(client, { table: 'admin', idField: 'admin_id', id: staff.admin_id,
@@ -127,9 +146,6 @@ Deno.serve(async req => {
     const lastName = text(body.last_name, 'last name');
     const email = text(body.email, 'email address', 254).toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new RequestError('Enter a valid email address.');
-    if (typeof body.password !== 'string' || body.password.length < 12 || body.password.length > 4096) {
-      throw new RequestError('Staff passwords must contain at least 12 characters.');
-    }
     const emailPattern = email.replace(/[\\%_]/g, '\\$&');
     for (const table of ['admin', 'patients', 'doctors']) {
       const { data, error } = await client.from(table).select('email').ilike('email', emailPattern).limit(1);

@@ -283,7 +283,7 @@ const ManageServices = () => {
   const adminInitial = adminName.charAt(0).toUpperCase();
 
   return (
-    <div className="admin-dashboard">
+    <div className="admin-dashboard admin-services">
       <Sidebar onLogout={handleLogout} />
 
       <div className="main-content manage-services-page">
@@ -404,11 +404,11 @@ const ManageServices = () => {
                         </span>
                       </td>
                       <td style={{ width: '15%', padding: '12px 15px', verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div className="table-action-buttons">
                           <button 
                             className="btn btn-warning btn-sm" 
                             onClick={() => openEditModal(service)}
-                            style={{ padding: '6px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+
                           >
                             <i className="fas fa-edit"></i> Edit
                           </button>
@@ -416,7 +416,7 @@ const ManageServices = () => {
                             <button 
                               className="btn btn-danger btn-sm" 
                               onClick={() => handleDeleteService(service)}
-                              style={{ padding: '6px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+  
                             >
                               <i className="fas fa-trash"></i> Delete
                             </button>

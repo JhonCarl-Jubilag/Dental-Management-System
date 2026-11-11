@@ -1,0 +1,30 @@
+.clinic-settings .filter-grid {
+  display: grid;
+  align-items: end;
+}
+
+.clinic-settings .table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.clinic-settings .table-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--clinic-navy);
+}
+
+.clinic-settings .table-responsive {
+  overflow-x: auto;
+}
+
+.clinic-settings .activity-role {
+  display: block;
+  color: var(--clinic-muted);
+}
+
+.clinic-settings .activity-unavailable {
+  padding: var(--admin-panel-padding);
+}

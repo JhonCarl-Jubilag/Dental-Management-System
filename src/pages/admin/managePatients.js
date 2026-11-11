@@ -8,7 +8,7 @@ import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
-import PatientTreatmentHistory from '../../components/admin/PatientTreatmentHistory';
+import PatientTreatmentRecords from '../../components/admin/PatientTreatmentRecords';
 import './managePatients.css';
 
 const patientFields = 'patient_id, first_name, last_name, email, contact_no, address, birthday, age, date_created, status, email_verified';
@@ -69,9 +69,9 @@ const ManagePatients = () => {
   const adminInitial = adminName.charAt(0).toUpperCase();
 
   return (
-    <div className="admin-dashboard">
+    <div className="admin-dashboard admin-patients">
       <Sidebar onLogout={handleLogout} />
-      <div className="main-content">
+      <div className="main-content patient-records-page">
         {viewMode === 'list' ? (
           <PatientList
             onViewDetail={(patientId) => navigate(`/admin/patients/${patientId}`)}
@@ -544,7 +544,7 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
         }}><Pencil size={16} /> Edit profile</button>
       </header>
       <nav className="record-links" aria-label="Patient profile sections">
-        <a href="#record-details">Profile details</a><a href="#record-account">Account</a><a href="#record-history">Treatment history</a>
+        <a href="#record-details">Profile details</a><a href="#record-account">Account</a><a href="#record-history">Treatment records</a>
       </nav>
       <div id="record-details" className="record-layout">
         {editMode ? (
@@ -602,7 +602,7 @@ const PatientDetail = ({ patientId, onBack, user, isSuperAdmin, adminName, admin
           </div>
         </section>
       </div>
-      <div id="record-history"><PatientTreatmentHistory key={patient.patient_id} patientId={patient.patient_id} /></div>
+      <div id="record-history"><PatientTreatmentRecords key={patient.patient_id} patientId={patient.patient_id} patientName={[patient.first_name, patient.last_name].filter(Boolean).join(' ')} patient={patient} /></div>
 
       {/* Reset Password Modal */}
       {showResetModal && (

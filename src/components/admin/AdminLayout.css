@@ -1,0 +1,383 @@
+/* Shared clinic layout and controls. No business rules. */
+.admin-dashboard {
+  --admin-sidebar-width: 280px;
+  --admin-page-padding: 32px;
+  --admin-section-gap: 24px;
+  --admin-panel-padding: 24px;
+  display: flex;
+  min-height: 100vh;
+  background: var(--clinic-canvas);
+  color: var(--clinic-ink);
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.admin-dashboard > .sidebar { width: var(--admin-sidebar-width); }
+.admin-dashboard > .main-content {
+  flex: 1;
+  min-width: 0;
+  width: calc(100% - var(--admin-sidebar-width));
+  margin-left: var(--admin-sidebar-width);
+  padding: var(--admin-page-padding);
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+.admin-dashboard > .main-content :is(.dashboard-header, .daily-heading, .reports-heading, .staff-account-heading, .staff-dtr-page-heading) {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0 0 var(--admin-section-gap);
+  text-align: left;
+}
+.admin-dashboard > .main-content :is(.header-title, .daily-heading, .reports-heading, .staff-account-heading, .staff-dtr-page-heading) h1 {
+  margin: 0 0 8px;
+  font-family: inherit;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--clinic-navy);
+  text-align: left;
+}
+.admin-dashboard > .main-content :is(.welcome-message, .daily-heading > div > p, .reports-heading > div > p, .staff-dtr-page-heading > div > p) {
+  margin: 0;
+  color: var(--clinic-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: left;
+}
+.admin-dashboard .header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.admin-dashboard .user-info { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 40px; background: white; box-shadow: 0 2px 8px #051c430d; }
+.admin-dashboard .user-avatar { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,var(--clinic-navy),var(--clinic-blue)); color: white; font-weight: 700; font-size: 16px; }
+.admin-dashboard .user-details { text-align: left; line-height: 1.5; }
+.admin-dashboard .user-details .user-name { font-size: 14px; font-weight: 600; color: var(--clinic-ink); }
+.admin-dashboard .user-details .user-role { font-size: 12px; color: var(--clinic-muted); }
+.admin-dashboard .section-title { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; text-align: left; padding-left: 0; line-height: 1.4; }
+.admin-dashboard .form-group { margin-bottom: 16px; min-width: 0; }
+.admin-dashboard .filter-group { display: flex; flex-direction: column; align-items: stretch; gap: 0; min-width: 0; }
+.admin-dashboard .filter-group.filter-actions { flex-direction: row; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.admin-dashboard .form-group > label, .admin-dashboard .filter-group > label { display: block; margin: 0 0 8px; font-size: 14px; font-weight: 600; line-height: 1.5; text-align: left; }
+.admin-dashboard .form-control { width: 100%; min-height: 44px; padding: 10px 14px; font-family: inherit; font-size: 14px; line-height: 1.5; box-sizing: border-box; }
+.admin-dashboard textarea.form-control { min-height: 112px; height: auto; }
+.admin-dashboard .form-row { gap: 16px; margin-bottom: 16px; }
+.admin-dashboard .form-row > .form-group { flex: 1; min-width: 0; margin-bottom: 0; }
+.admin-dashboard .modal-content { padding: 0; }
+.admin-dashboard .modal-header, .admin-dashboard .modal-footer { padding: 16px var(--admin-panel-padding); margin: 0; }
+.admin-dashboard .modal-header h3 { margin: 0; font-size: 20px; line-height: 1.35; }
+.admin-dashboard .modal-body { padding: var(--admin-panel-padding); font-size: 14px; line-height: 1.6; }
+.admin-dashboard .modal-footer { gap: 12px; flex-wrap: wrap; }
+.admin-dashboard .data-table th { font-size: 12px; line-height: 1.5; padding: 12px 16px; }
+.admin-dashboard .data-table td { font-size: 14px; line-height: 1.5; padding: 14px 16px; }
+.admin-dashboard .data-table td small { font-size: 12px; line-height: 1.5; }
+.admin-dashboard .table-responsive { max-width: 100%; min-width: 0; }
+.admin-dashboard .table-container { min-width: 0; max-width: 100%; overflow-x: auto; }
+.admin-dashboard .table-container > .data-table, .admin-dashboard .table-responsive > .data-table { min-width: 640px; }
+.admin-dashboard > .main-content .stats-grid, .admin-dashboard > .main-content .filters { margin-bottom: var(--admin-section-gap); }
+.admin-dashboard .admin-data-region__content { min-width: 0; }
+@media (max-width: 992px) {
+  .admin-dashboard { --admin-sidebar-width: 80px; --admin-page-padding: 24px; }
+}
+@media (max-width: 768px) {
+  .admin-dashboard { --admin-page-padding: 16px; --admin-panel-padding: 16px; }
+  .admin-dashboard > .main-content :is(.dashboard-header, .daily-heading, .reports-heading, .staff-account-heading, .staff-dtr-page-heading) { flex-direction: column; align-items: stretch; }
+  .admin-dashboard > .main-content :is(.header-title, .daily-heading, .reports-heading, .staff-account-heading, .staff-dtr-page-heading) h1 { font-size: 26px; }
+  .admin-dashboard .header-actions { justify-content: flex-start; }
+  .admin-dashboard .form-row { flex-direction: column; grid-template-columns: minmax(0,1fr); }
+  .admin-dashboard .form-control { font-size: 16px; }
+}
+
+/* Keep navigation labeled while leaving room for clinic forms and tables. */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .admin-dashboard { --admin-sidebar-width: 112px; --admin-page-padding: 24px; }
+  .admin-dashboard > .sidebar .logo { justify-content: center; }
+  .admin-dashboard > .sidebar .logo-image { width: 56px; }
+  .admin-dashboard > .sidebar .logo-text { display: none; }
+  .admin-dashboard > .sidebar .sidebar-link {
+    box-sizing: border-box;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    min-height: 44px;
+    padding: 9px 6px;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .admin-dashboard > .sidebar .sidebar-link .nav-icon { margin: 0; }
+  .admin-dashboard > .sidebar .sidebar-link span:not(.nav-icon) {
+    display: block;
+    max-width: 100%;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Keep the doctor filter action buttons separated when stacked. */
+.admin-doctors .filter-grid > .filter-group:last-child { gap: 8px; }
+
+/* Landing-page design language, restricted to the clinic workspace.
+   Keep tokens local: patient pages and their shared navigation must not change. */
+@media screen {
+  .admin-dashboard {
+    --clinic-canvas: #f3f7f8;
+    --clinic-line: #d3e0e5;
+    --clinic-tint: #e8f3f4;
+    --clinic-blue: #17667d;
+    --clinic-blue-hover: #13566b;
+    --admin-panel-shadow: 0 3px 12px #143c5006;
+    text-align: left;
+  }
+
+  /* Preserve the original sidebar, including its inherited palette and font. */
+  .admin-dashboard > .sidebar {
+    --clinic-canvas: #f0f6fb;
+    --clinic-line: #cbdce9;
+    --clinic-tint: #e3f2fc;
+    --clinic-blue: #0069a8;
+    --clinic-blue-hover: #074b80;
+    font-family: 'Montserrat', 'Roboto', sans-serif;
+    text-align: center;
+  }
+
+  .admin-dashboard > .main-content :is(.dashboard-header, .daily-heading, .reports-heading, .staff-account-heading, .staff-dtr-page-heading) {
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--clinic-line);
+  }
+  .admin-dashboard > .main-content :is(.header-title, .daily-heading, .reports-heading, .staff-account-heading, .staff-dtr-page-heading) h1 {
+    font-size: clamp(26px, 2.6vw, 36px);
+    font-weight: 650;
+    letter-spacing: -.035em;
+  }
+  .admin-dashboard .user-info { border: 1px solid var(--clinic-line); border-radius: 12px; box-shadow: none; }
+  .admin-dashboard :is(.user-avatar, .patient-avatar, .doctor-avatar, .record-avatar, .staff-profile-avatar) { background: #e1f0ee; color: #215e63; }
+  .admin-dashboard :is(.stats-grid, .filter-grid) { gap: 16px; }
+  .admin-dashboard :is(.stat-card, .daily-panel, .staff-time-card, .staff-account-card, .record-card, .clinic-treatment-records, .clinic-patient-history, .reports-chart-card, .reports-table-section, .reports-summary-card) {
+    border: 1px solid var(--clinic-line);
+    border-radius: 16px;
+    box-shadow: var(--admin-panel-shadow);
+    background: white;
+  }
+  .admin-dashboard .stat-card { padding: 22px; text-align: left; }
+  .admin-dashboard .stat-card:hover { transform: none; box-shadow: var(--admin-panel-shadow); }
+  .admin-dashboard .stat-card :is(.stat-number, .stat-value) { font-size: 30px; line-height: 1.2; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .admin-dashboard .stat-label { font-size: 12px; letter-spacing: .04em; line-height: 1.5; }
+  .admin-dashboard :is(.filters, .reports-filters, .staff-dtr-filters, .form-section) {
+    border: 1px solid var(--clinic-line);
+    border-radius: 16px;
+    padding: var(--admin-panel-padding);
+    background: #fff;
+    box-shadow: var(--admin-panel-shadow);
+  }
+  .admin-dashboard .filter-grid { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
+  .admin-dashboard :is(.form-control, .reports-filter-grid input, .reports-filter-grid select, .staff-form-field input, .staff-dtr-filters input, .staff-dtr-filters select, .clinic-treatment-form input:not([type=checkbox]), .clinic-treatment-form select, .clinic-treatment-form textarea, .staff-dtr-dialog input, .staff-dtr-dialog select, .staff-dtr-dialog textarea, .doctor-availability-dialog input) {
+    min-height: 44px;
+    border: 1px solid #adc3cd;
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: #fff;
+    color: var(--clinic-ink);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.5;
+    box-shadow: none;
+  }
+  .admin-dashboard :is(input, select, textarea):focus-visible { outline: 2px solid #17667d; outline-offset: 2px; border-color: #17667d; box-shadow: none; }
+  .admin-dashboard :is(input, select, textarea):disabled { background: #f0f4f5; color: var(--clinic-muted); cursor: not-allowed; }
+  .admin-dashboard textarea { resize: vertical; }
+
+  /* Reuse the existing button classes and handlers, including bespoke panels. */
+  .admin-dashboard :is(.btn, .record-button, .staff-refresh-button, .staff-edit-button, .staff-access-button, .staff-submit-button, .staff-pagination button, .reports-filters button, .reports-pagination button, .staff-time-card button, .staff-dtr-page button, .staff-dtr-dialog button, .clinic-treatment-records button, .clinic-records-dialog button, .clinic-patient-history button, .doctor-availability-dialog button, .clinic-billing-statement-actions button, .clinic-billing-statement-toolbar button, .daily-heading button, .daily-pagination button, .daily-quick-actions a, .page-link, .pagination-btn, .pagination-number) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    box-sizing: border-box;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+    flex-shrink: 0;
+    padding: 10px 16px;
+    border: 1px solid #adc3cd;
+    border-radius: 8px;
+    background: white;
+    color: var(--clinic-navy);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background-color .15s, border-color .15s, color .15s;
+  }
+  .admin-dashboard :is(.btn.btn-primary, .record-button.record-primary, .staff-submit-button, .reports-filters .reports-generate, .staff-dtr-primary, .clinic-treatment-primary, .doctor-availability-primary, .clinic-billing-statement-primary) {
+    background: var(--clinic-navy); border-color: var(--clinic-navy); color: white;
+  }
+  .admin-dashboard :is(.btn.btn-info, .btn.btn-warning, .reports-filters .reports-export) { background: #e8f3f4; color: #135d73; border-color: #adc3cd; }
+  .admin-dashboard .btn.btn-success { background: #e8f5ee; color: #176846; border-color: #b6d8c5; }
+  .admin-dashboard :is(.btn.btn-danger, .record-button.record-danger) { background: #fff1f2; color: #a1283b; border-color: #e7b8c0; }
+  .admin-dashboard .staff-access-disable { background: #fff1f2; color: #a1283b; border-color: #e7b8c0; }
+  .admin-dashboard .staff-access-enable { background: #e8f5ee; color: #176846; border-color: #b6d8c5; }
+  .admin-dashboard :is(.btn, .record-button, .staff-refresh-button, .staff-edit-button, .reports-filters button, .staff-time-card button, .staff-dtr-page button, .staff-dtr-dialog button, .clinic-treatment-records button, .clinic-records-dialog button, .doctor-availability-dialog button, .page-link, .pagination-btn, .pagination-number):hover:not(:disabled) {
+    background: #e8f3f4; border-color: #7ea3af; color: #135d73; transform: none; box-shadow: none;
+  }
+  .admin-dashboard :is(.btn.btn-primary, .record-button.record-primary, .staff-submit-button, .reports-filters .reports-generate, .staff-dtr-primary, .clinic-treatment-primary, .doctor-availability-primary, .clinic-billing-statement-primary):hover:not(:disabled) {
+    background: #13566b; border-color: #13566b; color: white;
+  }
+  .admin-dashboard :is(.btn.btn-danger, .record-button.record-danger):hover:not(:disabled) { background: #f9dfe4; border-color: #b52e42; color: #a1283b; }
+  .admin-dashboard > .main-content :is(button, .btn):active:not(:disabled) { filter: brightness(.96); }
+  .admin-dashboard > .main-content :is(button, input, select, textarea):disabled { opacity: .55; cursor: not-allowed; }
+  .admin-dashboard > .main-content :is(button, a):focus-visible { outline: 3px solid #17667d; outline-offset: 3px; }
+  .admin-dashboard :is(.btn.btn-sm, .page-link, .pagination-btn, .pagination-number, .reports-pagination button, .daily-pagination button) { min-height: 36px; padding: 7px 12px; font-size: 13px; }
+  .admin-dashboard :is(.pagination-number.active, .page-link.active) { background: var(--clinic-navy); color: #fff; border-color: var(--clinic-navy); }
+
+  /* Shared action rows wrap without changing button order or actions. */
+  .admin-dashboard :is(.header-actions, .action-buttons, .action-button, .action-buttonss, .action-buttonsss, .table-action-buttons, .admin-appointment-actions, .form-actions, .record-actions, .record-links, .staff-heading-actions, .staff-name-actions, .staff-form-actions, .staff-time-card__actions, .staff-dtr-form-actions, .clinic-treatment-actions, .clinic-treatment-form-actions, .clinic-patient-history-actions, .doctor-availability-actions, .reports-presets, .reports-primary-actions, .clinic-billing-statement-actions, .daily-quick-actions nav) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  .admin-dashboard :is(.table-action-buttons, .action-buttons, .action-button, .action-buttonss, .action-buttonsss) { gap: 8px; }
+  .admin-dashboard :is(.table-action-buttons, .action-buttons) { margin: 0; justify-content: flex-start; }
+  .admin-dashboard :is(.form-actions, .staff-dtr-form-actions, .clinic-treatment-form-actions, .clinic-patient-history-actions) { justify-content: flex-end; }
+  .admin-dashboard :is(.pagination-controls, .pagination-numbers, .staff-pagination, .reports-pagination, .clinic-patient-history-pagination, .clinic-treatment-pagination, .staff-dtr-pagination, .staff-dtr-dialog nav) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .admin-dashboard :is(.clinic-billing-statement-toolbar, .staff-access-settings) { flex-wrap: wrap; gap: 16px; }
+  .admin-dashboard .filter-group:has(> .btn + .btn) { gap: 12px; }
+  .admin-dashboard .provider-cutover-notice > .btn { margin: 6px 12px 6px 0; }
+  .admin-dashboard :is(.btn.btn-warning, .staff-edit-button) { background: #fff7e6; color: #795214; border-color: #dec48f; }
+  .admin-dashboard :is(.btn.btn-warning, .staff-edit-button):hover:not(:disabled) { background: #ffedc5; color: #67420d; border-color: #bc944b; }
+  .admin-dashboard .btn.btn-success:hover:not(:disabled) { background: #d6edde; color: #145436; border-color: #7caf91; }
+  .admin-dashboard .clinic-patient-history-actions button[type=submit] { background: var(--clinic-navy); color: #fff; border-color: var(--clinic-navy); }
+  .admin-dashboard .clinic-patient-history-actions button[type=submit]:hover:not(:disabled) { background: #13566b; border-color: #13566b; }
+  .admin-dashboard :is(.staff-pagination button, .clinic-patient-history-pagination button, .daily-quick-actions a, .clinic-billing-statement-actions button):hover:not(:disabled) { background: #e8f3f4; border-color: #7ea3af; color: #135d73; }
+  .admin-dashboard .clinic-billing-statement-actions .clinic-billing-statement-primary:hover:not(:disabled) { background: #13566b; border-color: #13566b; color: #fff; }
+  .admin-dashboard .clinic-patient-history-pagination button[aria-current=page] { background: var(--clinic-navy); border-color: var(--clinic-navy); color: #fff; }
+  .admin-dashboard > .main-content :is(button, .btn):disabled { transform: none; box-shadow: none; filter: none; }
+
+  /* Consistent data density; detail/printed document tables retain their layout. */
+  .admin-dashboard .table-container { border: 1px solid var(--clinic-line); border-radius: 16px; background: #fff; box-shadow: var(--admin-panel-shadow); }
+  .admin-dashboard .table-header { padding: 20px 24px; background: white; border-bottom: 1px solid var(--clinic-line); gap: 12px; flex-wrap: wrap; }
+  .admin-dashboard .table-header h3 { margin: 0; font-size: 18px; font-weight: 650; color: var(--clinic-navy); }
+  .admin-dashboard :is(.data-table, .reports-table, .clinic-treatment-table, .staff-dtr-page table, .daily-table-scroll table) { width: 100%; border-collapse: collapse; table-layout: auto; text-align: left; font-variant-numeric: tabular-nums; }
+  .admin-dashboard :is(.data-table, .reports-table, .clinic-treatment-table, .staff-dtr-page table, .daily-table-scroll table) th {
+    padding: 13px 16px; background: #eef6f7; color: #35596b; border-bottom: 1px solid var(--clinic-line); font-size: 12px; font-weight: 650; letter-spacing: .025em; text-transform: none; line-height: 1.5; text-align: left;
+  }
+  .admin-dashboard :is(.data-table, .reports-table, .clinic-treatment-table, .staff-dtr-page table, .daily-table-scroll table) td { padding: 16px; border-bottom: 1px solid var(--clinic-line); font-size: 14px; line-height: 1.6; vertical-align: middle; overflow-wrap: anywhere; }
+  .admin-dashboard :is(.data-table, .reports-table, .clinic-treatment-table, .staff-dtr-page table, .daily-table-scroll table) tbody tr:hover { background: #f5f9f9; }
+  .admin-dashboard :is(.data-table, .reports-table, .clinic-treatment-table) tbody tr:last-child td { border-bottom: 0; }
+  .admin-dashboard :is(.action-button, .action-buttonss, .action-buttonsss) { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px; margin: 0; min-width: 120px; }
+  .admin-dashboard :is(.pagination, .pagination-container, .staff-pagination, .staff-dtr-pagination, .clinic-treatment-pagination) { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 0; color: var(--clinic-muted); font-size: 13px; }
+  .admin-dashboard .pagination-container { background: transparent; box-shadow: none; border-top: 1px solid var(--clinic-line); }
+  .admin-dashboard .status-badge { border-radius: 20px; padding: 5px 10px; font-size: 12px; line-height: 1.4; font-weight: 600; }
+  .admin-dashboard :is(.empty-state, .daily-empty, .reports-empty, .clinic-treatment-empty) { padding: 36px 20px; color: var(--clinic-muted); line-height: 1.6; }
+  .admin-dashboard .admin-appointment-card { border: 1px solid var(--clinic-line); border-radius: 14px; background: #fff; box-shadow: var(--admin-panel-shadow); overflow: hidden; }
+  .admin-dashboard .admin-appointment-header-compact { padding: 18px 22px; gap: 16px; }
+  .admin-dashboard .admin-appointment-header-compact:hover { background: #eef6f7; }
+  .admin-dashboard .admin-appointment-actions { gap: 8px; flex-wrap: wrap; }
+
+  /* Modals can be siblings of main-content. Scope the overlay to the workspace,
+     not a page's content column, so every existing modal gets positioning. */
+  .admin-dashboard :is(.modal, .modal-billing-create, .doctor-availability-overlay, .clinic-billing-statement-modal) {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: #0b284780;
+    overflow: auto;
+    overscroll-behavior: contain;
+    margin: 0;
+  }
+  .admin-dashboard :is(.modal-content, .modal-billing-create-content, .doctor-availability-dialog, .clinic-records-dialog, .staff-dtr-dialog, .clinic-billing-statement-dialog) {
+    border: 1px solid var(--clinic-line); border-radius: 16px; background: #fff; color: var(--clinic-ink); box-shadow: 0 24px 70px #0b284733;
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    text-align: left;
+    overflow-wrap: anywhere;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    flex: 0 1 auto;
+  }
+  .admin-dashboard :is(.modal-content, .modal-billing-create-content) {
+    position: relative;
+    width: min(var(--clinic-modal-width, 560px), 100%);
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .admin-dashboard .modal-content.modal-lg { --clinic-modal-width: 800px; }
+  .admin-dashboard .modal-content:has(.appointment-documentation-fields) { --clinic-modal-width: 760px; }
+  .admin-dashboard .modal-content:has(.patient-details-modal) { --clinic-modal-width: 640px; }
+  .admin-dashboard .modal-content:has(.details-table) { --clinic-modal-width: 920px; }
+  .admin-dashboard .modal-billing-create-content { --clinic-modal-width: 880px; display: block; }
+  /* The panel owns scrolling; avoid a second scrollbar inside the billing form. */
+  .admin-dashboard .modal-billing-create-body { max-height: none; overflow: visible; }
+  .admin-dashboard .doctor-availability-dialog { width: min(850px, 100%); }
+  .admin-dashboard .clinic-billing-statement-dialog { width: min(850px, 100%); }
+  .admin-dashboard .clinic-records-dialog { width: min(1040px, calc(100vw - 32px)); margin: auto; padding: 0; overflow-y: auto; }
+  .admin-dashboard .clinic-records-dialog:has(.clinic-treatment-form) { width: min(800px, calc(100vw - 32px)); }
+  .admin-dashboard .staff-dtr-dialog { width: min(820px, calc(100vw - 32px)); margin: auto; padding: 0; overflow-y: auto; }
+  .admin-dashboard :is(.clinic-records-dialog, .staff-dtr-dialog) { position: fixed; inset: 0; overscroll-behavior: contain; }
+  .admin-dashboard :is(.clinic-records-dialog, .staff-dtr-dialog)::backdrop { background: #0b284780; }
+  .admin-dashboard :is(.modal-header, .modal-billing-create-header, .doctor-availability-heading, .clinic-records-dialog-heading, .staff-dtr-dialog > header, .clinic-billing-statement-toolbar) {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap;
+    background: #eef6f7; border-bottom: 1px solid var(--clinic-line);
+    padding: 18px var(--admin-panel-padding); gap: 16px; margin: 0;
+  }
+  .admin-dashboard :is(.modal-header, .modal-billing-create-header, .clinic-records-dialog-heading, .staff-dtr-dialog > header, .clinic-billing-statement-toolbar) :is(h2, h3) {
+    min-width: 0; margin: 0; color: var(--clinic-navy); font-size: 21px; line-height: 1.35; letter-spacing: -.02em;
+  }
+  .admin-dashboard :is(.modal-header, .modal-billing-create-header) h3 { color: var(--clinic-navy); font-size: 21px; letter-spacing: -.02em; }
+  .admin-dashboard :is(.modal-billing-create-body, .modal-content .view-details-container, .clinic-records-dialog-body, .dav-body, .staff-dtr-dialog > form) { padding: var(--admin-panel-padding); }
+  .admin-dashboard :is(.modal-footer, .modal-billing-create-footer, .clinic-billing-statement-actions, .doctor-availability-footer) { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin: 0; padding: 16px var(--admin-panel-padding); border-top: 1px solid var(--clinic-line); background: #f8fafb; }
+  .admin-dashboard :is(.clinic-treatment-form-actions, .staff-dtr-form-actions) { padding-top: 20px; border-top: 1px solid var(--clinic-line); }
+  .admin-dashboard :is(.modal-close, .modal-billing-create-close, .doctor-availability-heading button, .clinic-records-dialog-heading button, .staff-dtr-dialog > header button, .clinic-billing-statement-toolbar > button) { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; min-width: 40px; height: 40px; min-height: 40px; padding: 0; border: 1px solid #adc3cd; border-radius: 8px; background: #fff; color: var(--clinic-navy); font-size: 24px; line-height: 1; }
+  .admin-dashboard .patient-details-modal .detail-row { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(0, 2fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--clinic-line); }
+  .admin-dashboard .patient-details-modal .detail-label { font-weight: 600; color: var(--clinic-muted); }
+  .admin-dashboard .patient-details-modal .remarks-text { white-space: pre-wrap; }
+  .admin-dashboard .modal-content .reject-reason-box { margin-top: 20px; }
+  .admin-dashboard .modal-content .reject-reason-box label { display: block; margin-bottom: 8px; font-weight: 600; }
+  .admin-dashboard :is(.modal-content, .modal-billing-create-content) .form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .admin-dashboard :is(.modal-content, .modal-billing-create-content) .form-group:last-child { margin-bottom: 0; }
+  .admin-dashboard .logout-overlay { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 16px; background: #0b284780; }
+  .admin-dashboard .logout-content { width: min(360px, 100%); padding: 28px; border: 1px solid var(--clinic-line); border-radius: 16px; background: white; box-shadow: 0 24px 70px #0b284733; text-align: center; }
+
+
+  @media (max-width: 640px) {
+    .admin-dashboard { --admin-page-padding: 12px; }
+    .admin-dashboard .stats-grid { grid-template-columns: minmax(0, 1fr); }
+    .admin-dashboard :is(.filters, .filter-grid, .reports-filter-grid) { grid-template-columns: minmax(0, 1fr); }
+    .admin-dashboard .filters { flex-direction: column; align-items: stretch; }
+    .admin-dashboard .header-actions { align-items: stretch; }
+    .admin-dashboard .header-actions > .btn { flex: 1; }
+    .admin-dashboard .table-header { padding: 16px; }
+    .admin-dashboard .pagination-controls { flex-wrap: wrap; }
+    .admin-dashboard .pagination-numbers { flex-wrap: wrap; }
+    .admin-dashboard :is(.modal-footer, .modal-billing-create-footer) > .btn { flex: 1; }
+    .admin-dashboard :is(.modal-content, .modal-billing-create-content) .form-row { grid-template-columns: minmax(0, 1fr); }
+    .admin-dashboard .patient-details-modal .detail-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .admin-dashboard :is(.clinic-treatment-form-actions, .staff-dtr-form-actions, .clinic-billing-statement-actions) > button { flex: 1 1 140px; }
+    .admin-dashboard :is(.form-control, .reports-filter-grid input, .reports-filter-grid select, .staff-form-field input) { font-size: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .admin-dashboard *, .admin-dashboard *::before, .admin-dashboard *::after { transition-duration: 0s; animation-duration: .01ms; animation-iteration-count: 1; scroll-behavior: auto; }
+  }
+}

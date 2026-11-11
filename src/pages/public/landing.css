@@ -379,7 +379,7 @@
   overflow: hidden;
 }
 
-.section-title {
+:where(.landing-page) .section-title {
   display: flex;
   flex-direction: column; 
   align-items: center;    
@@ -389,7 +389,7 @@
   margin-bottom: 30px;  
 }
 
-.section-title h2 {
+:where(.landing-page) .section-title h2 {
   font-size: 2.5rem;
   color: var(--primary-color);
   margin-bottom: 15px;
@@ -398,7 +398,7 @@
   display: inline-block;
 }
 
-.section-title h2:after {
+:where(.landing-page) .section-title h2:after {
   content: "";
   position: absolute;
   bottom: -10px;
@@ -410,7 +410,7 @@
   border-radius: 2px;
 }
 
-.section-title p {
+:where(.landing-page) .section-title p {
   font-size: 1.1rem;
   color: var(--clinic-muted);
   max-width: 600px;
@@ -658,8 +658,8 @@
   color: white;
 }
 
-.chatbot-section .section-title h2,
-.chatbot-section .section-title p {
+:where(.landing-page) .chatbot-section .section-title h2,
+:where(.landing-page) .chatbot-section .section-title p {
   color: white;
 }
 
@@ -955,7 +955,7 @@
     font-size: 1rem;
   }
 
-  .section-title h2 {
+  :where(.landing-page) .section-title h2 {
     font-size: 2rem;
   }
 
@@ -1207,6 +1207,30 @@ button:disabled, input:disabled {
 .landing-page .btn-landing:hover, .landing-page .btn-register:hover { background: var(--clinic-blue-hover); color: white; }
 .welcome-photo { position: relative; margin: 0; min-width: 0; }
 .welcome-photo img { display: block; width: 100%; height: clamp(280px, 30vw, 448px); object-fit: cover; object-position: 49% center; border-radius: 54px 14px 54px 14px; }
+.welcome-slides { position: relative; display: grid; overflow: hidden; border-radius: 54px 14px 54px 14px; background: #eef6f7; isolation: isolate; }
+.welcome-hmo-backdrop { position: absolute; inset: -20px; background-size: cover; background-position: center; filter: blur(16px) brightness(.85); opacity: 0; transition: opacity .5s ease-in-out; }
+.welcome-hmo-backdrop.is-active { opacity: 1; }
+.welcome-photo .welcome-slides img {
+  position: relative; grid-area: 1 / 1; min-width: 0; object-fit: cover; object-position: center;
+  border-radius: 0; opacity: 0; transition: opacity .5s ease-in-out;
+}
+.welcome-photo .welcome-slides img.is-active { opacity: 1; }
+.welcome-photo .welcome-slides img.welcome-hmo-image { object-fit: contain; }
+.welcome-slide-control {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 1;
+  display: grid; place-items: center; width: 40px; height: 40px; padding: 0;
+  border: 1px solid #cbdce1; border-radius: 50%; background: #fffffff2;
+  color: var(--clinic-navy); cursor: pointer; box-shadow: 0 2px 8px #123e4d14;
+}
+.welcome-slide-previous { left: 10px; }
+.welcome-slide-next { right: 10px; }
+.welcome-slide-playback { top: auto; bottom: 18px; right: 18px; transform: none; width: 34px; height: 34px; }
+.welcome-slide-control:hover { background: #e8f3f4; }
+.welcome-slide-control:focus-visible { outline: 3px solid var(--clinic-blue); outline-offset: 2px; }
+.welcome-slide-control:disabled { opacity: .45; cursor: wait; }
+.welcome-slide-announcement { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 768px) { .welcome-slides { border-radius: 32px 10px; } }
+@media (prefers-reduced-motion: reduce) { .welcome-photo .welcome-slides img { transition: none; } }
 .welcome-photo figcaption {
   position: absolute; bottom: 18px; left: 18px; display: flex; align-items: center; gap: 7px;
   background: white; color: var(--clinic-navy); padding: 8px 13px; border-radius: 20px; font-weight: 600; font-size: .82rem;
@@ -1228,7 +1252,7 @@ button:disabled, input:disabled {
   background: linear-gradient(90deg, #e8f3f4 38%, rgba(232,243,244,.95) 56%, rgba(232,243,244,.10) 86%),
     url("../../assets/Landing_bg1.jpg") right 52% / 54% auto no-repeat, #e8f3f4;
 }
-.catalog-intro .section-title { max-width: 59%; margin-bottom: 18px; }
+:where(.landing-page) .catalog-intro .section-title { max-width: 59%; margin-bottom: 18px; }
 .catalog-booking-note { color: #35596b; font-size: .91rem; line-height: 1.6; }
 .catalog-booking-note svg { vertical-align: -.16em; margin-right: .35em; }
 .catalog-booking-note a, .catalog-empty button { color: #135d73; font-weight: 650; text-underline-offset: 3px; }
@@ -1265,7 +1289,7 @@ button:disabled, input:disabled {
 @media (max-width: 980px) { .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 620px) {
   .catalog-intro { background: #e8f3f4; border-radius: 16px; }
-  .catalog-intro .section-title { max-width: 100%; }
+  :where(.landing-page) .catalog-intro .section-title { max-width: 100%; }
   .catalog-tools { flex-direction: column; align-items: stretch; gap: 12px; margin-top: 24px; }
   .catalog-search { width: 100%; }
   .catalog-grid { grid-template-columns: minmax(0, 1fr); }
@@ -1276,6 +1300,22 @@ button:disabled, input:disabled {
 .landing-page .info-features li { padding: 6px 0; align-items: baseline; }
 .landing-page .info-image { min-width: 0; }
 .landing-page .clinic-map-container { border: 1px solid var(--rule); border-radius: 18px; }
+.landing-page .clinic-map-slot { height: 450px; min-width: 0; }
+.landing-page .clinic-map-slot .clinic-map-container,
+.landing-page .clinic-map-placeholder { height: 100%; }
+.landing-page .clinic-map-placeholder {
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  padding: 20px;
+  border: 1px solid var(--rule);
+  border-radius: 18px;
+  background: #eef6f7;
+  color: var(--clinic-navy);
+  text-align: center;
+}
+.landing-page .clinic-map-placeholder p { margin: 0; }
+.landing-page .clinic-map-placeholder a { color: #135d73; text-decoration: underline; }
 .landing-page .chatbot-section { background: white; }
 .landing-page .chatbot-section .container-wide { display: grid; grid-template-columns: .75fr 1.25fr; align-items: start; gap: clamp(24px, 5vw, 80px); }
 .landing-page .chatbot-container { width: 100%; min-width: 0; border: 1px solid var(--rule); border-radius: 18px; box-shadow: 0 8px 30px #1949630b; }
@@ -1300,7 +1340,9 @@ button:disabled, input:disabled {
   .landing-page .clinic-info, .landing-page .chatbot-section .container-wide { grid-template-columns: 1fr; gap: 20px; }
   .landing-page .chatbot-section .section-title { margin-bottom: 0; }
   .landing-page .footer-content { grid-template-columns: repeat(auto-fit, minmax(min(225px, 100%), 1fr)); }
+  .landing-page .clinic-map-slot { height: 400px; }
 }
+@media (max-width: 480px) { .landing-page .clinic-map-slot { height: 350px; } }
 @media (max-width: 440px) {
   .landing-page .btn-landing { width: 100%; max-width: none; }
   .landing-page .clinic-map-container { height: 350px; }

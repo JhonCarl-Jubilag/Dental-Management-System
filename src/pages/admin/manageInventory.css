@@ -363,68 +363,6 @@
 }
 
 /* Dashboard header with user info (shared style) */
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
-  flex-wrap: wrap;
-  gap: 15px;
-}
-
-.header-title h1 {
-  font-size: 1.8rem;
-  margin: 0;
-  color: var(--clinic-sidebar);
-}
-
-.welcome-message {
-  color: var(--clinic-muted);
-  margin: 5px 0 0;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: var(--clinic-canvas);
-  padding: 8px 15px;
-  border-radius: 40px;
-  border: 1px solid var(--clinic-canvas);
-}
-
-.user-avatar {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, var(--clinic-navy), var(--clinic-blue));
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: bold;
-  font-size: 1rem;
-}
-
-.user-details {
-  line-height: 1.3;
-}
-
-.user-name {
-  font-weight: 600;
-  color: var(--clinic-ink);
-}
-
-.user-role {
-  font-size: 0.7rem;
-  color: var(--clinic-muted);
-}
 
 /* Responsive */
 @media (max-width: 992px) {
@@ -446,10 +384,6 @@
   }
   .manage-inventory-page .form-row {
     grid-template-columns: 1fr;
-  }
-  .dashboard-header {
-    flex-direction: column;
-    align-items: flex-start;
   }
   .action-buttonss {
     flex-direction: column;

@@ -26,14 +26,14 @@
   pointer-events: none;
 }
 
-.container {
+:where(.register-container) .container {
   width: 100%;
   max-width: 800px;
   position: relative;
   z-index: 1;
 }
 
-.form-wrapper {
+:where(.register-container) .form-wrapper {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 12px;
   box-shadow: 0 20px 50px rgba(5, 28, 67, 0.2);
@@ -42,59 +42,59 @@
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.form-header {
+:where(.register-container) .form-header {
   text-align: center;
   margin-bottom: 20px;
   font-family: 'Roboto', sans-serif;
 }
 
-.form-header h1 {
+:where(.register-container) .form-header h1 {
   color: var(--clinic-ink);
   font-size: 2rem;
   font-weight: 600;
   margin-bottom: 8px;
 }
 
-.form-header p {
+:where(.register-container) .form-header p {
   color: var(--clinic-muted);
   font-size: 0.9rem;
 }
 
 /* Form styles */
-.auth-form {
+:where(.register-container) .auth-form {
   display: flex;
   flex-direction: column;
   gap: 15px;
 }
 
 /* Two-column layout */
-.form-row {
+:where(.register-container) .form-row {
   display: flex;
   gap: 15px;
   margin-bottom: -15px;
 }
 
-.form-row .form-group {
+:where(.register-container) .form-row .form-group {
   flex: 1;
   margin-bottom: 15px;
 }
 
-.form-group {
+:where(.register-container) .form-group {
   display: flex;
   flex-direction: column;
   position: relative;
 }
 
-.form-group label {
+:where(.register-container) .form-group label {
   margin-bottom: 6px;
   font-weight: 500;
   color: var(--clinic-ink);
   font-size: 0.95rem;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+:where(.register-container) .form-group input,
+:where(.register-container) .form-group select,
+:where(.register-container) .form-group textarea {
   padding: 9px 12px;
   border: 2px solid var(--clinic-tint);
   border-radius: 8px;
@@ -103,23 +103,23 @@
   background-color: var(--clinic-canvas);
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+:where(.register-container) .form-group input:focus,
+:where(.register-container) .form-group select:focus,
+:where(.register-container) .form-group textarea:focus {
   outline: none;
   border-color: var(--clinic-blue);
   background-color: white;
   box-shadow: 0 0 0 3px rgba(0, 105, 168, 0.1);
 }
 
-.form-group input.error,
-.form-group select.error,
-.form-group textarea.error {
+:where(.register-container) .form-group input.error,
+:where(.register-container) .form-group select.error,
+:where(.register-container) .form-group textarea.error {
   border-color: var(--clinic-danger);
   background-color: #fee;
 }
 
-.form-group textarea {
+:where(.register-container) .form-group textarea {
   resize: vertical;
   min-height: 60px;
 }
@@ -200,13 +200,13 @@
 }
 
 /* Validation message */
-.validation-message {
+:where(.register-container) .validation-message {
   font-size: 0.8rem;
   margin-top: 4px;
   color: var(--clinic-muted);
 }
 
-.validation-message.error {
+:where(.register-container) .validation-message.error {
   color: var(--clinic-danger);
 }
 
@@ -245,61 +245,61 @@
 }
 
 /* Form footer */
-.form-footer {
+:where(.register-container) .form-footer {
   text-align: center;
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid var(--clinic-canvas);
 }
 
-.form-footer p {
+:where(.register-container) .form-footer p {
   margin-bottom: 10px;
   color: var(--clinic-muted);
 }
 
-.form-footer a {
+:where(.register-container) .form-footer a {
   color: var(--clinic-blue);
   text-decoration: none;
   font-weight: 500;
 }
 
-.form-footer a:hover {
+:where(.register-container) .form-footer a:hover {
   text-decoration: underline;
 }
 
 /* Responsive design */
 @media (max-width: 850px) {
-  .container {
+  :where(.register-container) .container {
     max-width: 90%;
   }
 }
 
 @media (max-width: 650px) {
-  .container {
+  :where(.register-container) .container {
     padding: 10px;
     max-width: 100%;
   }
   
-  .form-wrapper {
+  :where(.register-container) .form-wrapper {
     padding: 20px 15px;
   }
   
-  .form-header h1 {
+  :where(.register-container) .form-header h1 {
     font-size: 1.5rem;
   }
   
-  .form-row {
+  :where(.register-container) .form-row {
     flex-direction: column;
     gap: 0;
   }
   
-  .form-row .form-group {
+  :where(.register-container) .form-row .form-group {
     flex: none;
     margin-bottom: 15px;
   }
   
-  .form-group input,
-  .form-group textarea {
+  :where(.register-container) .form-group input,
+  :where(.register-container) .form-group textarea {
     font-size: 16px;
   }
 }
@@ -349,6 +349,12 @@
 }
 
 /* Adjust form group for password fields */
-.form-group .password-input-wrapper {
+:where(.register-container) .form-group .password-input-wrapper {
   width: 100%;
 }
+/* Page-owned form rhythm; shared buttons retain their existing appearance. */
+.register-container .auth-form { gap: 16px; }
+.register-container .form-row { gap: 16px; margin-bottom: 0; }
+.register-container .form-row > .form-group { flex: 1; min-width: 0; margin-bottom: 0; }
+.register-container .form-group > label { margin-bottom: 8px; font-size: 14px; line-height: 1.5; text-align: left; }
+.register-container .form-group :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { min-height: 44px; font-size: 16px; line-height: 1.5; font-family: inherit; }

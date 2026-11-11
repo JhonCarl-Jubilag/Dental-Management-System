@@ -1,0 +1,49 @@
+.clinic-billing-statement-modal { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(8,38,90,.48); color: #182f49; }
+.clinic-billing-statement-modal .clinic-billing-statement-dialog { width: min(100%,850px); max-height: 94vh; display: flex; flex-direction: column; background: #f0f6fb; border-radius: 16px; box-shadow: 0 16px 56px rgba(8,38,90,.22); overflow: hidden; }
+.clinic-billing-statement-modal .clinic-billing-statement-toolbar, .clinic-billing-statement-modal .clinic-billing-statement-actions { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 18px 24px; background: white; flex-shrink: 0; }
+.clinic-billing-statement-modal .clinic-billing-statement-toolbar h2 { font-size: 20px; color: #08265a; margin: 0 0 4px; }
+.clinic-billing-statement-modal .clinic-billing-statement-toolbar p { margin: 0; font-size: 12px; color: #50657a; }
+.clinic-billing-statement-modal button { border: 1px solid #cbdce9; background: white; color: #08265a; border-radius: 8px; padding: 10px 16px; font: inherit; font-size: 13px; cursor: pointer; }
+.clinic-billing-statement-modal button:hover { background: #e3f2fc; }
+.clinic-billing-statement-modal button:disabled { opacity: .55; cursor: not-allowed; }
+.clinic-billing-statement-modal button:focus-visible, .clinic-billing-statement-modal [tabindex]:focus-visible { outline: 3px solid #0069a8; outline-offset: 3px; }
+.clinic-billing-statement-modal .clinic-billing-statement-toolbar > button { font-size: 24px; line-height: 1; padding: 8px 13px; }
+.clinic-billing-statement-modal .clinic-billing-statement-scroll { overflow-y: auto; padding: 24px; min-height: 0; }
+.clinic-billing-statement-modal .clinic-billing-statement-paper { background: white; padding: 38px; max-width: 794px; margin: 0 auto; box-shadow: 0 2px 12px rgba(8,38,90,.06); font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+.clinic-billing-statement-modal .clinic-billing-statement-brand { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+.clinic-billing-statement-modal .clinic-billing-statement-brand img { width: 160px; max-width: 34%; height: auto; }
+.clinic-billing-statement-modal .clinic-billing-statement-brand > div { text-align: right; min-width: 0; }
+.clinic-billing-statement-modal .clinic-billing-statement-brand h3 { margin: 0 0 5px; color: #08265a; font-size: 21px; text-transform: uppercase; }
+.clinic-billing-statement-modal .clinic-billing-statement-brand p { margin: 4px 0 0; font-size: 11px; color: #50657a; }
+.clinic-billing-statement-modal address { font-style: normal; font-size: 11px; margin: 15px 0 20px; padding-bottom: 18px; border-bottom: 2px solid #0069a8; }
+.clinic-billing-statement-modal .clinic-billing-statement-status { display: flex; flex-wrap: wrap; gap: 12px; color: #08265a; }
+.clinic-billing-statement-modal .clinic-billing-statement-status strong { background: #e3f2fc; padding: 4px 12px; border-radius: 20px; }
+.clinic-billing-statement-modal h4 { font-size: 13px; color: #08265a; margin: 22px 0 12px; }
+.clinic-billing-statement-modal dl { margin: 0 0 20px; }
+.clinic-billing-statement-modal dl > div { display: grid; grid-template-columns: 125px minmax(0,1fr); gap: 12px; padding: 4px 0; }
+.clinic-billing-statement-modal dt { color: #50657a; }
+.clinic-billing-statement-modal dd { margin: 0; }
+.clinic-billing-statement-modal table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 20px 0; }
+.clinic-billing-statement-modal th, .clinic-billing-statement-modal td { border: 1px solid #cbdce9; padding: 11px 13px; text-align: left; vertical-align: top; }
+.clinic-billing-statement-modal th { background: #e3f2fc; color: #08265a; font-weight: 600; }
+.clinic-billing-statement-modal th:last-child, .clinic-billing-statement-modal td:last-child { width: 31%; text-align: right; font-variant-numeric: tabular-nums; }
+.clinic-billing-statement-modal .clinic-billing-statement-total { background: #f0f6fb; }
+.clinic-billing-statement-modal .clinic-billing-statement-balance { background: #e3f2fc; font-weight: 600; }
+.clinic-billing-statement-modal .clinic-billing-statement-note, .clinic-billing-statement-modal .clinic-billing-statement-paper footer { color: #50657a; font-size: 11px; }
+.clinic-billing-statement-modal .clinic-billing-statement-paper footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #cbdce9; }
+.clinic-billing-statement-modal .clinic-billing-statement-actions { justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid #cbdce9; }
+.clinic-billing-statement-modal .clinic-billing-statement-primary { background: #0069a8; color: white; border-color: #0069a8; }
+.clinic-billing-statement-modal .clinic-billing-statement-primary:hover { background: #08265a; }
+.clinic-billing-statement-modal .clinic-billing-statement-error, .clinic-billing-statement-modal .clinic-billing-statement-notice { background: white; border: 1px solid #cbdce9; border-left: 4px solid #0069a8; padding: 14px; margin: 0 0 16px; }
+.clinic-billing-statement-modal .clinic-billing-statement-error { border-left-color: #b42318; }
+@media (max-width: 600px) {
+  .clinic-billing-statement-modal { padding: 8px; }
+  .clinic-billing-statement-modal .clinic-billing-statement-toolbar, .clinic-billing-statement-modal .clinic-billing-statement-actions { padding: 14px; }
+  .clinic-billing-statement-modal .clinic-billing-statement-scroll { padding: 10px; }
+  .clinic-billing-statement-modal .clinic-billing-statement-paper { padding: 20px 14px; }
+  .clinic-billing-statement-modal .clinic-billing-statement-brand { flex-direction: column; }
+  .clinic-billing-statement-modal .clinic-billing-statement-brand img { max-width: 160px; }
+  .clinic-billing-statement-modal .clinic-billing-statement-brand > div { text-align: left; }
+  .clinic-billing-statement-modal dl > div { grid-template-columns: 90px minmax(0,1fr); gap: 8px; }
+  .clinic-billing-statement-modal th, .clinic-billing-statement-modal td { padding: 9px 7px; }
+}

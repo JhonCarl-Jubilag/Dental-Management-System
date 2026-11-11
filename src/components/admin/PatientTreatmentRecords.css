@@ -1,0 +1,50 @@
+.main-content.patient-records-page { min-width: 0; }
+.clinic-treatment-records { margin-top: 28px; padding: 24px; background: #fff; border: 1px solid var(--clinic-line); border-radius: 16px; color: var(--clinic-navy); }
+.clinic-treatment-records .clinic-treatment-heading, .clinic-treatment-records .clinic-treatment-actions { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.clinic-treatment-records h2 { margin: 0; color: var(--clinic-navy); font-size: 23px; }
+.clinic-treatment-records p, .clinic-records-dialog p { font-size: 13px; line-height: 1.6; }
+.clinic-treatment-records button, .clinic-records-dialog button { font: inherit; font-size: 13px; font-weight: 600; color: var(--clinic-navy); border: 1px solid var(--clinic-line); background: var(--clinic-canvas); border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+.clinic-treatment-records .clinic-treatment-primary, .clinic-records-dialog .clinic-treatment-primary { background: var(--clinic-blue); color: #fff; border-color: var(--clinic-blue); }
+.clinic-treatment-records button:disabled, .clinic-records-dialog button:disabled { opacity: .5; cursor: not-allowed; }
+.clinic-treatment-records button:focus-visible, .clinic-records-dialog button:focus-visible, .clinic-records-dialog input:focus-visible, .clinic-records-dialog select:focus-visible, .clinic-records-dialog textarea:focus-visible, .clinic-treatment-records .clinic-treatment-table-scroll:focus-visible { outline: 3px solid #82b0f5; outline-offset: 2px; }
+.clinic-treatment-records .clinic-treatment-table-scroll { max-width: 100%; overflow-x: auto; margin-top: 22px; }
+.clinic-treatment-records .clinic-treatment-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+.clinic-treatment-records .clinic-treatment-table th { padding: 14px 12px; background: var(--clinic-tint); color: var(--clinic-muted); font-size: 12px; border-bottom: 2px solid var(--clinic-line); min-width: 90px; }
+.clinic-treatment-records .clinic-treatment-table td { padding: 18px 12px; border-bottom: 1px solid var(--clinic-line); vertical-align: top; line-height: 1.6; }
+.clinic-treatment-records .clinic-treatment-table small { display: block; color: var(--clinic-muted); font-size: 11px; margin: 8px 0 12px; }
+.clinic-treatment-records .clinic-treatment-table td:nth-child(2) { min-width: 210px; }
+.clinic-treatment-records .clinic-treatment-notes { white-space: pre-wrap; min-width: 180px; max-width: 330px; overflow-wrap: anywhere; }
+.clinic-treatment-records .clinic-treatment-empty { text-align: center; color: var(--clinic-muted); padding: 28px; }
+.clinic-treatment-records .clinic-treatment-hint, .clinic-records-dialog .clinic-treatment-hint { color: var(--clinic-muted); font-size: 12px; line-height: 1.7; }
+.clinic-treatment-records .clinic-treatment-error, .clinic-records-dialog .clinic-treatment-error { color: var(--clinic-danger); background: #fff2ee; padding: 12px 16px; border-radius: 8px; }
+.clinic-treatment-records .clinic-treatment-pagination, .clinic-records-dialog .clinic-treatment-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 18px; font-size: 12px; }
+.clinic-records-dialog { box-sizing: border-box; padding: 0; margin: auto; width: min(1120px, calc(100vw - 48px)); max-width: none; max-height: 90vh; border: 1px solid var(--clinic-line); border-radius: 16px; color: var(--clinic-navy); background: #fff; box-shadow: 0 20px 70px #132b4550; }
+.clinic-records-dialog::backdrop { background: #142b46a6; }
+.clinic-records-dialog .clinic-records-dialog-heading { position: sticky; top: 0; z-index: 1; background: var(--clinic-canvas); display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 24px; border-bottom: 1px solid var(--clinic-line); }
+.clinic-records-dialog .clinic-records-dialog-heading h2 { margin: 0; font-size: 21px; color: var(--clinic-navy); }
+.clinic-records-dialog .clinic-records-dialog-heading button { font-size: 24px; padding: 2px 12px; }
+.clinic-records-dialog .clinic-records-dialog-body { padding: 24px; }
+.clinic-records-dialog .clinic-patient-history { margin: 0; padding: 0; border: 0; }
+.clinic-records-dialog .clinic-treatment-form fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.clinic-records-dialog .clinic-treatment-form label { display: block; color: var(--clinic-navy); font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.clinic-records-dialog .clinic-treatment-form input:not([type=checkbox]), .clinic-records-dialog .clinic-treatment-form select, .clinic-records-dialog .clinic-treatment-form textarea { box-sizing: border-box; width: 100%; min-height: 42px; border: 1px solid var(--clinic-line); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 14px; color: var(--clinic-navy); background: #fff; }
+.clinic-records-dialog .clinic-treatment-form textarea { resize: vertical; }
+.clinic-records-dialog .clinic-treatment-form small { display: block; margin-top: 7px; font-size: 11px; color: var(--clinic-muted); line-height: 1.6; }
+.clinic-records-dialog .clinic-treatment-context { display: flex; flex-wrap: wrap; gap: 16px; background: var(--clinic-tint); padding: 14px 16px; border-radius: 8px; margin: 18px 0; font-size: 13px; }
+.clinic-records-dialog .clinic-treatment-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+.clinic-records-dialog .clinic-treatment-wide { grid-column: 1 / -1; }
+.clinic-records-dialog .clinic-treatment-money { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; padding: 18px; border-radius: 8px; background: var(--clinic-canvas); margin: 22px 0 8px; }
+.clinic-records-dialog .clinic-treatment-money dt { font-size: 12px; color: var(--clinic-muted); }
+.clinic-records-dialog .clinic-treatment-money dd { margin: 8px 0 0; font-weight: 700; overflow-wrap: anywhere; }
+.clinic-records-dialog .clinic-treatment-form .clinic-treatment-confirm { display: flex; align-items: flex-start; gap: 10px; line-height: 1.7; margin: 20px 0; }
+.clinic-records-dialog .clinic-treatment-confirm input { margin-top: 4px; flex-shrink: 0; }
+.clinic-records-dialog .clinic-treatment-form-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--clinic-line); }
+@media (max-width:992px) { .main-content.patient-records-page { margin-left: 80px; width: calc(100% - 80px); } }
+@media (max-width:640px) {
+ .patient-records-page .patient-detail-container { padding: 12px; }
+ .clinic-treatment-records { padding: 18px; }
+ .clinic-records-dialog { width: calc(100vw - 16px); max-height: 96dvh; border-radius: 10px; }
+ .clinic-records-dialog .clinic-records-dialog-body, .clinic-records-dialog .clinic-records-dialog-heading { padding: 16px; }
+ .clinic-records-dialog .clinic-treatment-form-grid, .clinic-records-dialog .clinic-treatment-money { grid-template-columns: minmax(0,1fr); }
+ .clinic-treatment-records .clinic-treatment-actions button { flex: 1; }
+}

@@ -1,14 +1,25 @@
 import { hasAppointmentEnded } from '../utils/appointmentTiming';
+import { appointmentWriteError } from '../utils/clinicScheduling';
 import { saveAppointmentNote } from './appointmentNotes';
 
 const completionFields = 'appointment_id, patient_id, doctor_id, appointment_datetime, appointment_end, scheduled_duration_minutes, service_id, status, remarks, services(duration_minutes)';
 
-// Keep the original status/time in the filter so a cancelled or rescheduled
-// appointment is not completed using a stale result from the earlier read.
-const completeAppointment = async (client, appointment, now) => {
-  const note = `[System Auto-complete ${now.toLocaleString()}]: Appointment automatically marked as completed (service duration elapsed).`;
+const applyAutomaticStatus = async (client, appointment, now) => {
+  const { data, error } = await client.rpc('apply_automatic_appointment_status', {
+    p_appointment_id: appointment.appointment_id,
+    p_expected_status: appointment.status,
+    p_expected_time: appointment.appointment_datetime,
+  });
+  if (!error) return data === true ? 1 : 0;
+  if (error.code !== 'PGRST202') throw appointmentWriteError(error);
+
+  // Preserve automatic updates during rollout to a database without the new RPC.
+  const completing = appointment.status === 'confirmed';
+  const note = completing
+    ? `[System Auto-complete ${now.toLocaleString()}]: Appointment automatically marked as completed (service duration elapsed).`
+    : `[System Auto-cancel ${now.toLocaleString()}]: Appointment auto-cancelled because the scheduled time has passed.`;
   try {
-    await saveAppointmentNote(client, appointment, note, { status: 'completed' }, now);
+    await saveAppointmentNote(client, appointment, note, { status: completing ? 'completed' : 'cancelled' }, now);
     return 1;
   } catch (err) {
     if (err.code === 'APPOINTMENT_CHANGED') return 0;
@@ -30,14 +41,7 @@ export const cancelExpiredPendingAppointments = async (client, doctorId = null, 
   }
   let count = 0;
   for (const appointment of candidates) {
-    try {
-      await saveAppointmentNote(client, appointment,
-        `[System Auto-cancel ${now.toLocaleString()}]: Appointment auto-cancelled because the scheduled time has passed.`,
-        { status: 'cancelled' }, now);
-      count += 1;
-    } catch (err) {
-      if (err.code !== 'APPOINTMENT_CHANGED') throw err;
-    }
+    count += await applyAutomaticStatus(client, appointment, now);
   }
   return count;
 };
@@ -61,7 +65,7 @@ export const completeFinishedAppointments = async (client, now = new Date()) => 
   let completedCount = 0;
   for (const appointment of candidates) {
     if (hasAppointmentEnded(appointment, now)) {
-      completedCount += await completeAppointment(client, appointment, now);
+      completedCount += await applyAutomaticStatus(client, appointment, now);
     }
   }
   return completedCount;
@@ -74,5 +78,5 @@ export const completePaidAppointment = async (client, appointmentId, now = new D
     .single();
   if (error) throw error;
   if (data?.status !== 'confirmed' || !hasAppointmentEnded(data, now)) return false;
-  return (await completeAppointment(client, data, now)) > 0;
+  return (await applyAutomaticStatus(client, data, now)) > 0;
 };

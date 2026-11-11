@@ -1,0 +1,50 @@
+.staff-time-card { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:22px; padding:24px; margin-bottom:25px; border:1px solid var(--clinic-line); border-left:4px solid var(--clinic-blue); border-radius:14px; background:white; color:var(--clinic-ink); }
+.staff-time-card h2 { margin:0 0 10px; font-size:21px; color:var(--clinic-navy); }
+.staff-time-card p { font-size:13px; margin:8px 0; line-height:1.65; }
+.staff-time-card__content { flex:1; min-width:230px; }
+.staff-time-card__actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.staff-time-card__timer { display:block; font-size:28px; font-variant-numeric:tabular-nums; color:var(--clinic-navy); }
+.staff-time-card a { color:var(--clinic-blue); font-size:13px; }
+.staff-time-card button, .staff-dtr-page button, .staff-dtr-dialog button { padding:10px 15px; border:1px solid var(--clinic-line); border-radius:8px; background:var(--clinic-canvas); color:var(--clinic-navy); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+.staff-time-card button.staff-dtr-primary, .staff-dtr-page button.staff-dtr-primary, .staff-dtr-dialog button.staff-dtr-primary { background:var(--clinic-blue); color:white; border-color:var(--clinic-blue); }
+.staff-time-card button:disabled, .staff-dtr-page button:disabled, .staff-dtr-dialog button:disabled { opacity:.5; cursor:not-allowed; }
+.staff-time-card :focus-visible, .staff-dtr-page :focus-visible, .staff-dtr-dialog :focus-visible { outline:3px solid var(--clinic-sky); outline-offset:2px; }
+.staff-time-card .staff-dtr-hint, .staff-dtr-page .staff-dtr-hint, .staff-dtr-dialog .staff-dtr-hint { color:var(--clinic-muted); font-size:12px; line-height:1.7; }
+.staff-time-card .staff-dtr-error, .staff-dtr-page .staff-dtr-error, .staff-dtr-dialog .staff-dtr-error { color:var(--clinic-danger); padding:12px 15px; background:#fff0f1; border-radius:8px; line-height:1.7; overflow-wrap:anywhere; }
+.staff-time-card .staff-dtr-success, .staff-dtr-page .staff-dtr-success { color:var(--clinic-success); padding:10px 0; line-height:1.6; }
+.staff-time-card .staff-dtr-badge, .staff-dtr-page .staff-dtr-badge { display:inline-block; font-size:12px; padding:5px 10px; border-radius:14px; color:var(--clinic-navy); background:var(--clinic-tint); }
+.staff-time-card .staff-dtr-working, .staff-dtr-page .staff-dtr-working { color:var(--clinic-success); background:#e8f5ee; }
+.main-content.staff-dtr-page { min-width:0; }
+.staff-dtr-page .staff-dtr-page-heading { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px; margin-bottom:24px; }
+.staff-dtr-page h1 { color:var(--clinic-navy); margin:0 0 8px; font-size:30px; }
+.staff-dtr-page .staff-dtr-page-heading p { margin:0; color:var(--clinic-muted); }
+.staff-dtr-page .staff-dtr-filters { background:white; border:1px solid var(--clinic-line); padding:20px; border-radius:12px; margin-bottom:22px; }
+.staff-dtr-page fieldset, .staff-dtr-dialog fieldset { border:0; padding:0; margin:0; min-width:0; }
+.staff-dtr-page .staff-dtr-filters fieldset { display:flex; flex-wrap:wrap; align-items:flex-end; gap:14px; }
+.staff-dtr-page .staff-dtr-filters label, .staff-dtr-dialog label { display:block; margin:0 0 8px; font-size:13px; font-weight:600; color:var(--clinic-navy); }
+.staff-dtr-page .staff-dtr-filters input, .staff-dtr-page .staff-dtr-filters select, .staff-dtr-dialog input, .staff-dtr-dialog select, .staff-dtr-dialog textarea { box-sizing:border-box; width:100%; min-height:41px; border:1px solid var(--clinic-line); border-radius:7px; padding:9px 11px; font:inherit; font-size:14px; color:var(--clinic-ink); background:white; }
+.staff-dtr-page .staff-dtr-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; margin-bottom:18px; }
+.staff-dtr-page .staff-dtr-summary > div { display:flex; flex-direction:column; gap:12px; padding:20px; border:1px solid var(--clinic-line); border-radius:12px; background:white; }
+.staff-dtr-page .staff-dtr-summary span { font-size:12px; color:var(--clinic-muted); }
+.staff-dtr-page .staff-dtr-summary strong { font-size:24px; color:var(--clinic-navy); overflow-wrap:anywhere; }
+.staff-dtr-page .staff-dtr-table-scroll { overflow-x:auto; background:white; border:1px solid var(--clinic-line); border-radius:12px; margin-top:20px; }
+.staff-dtr-page table { width:100%; border-collapse:collapse; font-size:13px; text-align:left; }
+.staff-dtr-page th { padding:15px; color:var(--clinic-navy); background:var(--clinic-tint); font-size:12px; min-width:95px; }
+.staff-dtr-page td { padding:17px 15px; vertical-align:top; line-height:1.65; border-top:1px solid var(--clinic-line); max-width:290px; overflow-wrap:anywhere; }
+.staff-dtr-page td small { display:block; color:var(--clinic-muted); margin-top:7px; white-space:pre-wrap; }
+.staff-dtr-page .staff-dtr-date { white-space:nowrap; }
+.staff-dtr-page .staff-dtr-pagination, .staff-dtr-dialog nav { display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:12px; margin-top:20px; font-size:13px; color:var(--clinic-muted); }
+.staff-dtr-dialog { box-sizing:border-box; margin:auto; width:min(820px,calc(100vw - 32px)); max-width:none; max-height:90vh; padding:0; border:1px solid var(--clinic-line); border-radius:14px; background:white; color:var(--clinic-ink); box-shadow:0 20px 70px #10244350; }
+.staff-dtr-dialog::backdrop { background:#142b46a6; }
+.staff-dtr-dialog > header { display:flex; justify-content:space-between; align-items:center; gap:16px; position:sticky; top:0; padding:18px 24px; background:var(--clinic-canvas); border-bottom:1px solid var(--clinic-line); z-index:1; }
+.staff-dtr-dialog h2 { font-size:22px; margin:0; color:var(--clinic-navy); }
+.staff-dtr-dialog form { padding:24px; }
+.staff-dtr-dialog .staff-dtr-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:20px 0; }
+.staff-dtr-dialog textarea { resize:vertical; }
+.staff-dtr-dialog .staff-dtr-form-actions { display:flex; justify-content:flex-end; gap:12px; margin-top:22px; }
+.staff-dtr-dialog .staff-dtr-audit { padding:0 24px 24px; }
+.staff-dtr-dialog summary { cursor:pointer; font-size:14px; font-weight:600; color:var(--clinic-navy); }
+.staff-dtr-dialog article { padding:16px 0; border-bottom:1px solid var(--clinic-line); font-size:13px; }
+.staff-dtr-dialog article p { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.7; }
+@media(max-width:992px) { .main-content.staff-dtr-page { margin-left:80px; width:calc(100% - 80px); } .staff-dtr-page .staff-dtr-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:640px) { .staff-time-card { padding:18px; } .staff-time-card__actions { width:100%; } .staff-time-card__actions button { flex:1; } .staff-dtr-page .staff-dtr-summary { grid-template-columns:minmax(0,1fr); } .staff-dtr-dialog .staff-dtr-form-grid { grid-template-columns:minmax(0,1fr); } .staff-dtr-dialog form, .staff-dtr-dialog > header { padding:18px; } }

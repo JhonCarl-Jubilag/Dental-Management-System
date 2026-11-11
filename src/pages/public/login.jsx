@@ -6,10 +6,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { roleDestinations } from '../../utils/accessControl';
 import './login.css';
 import DentalLogo from '../../assets/DentalLogo.png';
-import bg1 from '../../assets/bg1.jpg';
-import bg2 from '../../assets/bg2.jpg';
-import bg3 from '../../assets/bg3.jpg';
-import bg4 from '../../assets/bg4.jpg';
+import bg1 from '../../assets/login-clinic/waiting-area.jpeg';
+import bg2 from '../../assets/login-clinic/entrance.jpeg';
+import bg3 from '../../assets/login-clinic/treatment-room.jpeg';
+import bg4 from '../../assets/login-clinic/lounge.jpeg';
 
 const Login = () => {
   const navigate = useNavigate();

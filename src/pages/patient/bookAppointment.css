@@ -240,7 +240,7 @@
   gap: 30px;
 }
 
-.form-section {
+:where(.booking-page) .form-section {
   background: white;
   border-radius: 16px;
   padding: 30px;
@@ -248,7 +248,7 @@
   border: 1px solid var(--clinic-line);
 }
 
-.section-title {
+:where(.booking-page) .section-title {
   color: var(--clinic-navy);
   font-size: 1.4rem;
   margin-bottom: 25px;
@@ -257,19 +257,19 @@
   gap: 10px;
 }
 
-.section-title i {
+:where(.booking-page) .section-title i {
   color: var(--clinic-blue);
 }
 
-.form-group {
+:where(.booking-page) .form-group {
   margin-bottom: 20px;
 }
 
-.form-group:last-child {
+:where(.booking-page) .form-group:last-child {
   margin-bottom: 0;
 }
 
-.form-label {
+:where(.booking-page) .form-label {
   font-weight: 600;
   margin-bottom: 10px;
   display: block;
@@ -277,12 +277,12 @@
   font-size: 0.95rem;
 }
 
-.form-label.required::after {
+:where(.booking-page) .form-label.required::after {
   content: ' *';
   color: var(--clinic-danger);
 }
 
-.form-control {
+:where(.booking-page) .form-control {
   width: 100%;
   padding: 12px 15px;
   border: 2px solid var(--clinic-line);
@@ -292,13 +292,13 @@
   font-family: inherit;
 }
 
-.form-control:focus {
+:where(.booking-page) .form-control:focus {
   outline: none;
   border-color: var(--clinic-blue);
   box-shadow: 0 0 0 3px rgba(0, 105, 168, 0.1);
 }
 
-textarea.form-control {
+:where(.booking-page) textarea.form-control {
   resize: vertical;
   min-height: 100px;
 }
@@ -347,8 +347,12 @@ textarea.form-control {
   flex-shrink: 0;
 }
 
-.doctor-info {
+.booking-page .doctor-info {
+  display: block;
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .doctor-name {
@@ -371,16 +375,19 @@ textarea.form-control {
   flex-wrap: wrap;
 }
 
-.doctor-details span {
+.booking-page .doctor-details span {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-width: 0;
+  max-width: 100%;
   color: var(--clinic-muted);
   font-size: 0.9rem;
 }
 
-.doctor-details i {
+.booking-page .doctor-details i {
   color: var(--clinic-blue);
+  flex-shrink: 0;
 }
 
 /* Time Slots */
@@ -552,7 +559,7 @@ textarea.form-control {
   .booking-header h1 {
     font-size: 1.8rem;
   }
-  .form-section {
+  :where(.booking-page) .form-section {
     padding: 20px;
   }
   .doctor-option {
@@ -712,3 +719,5 @@ textarea.form-control {
 .booking-legend span:last-child::before { background: var(--clinic-blue); border-color: var(--clinic-blue); }
 .booking-picker p { margin: 1rem 0 0; color: var(--clinic-ink); }
 .booking-picker .time-slots-grid { grid-template-columns: repeat(auto-fit, minmax(min(6.5rem, 100%), 1fr)); }
+.booking-page .booking-form { gap: 24px; }
+.booking-page .form-section { margin-bottom: 0; }

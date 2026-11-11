@@ -82,10 +82,24 @@ const Sidebar = ({ onLogout }) => {
           </Link>
         </li>
         
+        <li>
+          <Link to="/admin/attendance" className={`sidebar-link ${isActive('/admin/attendance') ? 'active' : ''}`}>
+            <i className="fas fa-clock nav-icon"></i>
+            <span>Daily Time Records</span>
+          </Link>
+        </li>
+
         {isOwner(userType) && <li>
           <Link to="/admin/staff" className={`sidebar-link ${isActive('/admin/staff') ? 'active' : ''}`}>
             <i className="fas fa-user-shield nav-icon"></i>
             <span>Staff accounts</span>
+          </Link>
+        </li>}
+        {isOwner(userType) && <li>
+          <Link to="/admin/settings" aria-label="Settings" aria-current={isActive('/admin/settings') ? 'page' : undefined}
+            className={`sidebar-link ${isActive('/admin/settings') ? 'active' : ''}`}>
+            <i className="fas fa-cog nav-icon" aria-hidden="true"></i>
+            <span>Settings</span>
           </Link>
         </li>}
         <li>

@@ -1,82 +1,4 @@
 
-.admin-dashboard {
-  display: flex;
-  min-height: 100vh;
-  background: #f4f7fc;
-}
-
-.main-content {
-  flex: 1;
-  padding: 30px;
-  margin-left: 260px;
-}
-
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.header-title h1 {
-  font-family: 'Montserrat', sans-serif;
-  font-size: 2rem;
-  color: var(--clinic-sidebar);
-  margin: 0 0 8px 0;
-  font-weight: 700;
-}
-
-.welcome-message {
-  color: var(--clinic-muted);
-  font-size: 0.95rem;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
-  background: white;
-  border-radius: 40px;
-  box-shadow: 0 2px 4px rgba(5, 28, 67,0.05);
-}
-
-.user-avatar {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, var(--clinic-navy), var(--clinic-blue));
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: bold;
-  font-size: 1rem;
-}
-
-.user-details {
-  text-align: right;
-}
-
-.user-name {
-  font-weight: 600;
-  color: var(--clinic-sidebar);
-}
-
-.user-role {
-  font-size: 0.75rem;
-  color: var(--clinic-muted);
-}
-
 .admin-loading {
   display: flex;
   justify-content: center;
@@ -142,19 +64,19 @@
   align-items: end;
 }
 
-.filter-group {
+:where(.admin-doctors) .filter-group {
   display: flex;
   flex-direction: row;
   gap: 8px;
 }
 
-.filter-group label {
+:where(.admin-doctors) .filter-group label {
   font-weight: 600;
   font-size: 0.85rem;
   color: #555;
 }
 
-.form-control {
+:where(.admin-doctors) .form-control {
   padding: 10px 12px;
   border: 2px solid var(--clinic-line);
   border-radius: 8px;
@@ -163,7 +85,7 @@
   background: white;
 }
 
-.form-control:focus {
+:where(.admin-doctors) .form-control:focus {
   outline: none;
   border-color: var(--clinic-blue);
   box-shadow: 0 0 0 3px rgba(0, 105, 168,0.1);
@@ -475,7 +397,7 @@
   opacity: 0.5;
 }
 
-.modal {
+:where(.admin-doctors) .modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -488,7 +410,7 @@
   z-index: 1100;
 }
 
-.modal-content {
+:where(.admin-doctors) .modal-content {
   background: white;
   border-radius: 20px;
   max-width: 600px;
@@ -499,11 +421,11 @@
   position: relative;
 }
 
-.modal-lg {
+:where(.admin-doctors) .modal-lg {
   max-width: 800px;
 }
 
-.modal-header {
+:where(.admin-doctors) .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -512,7 +434,7 @@
   border-bottom: 1px solid var(--clinic-canvas);
 }
 
-.modal-close {
+:where(.admin-doctors) .modal-close {
   background: none;
   border: none;
   font-size: 1.5rem;
@@ -520,7 +442,7 @@
   color: var(--clinic-muted);
 }
 
-.modal-footer {
+:where(.admin-doctors) .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
@@ -529,18 +451,18 @@
   border-top: 1px solid var(--clinic-canvas);
 }
 
-.form-row {
+:where(.admin-doctors) .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
   margin-bottom: 15px;
 }
 
-.form-group {
+:where(.admin-doctors) .form-group {
   margin-bottom: 15px;
 }
 
-.form-group label {
+:where(.admin-doctors) .form-group label {
   display: block;
   font-weight: 600;
   margin-bottom: 6px;
@@ -596,17 +518,7 @@
   margin-bottom: 15px;
 }
 
-@media (max-width: 1200px) {
-  .main-content {
-    margin-left: 240px;
-    padding: 20px;
-  }
-}
-
 @media (max-width: 992px) {
-  .main-content {
-    margin-left: 0;
-  }
   
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -634,10 +546,6 @@
 }
 
 @media (max-width: 768px) {
-  .dashboard-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
   
   .stats-grid {
     grid-template-columns: 1fr;
@@ -669,7 +577,7 @@
     font-size: 0.85rem;
   }
   
-  .form-row {
+  :where(.admin-doctors) .form-row {
     grid-template-columns: 1fr;
   }
 }

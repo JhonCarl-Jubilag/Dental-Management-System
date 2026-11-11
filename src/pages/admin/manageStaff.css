@@ -257,6 +257,9 @@
 .staff-account-page .staff-name-actions { display: flex; justify-content: flex-end; padding: 0 28px 24px; }
 .staff-account-page .staff-email-editor { padding: 24px 28px; border-top: 1px solid #edf1f6; background: #fafcfe; }
 .staff-account-page .staff-email-editor fieldset { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 20px; }
+.staff-account-page .staff-password-editor { border-top: 1px solid #edf1f6; }
+.staff-account-page .staff-password-editor h3 { margin: 0; font-size: 16px; }
+.staff-account-page .staff-password-editor small { overflow-wrap: anywhere; }
 .staff-account-page .staff-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; max-width: 1100px; margin-top: 24px; font-size: 14px; }
 
 @media (max-width: 1100px) {

@@ -38,7 +38,7 @@ const ForgotPassword = () => {
           </div>
           {error && <div className="alert alert-error" role="alert">{error}</div>}
           {success && <div className="alert alert-success" role="status">{success}</div>}
-          <form onSubmit={handleSendResetEmail}>
+          <form className="forgot-password-form" onSubmit={handleSendResetEmail}>
             <div className="form-group">
               <label htmlFor="forgot-password-email">Email Address</label>
               <input id="forgot-password-email" type="email" value={email}

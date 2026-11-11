@@ -721,3 +721,10 @@
 .booking-picker .time-slots-grid { grid-template-columns: repeat(auto-fit, minmax(min(6.5rem, 100%), 1fr)); }
 .booking-page .booking-form { gap: 24px; }
 .booking-page .form-section { margin-bottom: 0; }
+
+.booking-page .service-price-notice {
+  margin: 12px 0 16px;
+  color: var(--clinic-muted, #597086);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}

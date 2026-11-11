@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './ClinicMap.css';
+import { CLINIC_NAME, CLINIC_ADDRESS, CLINIC_PHONE, CLINIC_LANDLINE, CLINIC_HOURS, CLINIC_LOCATION, CLINIC_DIRECTIONS_URL } from '../../services/clinicDetails';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -16,9 +17,8 @@ const ClinicMap = () => {
   const markerRef = useRef(null);
 
   const clinicLocation = {
-    lat: 14.419364603769948,
-    lng: 120.9369070449141, 
-    address: '150 Sara St. Sarah Subdivision, Bayan Luma 3 Imus City, Cavite'
+    ...CLINIC_LOCATION,
+    address: CLINIC_ADDRESS
   };
 
   useEffect(() => {
@@ -57,11 +57,11 @@ const ClinicMap = () => {
       // Add popup
       markerRef.current.bindPopup(`
         <div class="map-popup">
-          <h3>Diolata Dental Clinic</h3>
+          <h3>${CLINIC_NAME}</h3>
           <p><i class="fas fa-map-marker-alt"></i> ${clinicLocation.address}</p>
-          <p><i class="fas fa-phone"></i> 046-4723054 / 0930-482-0352</p>
-          <p><i class="fas fa-clock"></i> Mon-Sat: 9AM-6PM, Sun: Closed</p>
-          <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(clinicLocation.address)}" 
+          <p><i class="fas fa-phone"></i> ${CLINIC_LANDLINE} / ${CLINIC_PHONE}</p>
+          <p><i class="fas fa-clock"></i> ${CLINIC_HOURS}</p>
+          <a href="${CLINIC_DIRECTIONS_URL}"
              target="_blank" 
              rel="noopener noreferrer"
              class="map-directions-btn">

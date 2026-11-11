@@ -73,7 +73,6 @@ const MyAppointments = () => {
           services!inner (
             service_id,
             service_name,
-            price,
             duration_minutes
           ),
           billing (
@@ -92,7 +91,6 @@ const MyAppointments = () => {
         doctor_name: `Dr. ${app.doctors.first_name} ${app.doctors.last_name}`,
         specialization: app.doctors.specialization,
         service_name: app.services.service_name,
-        service_price: app.services.price,
         duration_minutes: getAppointmentDuration(app),
         ...(app.billing && app.billing[0] ? {
           total_amount: app.billing[0].total_amount,
@@ -773,7 +771,6 @@ const MyAppointments = () => {
                 <div className="appointment-detail-row"><strong>Specialization:</strong> {selectedAppointment.specialization || 'General Dentist'}</div>
                 <div className="appointment-detail-row"><strong>Date & Time:</strong> {formatDateTime(selectedAppointment.appointment_datetime)}</div>
                 <div className="appointment-detail-row"><strong>Status:</strong> <span className={`appointment-status-badge ${getAppointmentStatusClass(selectedAppointment.status)}`}>{selectedAppointment.status?.toUpperCase()}</span></div>
-                <div className="appointment-detail-row"><strong>Price:</strong> ₱{Number(selectedAppointment.service_price).toFixed(2)}</div>
                 {selectedAppointment.remarks && <div className="appointment-detail-row full-width"><strong>Remarks:</strong> {selectedAppointment.remarks}</div>}
                 {selectedAppointment.request_status === 'pending' && (
                   <div className="appointment-detail-row full-width"><strong>Request Status:</strong> Pending approval for {selectedAppointment.request_type === 'reschedule' ? 'reschedule' : 'cancellation'}</div>

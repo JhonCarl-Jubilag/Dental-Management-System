@@ -1,3 +1,4 @@
+/* Existing shared rules are retained; the redesign below is page-scoped. */
 :root {
   --primary: var(--clinic-navy);
   --primary-light: var(--clinic-blue);
@@ -506,4 +507,311 @@
   .included-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Service detail presentation only. Keep these selectors scoped to this route. */
+.service-details-container {
+  max-width: 1280px;
+  padding: 32px 40px 56px;
+  background: #f5f8fb;
+  color: #18344d;
+  line-height: 1.6;
+}
+
+.service-details-container .service-details-wrapper {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.service-details-container .btn-back-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  margin: 0 0 20px;
+  padding: 10px 16px;
+  border: 1px solid #dce5ed;
+  border-radius: 10px;
+  background: #fff;
+  color: #335571;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.service-details-container .btn-back-small:hover {
+  background: #eaf3f9;
+  border-color: #b8d1e2;
+}
+
+.service-details-container .service-header {
+  display: block;
+  padding: 32px;
+  margin: 0 0 24px;
+  border: 1px solid #e0e8ef;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(24, 52, 77, 0.03);
+  text-align: left;
+}
+
+.service-details-container .service-title {
+  margin: 0 0 18px;
+  color: #15364f;
+  font-size: clamp(1.65rem, 2.6vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.7px;
+  overflow-wrap: anywhere;
+}
+
+.service-details-container .service-animation-heading {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.service-details-container .service-animation-button {
+  min-height: 44px;
+  margin: 0;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.service-details-container .service-badges {
+  gap: 10px;
+  margin: 0 0 20px;
+}
+
+.service-details-container .badge {
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  font-weight: 600;
+  background: #edf3f8;
+  color: #365570;
+}
+
+.service-details-container .badge.duration {
+  background: #eaf6f2;
+  color: #226b57;
+}
+
+.service-details-container .badge.price {
+  background: #fdf3e5;
+  color: #905b16;
+}
+
+.service-details-container .service-description {
+  max-width: 85ch;
+  margin: 0;
+  color: #536a7e;
+  font-size: 0.9375rem;
+  line-height: 1.85;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.service-details-container .service-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+.service-details-container .main-column,
+.service-details-container .sidebar-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.service-details-container .info-card,
+.service-details-container .booking-card,
+.service-details-container .help-card {
+  margin: 0;
+  padding: 26px;
+  border: 1px solid #e0e8ef;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(24, 52, 77, 0.03);
+}
+
+.service-details-container .info-card h2 {
+  margin: 0 0 20px;
+  padding: 0;
+  border: 0;
+  gap: 12px;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  font-weight: 700;
+  color: #183c56;
+}
+
+.service-details-container .info-card h2 > i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #edf6fc;
+  color: #0874a8;
+  font-size: 1rem;
+}
+
+.service-details-container .included-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.service-details-container .included-item {
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #edf1f5;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.service-details-container .included-item i {
+  flex: 0 0 20px;
+  width: 20px;
+  color: #328575;
+  font-size: 1rem;
+}
+
+.service-details-container .included-item span,
+.service-details-container .steps-list li {
+  font-size: 0.875rem;
+  color: #3e586e;
+}
+
+.service-details-container .steps-list {
+  margin: 0;
+  padding: 0;
+}
+
+.service-details-container .steps-list li {
+  gap: 14px;
+  padding: 13px 0;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.service-details-container .steps-list li:first-child { padding-top: 0; }
+.service-details-container .steps-list li:last-child { padding-bottom: 0; border: 0; }
+
+.service-details-container .step-num {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #eaf4fb;
+  color: #076c9c;
+  font-weight: 700;
+}
+
+.service-details-container .doctors-grid { margin: 0; gap: 12px; }
+.service-details-container .doctor-card-mini {
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #edf1f5;
+  border-radius: 12px;
+}
+.service-details-container .doctor-card-mini div { min-width: 0; overflow-wrap: anywhere; }
+.service-details-container .doctor-card-mini strong { font-size: 0.875rem; }
+.service-details-container .doctor-card-mini span { color: #62768a; }
+
+.service-details-container .sidebar-column { position: sticky; top: 24px; }
+.service-details-container .booking-card { border-top: 4px solid #0877ac; text-align: left; }
+.service-details-container .booking-price {
+  margin: 0 0 22px;
+  font-size: clamp(1.6rem, 2.5vw, 2rem);
+  line-height: 1.3;
+  letter-spacing: -0.7px;
+  font-weight: 700;
+  color: #176c55;
+  overflow-wrap: anywhere;
+}
+.service-details-container .booking-details {
+  margin: 0 0 22px;
+  padding: 4px 14px;
+  background: #f6f9fc;
+  border-radius: 10px;
+}
+.service-details-container .detail-row {
+  gap: 12px;
+  padding: 13px 0;
+  color: #5a7085;
+  font-size: 0.8125rem;
+  border-color: #e5edf3;
+}
+.service-details-container .detail-row strong { color: #25445d; text-align: right; }
+.service-details-container .btn-book {
+  min-height: 48px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #0877ac;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  box-shadow: 0 4px 10px rgba(8, 119, 172, 0.12);
+}
+.service-details-container .btn-book:hover { background: #05638f; transform: none; }
+.service-details-container .help-card { background: #eef5fa; box-shadow: none; }
+.service-details-container .help-card > i { font-size: 1.6rem; margin-bottom: 12px; }
+.service-details-container .help-card h3 { font-size: 1rem; margin: 0 0 6px; }
+.service-details-container .help-card p { color: #597086; line-height: 1.6; margin: 0 0 18px; }
+.service-details-container .chat-link {
+  min-height: 44px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid #d6e4ee;
+  border-radius: 10px;
+  color: #2e5571;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.service-details-container .chat-link i:first-child { margin: 0; font-size: 1rem; color: inherit; }
+.service-details-container .chat-link:hover { background: #deedf7; color: #154867; }
+.service-details-container :is(a, button):focus-visible {
+  outline: 3px solid #0877ac;
+  outline-offset: 4px;
+}
+
+@media (max-width: 1000px) {
+  .service-details-container { padding: 24px 24px 40px; }
+  .service-details-container .service-content { grid-template-columns: minmax(0, 1fr) 280px; gap: 20px; }
+  .service-details-container .info-card,
+  .service-details-container .booking-card,
+  .service-details-container .help-card { padding: 22px; }
+}
+
+@media (max-width: 800px) {
+  .service-details-container .service-content { grid-template-columns: minmax(0, 1fr); }
+  .service-details-container .sidebar-column { position: static; }
+}
+
+@media (max-width: 480px) {
+  .service-details-container { padding: 20px 16px 32px; }
+  .service-details-container .service-header { padding: 24px 20px; }
+  .service-details-container .included-grid { grid-template-columns: minmax(0, 1fr); }
+  .service-details-container .info-card,
+  .service-details-container .booking-card,
+  .service-details-container .help-card { padding: 20px; }
+  .service-details-container .main-column,
+  .service-details-container .sidebar-column { gap: 20px; }
+}
+
+.service-details-container .service-price-notice {
+  margin: 12px 0 16px;
+  color: var(--clinic-muted, #597086);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }

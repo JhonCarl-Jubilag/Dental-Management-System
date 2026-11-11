@@ -29,10 +29,16 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="forgot-password-container">
+    <div className="forgot-password-container recovery-page">
       <div className="container">
         <div className="form-wrapper">
           <div className="form-header">
+            <div className="recovery-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="5" width="18" height="14" rx="3" />
+                <path d="m4 7 8 6 8-6" />
+              </svg>
+            </div>
             <h1>Forgot Password</h1>
             <p>Enter your email to receive a password reset link.</p>
           </div>
@@ -50,7 +56,7 @@ const ForgotPassword = () => {
             </button>
           </form>
           <div className="form-footer">
-            <Link to="/login">Back to Login</Link> | <Link to="/register">Create Account</Link>
+            <Link to="/login">Back to Login</Link><span className="recovery-divider" aria-hidden="true" /><Link to="/register">Create Account</Link>
           </div>
         </div>
       </div>

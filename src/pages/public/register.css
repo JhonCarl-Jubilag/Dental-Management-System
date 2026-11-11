@@ -358,3 +358,199 @@
 .register-container .form-row > .form-group { flex: 1; min-width: 0; margin-bottom: 0; }
 .register-container .form-group > label { margin-bottom: 8px; font-size: 14px; line-height: 1.5; text-align: left; }
 .register-container .form-group :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { min-height: 44px; font-size: 16px; line-height: 1.5; font-family: inherit; }
+
+/* Registration redesign: all new styles are confined to this page. */
+.register-container {
+  padding: 40px 24px;
+  background: radial-gradient(ellipse at 12% 15%, #ffffffb3, transparent 48%),
+    radial-gradient(ellipse at 90% 85%, #32abe81a, transparent 45%), var(--clinic-mist);
+}
+.register-container .container { max-width: 760px; padding: 0; }
+.register-container .form-wrapper {
+  padding: 32px 40px 24px;
+  background: #ffffff;
+  border: 1px solid #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 24px 64px #08265a14, 0 4px 12px #08265a08;
+  backdrop-filter: none;
+}
+.register-container .registration-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 30px;
+}
+.register-container .registration-home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--clinic-line);
+  border-radius: 10px;
+  background: var(--clinic-canvas);
+  color: var(--clinic-blue-hover);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .2s, border-color .2s;
+}
+.register-container .registration-home-link svg { width: 16px; height: 16px; flex-shrink: 0; }
+.register-container .registration-home-link:hover { background: var(--clinic-tint); border-color: var(--clinic-blue); }
+.register-container .registration-eyebrow { font-size: 10px; letter-spacing: 1.8px; font-weight: 700; color: var(--clinic-muted); }
+.register-container .form-header { display: flex; align-items: center; gap: 16px; text-align: left; margin-bottom: 28px; }
+.register-container .registration-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 56px;
+  height: 56px;
+  border-radius: 18px;
+  color: var(--clinic-blue);
+  background: var(--clinic-tint);
+}
+.register-container .registration-mark svg { width: 36px; height: 36px; }
+.register-container .form-header h1 { font-size: clamp(23px, 3vw, 30px); line-height: 1.2; letter-spacing: -.7px; font-weight: 700; margin-bottom: 8px; color: var(--clinic-navy); }
+.register-container .form-header p { font-size: 14px; line-height: 1.5; }
+.register-container .auth-form { gap: 18px; }
+.register-container .form-row { gap: 20px; }
+.register-container .registration-section-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+.register-container .registration-section-heading > span { font-size: 10px; font-weight: 700; color: var(--clinic-blue); background: var(--clinic-tint); border-radius: 6px; padding: 3px 7px; }
+.register-container .registration-section-heading h2 { font-size: 12px; font-weight: 600; color: var(--clinic-muted); margin: 0; letter-spacing: .3px; }
+.register-container .registration-section-heading > div { height: 1px; background: var(--clinic-line); flex: 1; margin-left: 4px; }
+.register-container .form-group > .registration-section-heading { margin: 6px 0 18px; }
+.register-container .form-group > label { font-size: 13px; font-weight: 600; margin-bottom: 7px; }
+.register-container .form-group :is(input:not([type=checkbox]):not([type=radio]), textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid var(--clinic-line);
+  border-radius: 10px;
+  background: #f8fbfe;
+  color: var(--clinic-ink);
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.register-container .form-group textarea { min-height: 78px; }
+.register-container .form-group .password-input-wrapper input { padding-right: 44px; }
+.register-container .form-group :is(input, textarea):focus { border-color: var(--clinic-blue); background: #fff; box-shadow: 0 0 0 3px #0069a814; outline: none; }
+.register-container .form-group :is(input, textarea).error { border-color: var(--clinic-danger); background: #fff7f8; }
+.register-container .form-group :is(input, textarea):disabled { background: var(--clinic-canvas); color: var(--clinic-muted); }
+.register-container .auth-form > .btn-primary { min-height: 48px; margin-top: 4px; border-radius: 10px; background: linear-gradient(110deg, var(--clinic-blue), var(--clinic-navy)); box-shadow: 0 5px 12px #0069a81a; }
+.register-container .auth-form > .btn-primary:hover:not(:disabled) { background: linear-gradient(110deg, var(--clinic-blue-hover), var(--clinic-navy)); transform: translateY(-1px); }
+.register-container .form-footer { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--clinic-line); }
+.register-container .form-footer p { margin: 0; font-size: 13px; }
+.register-container .form-footer a { font-weight: 600; }
+.register-container :is(.registration-home-link, .password-toggle-btn, .btn-primary):focus-visible { outline: 3px solid var(--clinic-sky); outline-offset: 3px; }
+@media (max-width: 650px) {
+  .register-container { padding: 20px 12px; }
+  .register-container .container { max-width: 100%; padding: 0; }
+  .register-container .form-wrapper { padding: 22px 20px; border-radius: 20px; }
+  .register-container .registration-topbar { margin-bottom: 26px; }
+  .register-container .registration-eyebrow { display: none; }
+  .register-container .form-header { align-items: flex-start; gap: 12px; }
+  .register-container .registration-mark { flex-basis: 44px; height: 44px; border-radius: 14px; }
+  .register-container .registration-mark svg { width: 30px; height: 30px; }
+  .register-container .form-header h1 { font-size: 24px; }
+  .register-container .form-row { flex-direction: column; gap: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .register-container *, .register-container *::before, .register-container *::after { transition: none !important; }
+}
+
+/* Split welcome panel and form, using the existing clinic palette. */
+.register-container .container { max-width: 1060px; }
+.register-container .form-wrapper {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  column-gap: 40px;
+  padding: 28px 36px 24px;
+  border-radius: 28px;
+}
+.register-container .registration-topbar { grid-column: 1 / -1; margin-bottom: 26px; }
+.register-container .registration-home-link { min-height: 42px; padding: 9px 14px; border-radius: 12px; }
+.register-container .form-header {
+  grid-column: 1;
+  grid-row: 2 / span 3;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 28px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  margin: 0;
+  padding: 34px 28px;
+  border-radius: 20px;
+  background: linear-gradient(155deg, var(--clinic-blue), var(--clinic-navy));
+}
+.register-container .form-header::before,
+.register-container .form-header::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 330px;
+  height: 330px;
+  border: 1px solid #ffffff24;
+  border-radius: 50%;
+  bottom: -125px;
+  left: -115px;
+  pointer-events: none;
+}
+.register-container .form-header::after { width: 410px; height: 410px; bottom: -165px; left: -155px; box-shadow: 0 0 0 40px #ffffff05, 0 0 0 80px #ffffff05; }
+.register-container .registration-mark { flex: 0 0 66px; width: 66px; height: 66px; border: 1px solid #ffffff42; border-radius: 20px; color: #fff; background: #ffffff14; }
+.register-container .registration-mark svg { width: 40px; height: 40px; }
+.register-container .form-header h1 { font-size: 34px; line-height: 1.18; letter-spacing: -1px; margin: 0 0 18px; color: #fff; overflow-wrap: anywhere; }
+.register-container .form-header p { color: #e0f0fb; font-size: 14px; line-height: 1.75; margin: 0; }
+.register-container .auth-form,
+.register-container .form-footer,
+.register-container .form-wrapper > .alert { grid-column: 2; min-width: 0; }
+.register-container .auth-form { gap: 17px; }
+.register-container .form-row { gap: 18px; }
+.register-container .registration-section-heading > span { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; font-size: 11px; border-radius: 8px; }
+.register-container .registration-section-heading h2 { font-size: 13px; color: var(--clinic-navy); }
+.register-container .form-group > label { font-size: 12px; margin-bottom: 6px; }
+.register-container .password-toggle-btn { top: 50%; transform: translateY(-50%); right: 6px; width: 34px; height: 34px; padding: 7px; border-radius: 7px; }
+.register-container .password-toggle-btn:hover { background: var(--clinic-tint); }
+.register-container .password-strength { height: auto; min-height: 4px; overflow: visible; background: transparent; }
+.register-container .strength-bar { height: 4px; border-radius: 2px; }
+.register-container .strength-text { line-height: 1.5; }
+.register-container .form-footer a:focus-visible { outline: 3px solid var(--clinic-sky); outline-offset: 3px; }
+.register-container .form-header::before,
+.register-container .form-header::after { display: none; }
+.register-container .registration-clinic-image,
+.register-container .registration-clinic-image::after,
+.register-container .registration-clinic-image img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.register-container .registration-clinic-image { background: var(--clinic-navy); }
+.register-container .registration-clinic-image img { object-fit: cover; object-position: center; }
+.register-container .registration-clinic-image::after { content: ''; background: linear-gradient(180deg, #08265ae6 0%, #08265abf 40%, #08265a26 68%, #08265a99 100%); pointer-events: none; }
+.register-container .form-header > .registration-mark,
+.register-container .registration-intro-copy { position: relative; z-index: 1; pointer-events: none; }
+@media (max-width: 900px) {
+  .register-container .form-wrapper { grid-template-columns: 220px minmax(0, 1fr); column-gap: 26px; padding: 24px; }
+  .register-container .form-header { padding: 28px 22px; }
+  .register-container .form-header h1 { font-size: 29px; }
+}
+@media (max-width: 720px) {
+  .register-container .registration-clinic-image::after { background: #08265abf; }
+  .register-container { padding: 24px 16px; }
+  .register-container .container { max-width: 580px; }
+  .register-container .form-wrapper { display: flex; flex-direction: column; padding: 24px; border-radius: 22px; }
+  .register-container .registration-topbar { margin-bottom: 20px; }
+  .register-container .registration-eyebrow { display: none; }
+  .register-container .form-header { flex-direction: row; align-items: center; gap: 18px; padding: 24px; margin-bottom: 26px; }
+  .register-container .form-header::before, .register-container .form-header::after { left: auto; right: -180px; }
+  .register-container .registration-mark { flex-basis: 52px; width: 52px; height: 52px; border-radius: 16px; }
+  .register-container .registration-mark svg { width: 34px; height: 34px; }
+  .register-container .form-header h1 { font-size: 26px; margin-bottom: 8px; }
+  .register-container .form-header p { font-size: 13px; line-height: 1.5; }
+  .register-container .form-row { flex-direction: row; }
+}
+@media (max-width: 480px) {
+  .register-container { padding: 14px 10px; }
+  .register-container .form-wrapper { padding: 18px; }
+  .register-container .form-header { align-items: flex-start; padding: 22px 18px; gap: 14px; }
+  .register-container .form-header h1 { font-size: 24px; }
+  .register-container .registration-mark { flex-basis: 42px; width: 42px; height: 42px; border-radius: 13px; }
+  .register-container .registration-mark svg { width: 28px; height: 28px; }
+  .register-container .form-row { flex-direction: column; gap: 17px; }
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import './register.css';
+import clinicWaitingRoom from '../../assets/landing-slideshow/bg3.jpeg';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -200,9 +201,24 @@ const Register = () => {
       <canvas id="canvas"></canvas>
       <div className="container">
         <div className="form-wrapper">
+          <div className="registration-topbar">
+            <Link to="/" className="registration-home-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m12 5-7 7 7 7M5 12h14" /></svg>
+              Back to Clinic Homepage
+            </Link>
+            <span className="registration-eyebrow">PATIENT PORTAL</span>
+          </div>
           <div className="form-header">
+            <div className="registration-clinic-image" aria-hidden="true">
+              <img src={clinicWaitingRoom} alt="" />
+            </div>
+            <span className="registration-mark" aria-hidden="true">
+              <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M16 7c-4-3-10-1-10 4 0 4 2 6 3 11 1 5 3 5 4 0 1-4 5-4 6 0 1 5 3 5 4 0 1-5 3-7 3-11 0-5-6-7-10-4Z" /><path d="M12 9c2 1 4 2 7 1" /></svg>
+            </span>
+            <div className="registration-intro-copy">
             <h1>{completingRegistration ? 'Complete Patient Registration' : 'Patient Registration'}</h1>
             <p>{completingRegistration ? 'Complete your patient details to book appointments' : 'Create your account to book appointments'}</p>
+            </div>
           </div>
           
           {generalError && <div className="alert alert-error">{generalError}</div>}
@@ -218,6 +234,7 @@ const Register = () => {
           
           {!successMessage && (
             <form onSubmit={handleSubmit} className="auth-form" id="registrationForm">
+              <div className="registration-section-heading"><span>01</span><h2>Account details</h2><div aria-hidden="true" /></div>
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="first_name">First Name</label>
@@ -345,7 +362,8 @@ const Register = () => {
               </div>}
               
               <div className="form-group">
-                <label htmlFor="address">Address</label>
+                  <div className="registration-section-heading"><span>02</span><h2>Personal details</h2><div aria-hidden="true" /></div>
+                  <label htmlFor="address">Address</label>
                 <textarea
                   id="address"
                   name="address"
@@ -400,7 +418,6 @@ const Register = () => {
           
           <div className="form-footer">
             <p>Already have an account? <Link to="/login">Login here</Link></p>
-            <p><Link to="/">Back to Clinic Homepage</Link></p>
           </div>
         </div>
       </div> 

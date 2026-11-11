@@ -5,13 +5,14 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import './landing.css';
-import hmoPhoto from '../../assets/landing-slideshow/HMO.jpg';
+import hmoPhoto from '../../assets/landing-slideshow/HMO Accreditation.png';
 import clinicPhoto1 from '../../assets/landing-slideshow/bg1.jpeg';
 import clinicPhoto2 from '../../assets/landing-slideshow/bg2.jpeg';
 import clinicPhoto3 from '../../assets/landing-slideshow/bg3.jpeg';
 import clinicPhoto4 from '../../assets/landing-slideshow/bg4.jpeg';
 import clinicPhoto5 from '../../assets/landing-slideshow/bg5.jpeg';
 import DentalLogo from '../../assets/DentalLogo.png';
+import { CLINIC_NAME, CLINIC_ADDRESS, CLINIC_PHONE, CLINIC_LANDLINE, CLINIC_EMAIL, CLINIC_HOURS, CLINIC_DIRECTIONS_URL } from '../../services/clinicDetails';
 
 import { 
   ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Pause, Play, Clock3, Info, MapPin, Menu, Search, X,
@@ -24,6 +25,115 @@ import {
   ShieldAlert,      
   BriefcaseMedical  
 } from 'lucide-react';
+
+const CHAT_TOPICS = [
+  { id: 'booking', label: 'Book appointment', question: 'How do I book an appointment?' },
+  { id: 'pricing', label: 'Treatment pricing', question: 'How much does treatment cost?' },
+  { id: 'services', label: 'Our services', question: 'What services do you offer?' },
+  { id: 'location', label: 'Clinic location', question: 'Where is the clinic?' },
+  { id: 'changes', label: 'Appointment changes', question: 'Can I cancel or reschedule my appointment?' },
+  { id: 'contact', label: 'Contact clinic', question: 'How can I contact the clinic?' },
+  { id: 'status', label: 'Appointment status', question: 'How do I check my appointment status?' },
+  { id: 'hours', label: 'Clinic hours', question: 'What are your clinic hours?' },
+  { id: 'videos', label: 'Procedure videos', question: 'Do you have 3D procedure videos?' },
+  { id: 'payment', label: 'Payments and HMO', question: 'What payment methods and HMO plans do you accept?' },
+  { id: 'aftercare', label: 'Treatment preparation', question: 'How do I prepare for treatment or get aftercare instructions?' },
+];
+const QUICK_CHAT_TOPICS = ['booking', 'pricing', 'services', 'location', 'changes', 'contact'];
+const CLINIC_CONTACT_LINKS = [
+  { label: 'Call clinic', href: 'tel:' + CLINIC_PHONE.replace(/\s/g, '') },
+  { label: 'Email clinic', href: 'mailto:' + CLINIC_EMAIL },
+];
+const normalizeChatText = value => value.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+
+export function getChatReply(question, { services = [], user = null, userType = null } = {}, selectedTopic) {
+  const message = ' ' + normalizeChatText(question) + ' ';
+  const matches = phrases => phrases.some(phrase => message.includes(' ' + phrase + ' '));
+  const serviceAliases = {
+    'light cured restoration': ['tooth filling', 'filling', 'pasta'],
+    'oral prophylaxis': ['cleaning', 'teeth cleaning', 'linis ng ngipin'],
+    'root canal therapy': ['root canal'],
+    orthodontics: ['braces'],
+    'emax veneers': ['veneers'],
+  };
+  const service = services.find(item => {
+    const name = normalizeChatText(item.service_name);
+    return name && matches([name, ...(serviceAliases[name] || [])]);
+  });
+  let topic = selectedTopic;
+  if (!topic) {
+    if (matches(['emergency', 'pain', 'painful', 'bleeding', 'swelling', 'masakit', 'namamaga', 'dumudugo'])) topic = 'urgent';
+    else if (matches(['cancel', 'cancellation', 'reschedule', 'rescheduling', 'resched', 'change appointment', 'change my appointment', 'change the appointment', 'change time', 'change date', 'move appointment', 'move my appointment', 'kansel', 'baguhin', 'ilipat'])) topic = 'changes';
+    else if (matches(['hmo', 'insurance', 'payment', 'payments', 'cash', 'credit card', 'gcash', 'bayad', 'pambayad'])) topic = 'payment';
+    else if (matches(['price', 'prices', 'pricing', 'cost', 'costs', 'how much', 'magkano', 'presyo', 'fee', 'fees'])) topic = 'pricing';
+    else if (matches(['appointment status', 'check my appointment', 'view my appointment', 'open my appointment', 'confirmed', 'approved', 'pending', 'status'])) topic = 'status';
+    else if (matches(['where is', 'where are', 'located', 'location', 'address', 'directions', 'map', 'saan', 'lokasyon'])) topic = 'location';
+    else if (matches(['hours', 'are you open', 'clinic open', 'open today', 'when do you open', 'opening', 'closing', 'clinic schedule', 'clinic hour', 'operating hour', 'anong oras', 'bukas', 'sarado'])) topic = 'hours';
+    else if (matches(['video', 'videos', '3d', 'animation', 'animations'])) topic = 'videos';
+    else if (matches(['aftercare', 'after care', 'prepare', 'preparation', 'before treatment', 'after treatment', 'gamot'])) topic = 'aftercare';
+    else if (matches(['contact', 'phone', 'email', 'telephone', 'number', 'tawag'])) topic = 'contact';
+    else if (matches(['appointment', 'book', 'booking', 'schedule', 'reserve', 'magpa appointment'])) topic = 'booking';
+    else if (service || matches(['services', 'service', 'procedure', 'procedures', 'treatment', 'treatments', 'offer', 'checkup'])) topic = 'services';
+  }
+  const reply = (text, links = [], suggestions = QUICK_CHAT_TOPICS) => ({ text, links, suggestions });
+  const appointmentLinks = user && userType === 'patient'
+    ? [{ label: 'My Appointments', href: '/my-appointments' }]
+    : [{ label: 'Log in', href: '/login' }, { label: 'Register', href: '/register' }];
+
+  switch (topic) {
+    case 'booking':
+      if (user && userType === 'patient') {
+        return reply('Choose a service, dentist, available date and time on the Book Appointment page, then submit your request. Check My Appointments for the clinic’s confirmation.',
+          [{ label: 'Book appointment', href: '/book-appointment' }], ['pricing', 'status']);
+      }
+      if (user && ['admin', 'super_admin'].includes(userType)) {
+        return reply('You can manage clinic bookings from Manage Appointments. Online patient booking is available through a patient account.',
+          [{ label: 'Manage Appointments', href: '/admin/appointments' }], ['services', 'contact']);
+      }
+      return reply('Log in with your patient account, or register and confirm your email first. Then choose a service, dentist, available date and time to request an appointment.',
+        appointmentLinks, ['pricing', 'services']);
+    case 'pricing':
+      return reply('The final price for your treatment will be confirmed after your oral examination.', CLINIC_CONTACT_LINKS, ['services', 'booking']);
+    case 'changes':
+      return reply('Pending appointments can be edited or cancelled within one hour after booking, before the appointment starts. Confirmed appointments require a reschedule or cancellation request at least 24 hours in advance, subject to clinic approval. Open My Appointments to see the actions currently available. For other changes, contact the clinic.',
+        [...appointmentLinks, CLINIC_CONTACT_LINKS[0]], ['status', 'contact']);
+    case 'status':
+      return reply('Open My Appointments after logging in to view your own appointment status. A submitted request is pending until the clinic confirms it.',
+        appointmentLinks, ['changes', 'booking']);
+    case 'location':
+      return reply(CLINIC_NAME + ' is located at ' + CLINIC_ADDRESS + '.',
+        [{ label: 'Get directions', href: CLINIC_DIRECTIONS_URL }, CLINIC_CONTACT_LINKS[0]], ['hours', 'contact']);
+    case 'hours':
+      return reply(CLINIC_HOURS + ' Contact the clinic to confirm holiday hours. Booking dates and times depend on dentist availability.',
+        CLINIC_CONTACT_LINKS, ['location', 'booking']);
+    case 'contact':
+      return reply('You can reach ' + CLINIC_NAME + ' at ' + CLINIC_PHONE + ' or ' + CLINIC_LANDLINE + ', or email ' + CLINIC_EMAIL + '.',
+        CLINIC_CONTACT_LINKS, ['location', 'hours']);
+    case 'payment':
+      return reply('Please contact the clinic to confirm accepted payment methods and whether your HMO or insurance plan covers the treatment. The final treatment price will be confirmed after your oral examination.',
+        CLINIC_CONTACT_LINKS, ['pricing', 'booking']);
+    case 'aftercare':
+      return reply('Preparation and aftercare depend on your procedure and examination findings. Contact the clinic for the instructions provided by your treating dentist.',
+        CLINIC_CONTACT_LINKS, ['services', 'contact']);
+    case 'urgent':
+      return reply('For urgent dental concerns, seek prompt dental care. Call ' + CLINIC_PHONE + ' to check the clinic’s availability.',
+        [CLINIC_CONTACT_LINKS[0]], ['contact', 'hours']);
+    case 'videos':
+      return reply('Open a service’s details and choose View 3D procedure when a video is available.',
+        [{ label: 'Browse services', href: '#services' }], ['services', 'booking']);
+    case 'services':
+      if (service) return reply(service.service_name + '. ' + (service.description || 'Contact the clinic for more information about this treatment.'),
+        [{ label: 'View service details', href: '/service/' + service.service_id }], ['pricing', 'videos', 'booking']);
+      if (!services.length) return reply('The current service list is unavailable. Please contact the clinic for the treatments it offers.',
+        CLINIC_CONTACT_LINKS, ['contact', 'location']);
+      return reply('Some of our current services include ' + services.slice(0, 5).map(item => item.service_name).join(', ') + '. Choose a service to read its details.',
+        [...services.slice(0, 5).map(item => ({ label: item.service_name, href: '/service/' + item.service_id })),
+          { label: 'Browse all services', href: '#services' }], ['pricing', 'videos', 'booking']);
+    default:
+      return reply('Please choose a topic below or ask about booking, services, clinic hours, location, or contacting the clinic.',
+        CLINIC_CONTACT_LINKS);
+  }
+}
 
 const initialServiceCount = 6;
 
@@ -127,7 +237,7 @@ function DeferredClinicMap() {
       {MapComponent ? <MapComponent /> : (
         <div className="clinic-map-placeholder">
           <p role="status">{failed ? 'Clinic map is temporarily unavailable.' : 'Loading clinic map…'}</p>
-          <a href="https://www.google.com/maps/dir/?api=1&destination=Diolata%20Dental%20Clinic%2C%20Imus%20City%2C%20Cavite"
+          <a href={CLINIC_DIRECTIONS_URL}
             target="_blank" rel="noopener noreferrer">Get directions</a>
         </div>
       )}
@@ -149,11 +259,15 @@ const Landing = () => {
   // Chatbot state
   const [chatMessages, setChatMessages] = useState([
     {
-      text: "Hello! I'm your 24/7 ChatBot dental assistant. I can provide instant information about clinic hours, common dental procedures, post-treatment care, and answer frequently asked questions. Support is available even outside clinic hours. How can I help you today?",
+      text: "Hello! I’m the clinic’s automated FAQ assistant. Choose a question below or ask about services, booking, hours, or the clinic location.",
       sender: 'bot'
     }
   ]);
   const [chatInput, setChatInput] = useState('');
+  const [expandedChatTopics, setExpandedChatTopics] = useState(false);
+  const latestChatMessage = chatMessages[chatMessages.length - 1];
+  const chatTopics = expandedChatTopics ? CHAT_TOPICS :
+    (latestChatMessage.suggestions || QUICK_CHAT_TOPICS).map(id => CHAT_TOPICS.find(topic => topic.id === id));
 
   const getServiceIcon = (serviceName) => {
     const name = serviceName.toLowerCase();
@@ -210,7 +324,7 @@ const Landing = () => {
       
       const { data, error } = await supabase
         .from('services')
-        .select('*')
+        .select('service_id, service_name, description, duration_minutes')
         .eq('status', 'active')
         .order('service_name');
 
@@ -239,72 +353,20 @@ const Landing = () => {
     setUserDropdownOpen(!userDropdownOpen);
   };
 
-  const handleChatSubmit = (e) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
+  const sendChatMessage = (question, topic) => {
+    const text = question.trim();
+    if (!text) return;
+    const answer = getChatReply(text, { services, user, userType }, topic);
+    setChatMessages(previous => [...previous, { text, sender: 'user' }, { ...answer, sender: 'bot' }]);
+    setExpandedChatTopics(false);
+  };
 
-    setChatMessages(prev => [...prev, { text: chatInput, sender: 'user' }]);
-    
-    setTimeout(() => {
-      const response = generateBotResponse(chatInput);
-      setChatMessages(prev => [...prev, { text: response, sender: 'bot' }]);
-      
-      setTimeout(() => {
-        const messagesContainer = document.getElementById('chatbot-messages');
-        if (messagesContainer) {
-          messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-      }, 100);
-    }, 1000);
-
+  const handleChatSubmit = event => {
+    event.preventDefault();
+    sendChatMessage(chatInput);
     setChatInput('');
   };
 
-  const generateBotResponse = (userMessage) => {
-    const lowerMessage = userMessage.toLowerCase();
-    
-    if (lowerMessage.includes('hour') || lowerMessage.includes('open') || lowerMessage.includes('time') || 
-        lowerMessage.includes('when are you open') || lowerMessage.includes('clinic hour') || 
-        lowerMessage.includes('operating hour')) {
-      return "Our clinic is open Monday to Friday from 9:00 AM to 5:00 PM, and Saturdays from 10:00 AM to 5:00 PM. We're closed on Sundays and holidays. You can book appointments during these hours.";
-    }
-    
-    if (lowerMessage.includes('procedure') || lowerMessage.includes('service') || lowerMessage.includes('treatment') ||
-        lowerMessage.includes('what do you offer') || lowerMessage.includes('dental procedure') ||
-        lowerMessage.includes('offer')) {
-      if (services.length === 0) return 'Please contact the clinic for its current services while the service list is unavailable.';
-      const serviceList = services.slice(0, 5).map(s => s.service_name).join(', ');
-      return `We offer a comprehensive range of dental procedures including ${serviceList}, and more. You can view all our detailed services above.`;
-    }
-    
-    if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('how much') ||
-        lowerMessage.includes('payment')) {
-      for (const service of services) {
-        if (lowerMessage.includes(service.service_name.toLowerCase())) {
-          return `${service.service_name} costs ₱${Number(service.price).toFixed(2)}. This covers the procedure and professional fee.`;
-        }
-      }
-      return "Our service prices are listed above with each service. We accept various payment methods including cash, credit cards, and insurance.";
-    }
-    
-    if (lowerMessage.includes('appointment') || lowerMessage.includes('book') || lowerMessage.includes('schedule')) {
-      if (user && userType === 'patient') {
-        return "You can book an appointment by clicking any service card above, or go to the Book Appointment page from the navigation menu.";
-      } else {
-        return "To book an appointment, please register for an account first. Once registered, you'll be able to book appointments directly.";
-      }
-    }
-    
-    if (lowerMessage.includes('emergency') || lowerMessage.includes('pain') || lowerMessage.includes('hurt') || lowerMessage.includes('bleeding')) {
-      return "For dental emergencies (severe pain, trauma, swelling, or uncontrolled bleeding): Call our emergency line at (02) 1234-5678 immediately.";
-    }
-    
-    if (lowerMessage.includes('where') || lowerMessage.includes('location') || lowerMessage.includes('address')) {
-      return "We're located at Tanzang Luma 2, Imus City, Cavite, in front of Lumina Mall. Phone: (02) 1234-5678.";
-    }
-    
-    return "Thank you for your message! I can help with clinic hours information, details about common dental procedures, price inquiries, and appointment booking assistance. What specific information would you like?";
-  };
 
   useEffect(() => {
     const messagesContainer = document.getElementById('chatbot-messages');
@@ -461,7 +523,6 @@ const Landing = () => {
                     <h4>{service.service_name}</h4>
                     <p>{service.description || 'Professional dental service'}</p>
                     <div className="treatment-bottom">
-                      <strong>₱{Number(service.price).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                       <span>View Details <ArrowUpRight size={17} aria-hidden="true" /></span>
                     </div>
                   </Link>
@@ -538,30 +599,51 @@ const Landing = () => {
           <div className="section-title">
             <span className="section-kicker">03 / Patient support</span>
             <h2>24/7 ChatBot Dental Assistant</h2>
-            <p>Get instant answers about clinic hours, procedures, and post-care</p>
+            <p>Find answers about booking, services, clinic hours, and location</p>
           </div>
           
           <div className="chatbot-container">
             <div className="chatbot-header">
-              <h3><i className="fas fa-robot"></i> Dental Chatbot Assistant</h3>
-              <p>Available anytime - even outside clinic hours</p>
+              <h3><i className="fas fa-robot"></i> Dental FAQ Assistant</h3>
+              <p>Choose a question or type your own</p>
             </div>
             
             <div className="chatbot-messages" id="chatbot-messages" role="log" aria-label="Dental assistant conversation">
               {chatMessages.map((message, index) => (
                 <div key={index} className={`message ${message.sender}`}>
-                  <div className="message-content">{message.text}</div>
+                  <div className="message-content">
+                    <p>{message.text}</p>
+                    {message.links?.length > 0 && (
+                      <div className="chatbot-answer-links">
+                        {message.links.map(link => link.href.startsWith('/') ? (
+                          <Link key={link.href} to={link.href}>{link.label}</Link>
+                        ) : (
+                          <a key={link.href} href={link.href}
+                            target={link.href.startsWith('https://') ? '_blank' : undefined}
+                            rel={link.href.startsWith('https://') ? 'noopener noreferrer' : undefined}>{link.label}</a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
             
+            <div className="chatbot-topics" aria-label="Suggested questions">
+              {chatTopics.map(topic => (
+                <button key={topic.id} type="button" onClick={() => sendChatMessage(topic.question, topic.id)}>{topic.label}</button>
+              ))}
+              {!expandedChatTopics && (
+                <button type="button" className="chatbot-more-topics" onClick={() => setExpandedChatTopics(true)}>All questions</button>
+              )}
+            </div>
             <form className="chatbot-input" onSubmit={handleChatSubmit}>
               <input
                 type="text"
                 aria-label="Message the dental assistant"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Ask about clinic hours, procedures, or aftercare..."
+                placeholder="Ask about booking, services, or the clinic..."
                 maxLength="500"
               />
               <button type="submit" disabled={!chatInput.trim()}>
@@ -591,7 +673,6 @@ const Landing = () => {
                 <li><a href="#chatbot">Chatbot</a></li>
                 {user && userType === 'patient' ? (
                   <>
-                    <li><Link to="/dashboard">Dashboard</Link></li>
                     <li><Link to="/my-appointments">My Appointments</Link></li>
                     <li><Link to="/profile">My Profile</Link></li>
                   </>
@@ -607,10 +688,10 @@ const Landing = () => {
             <div className="footer-section">
               <h3>Contact Info</h3>
               <ul className="footer-links">
-                <li><i className="fas fa-map-marker-alt"></i> Tanzang Luma 2, Imus City, Cavite</li>
-                <li><i className="fas fa-phone"></i> 046-4723054 / 0930-482-0352</li>
-                <li><i className="fas fa-envelope"></i> diolatadental.clinic@yahoo.com.ph</li>
-                <li><i className="fas fa-clock"></i> Mon-Sat: 9AM-6PM, Sun: Closed </li>
+                <li><i className="fas fa-map-marker-alt"></i> <a href={CLINIC_DIRECTIONS_URL} target="_blank" rel="noopener noreferrer">{CLINIC_ADDRESS}</a></li>
+                <li><i className="fas fa-phone"></i> <a href={"tel:" + CLINIC_LANDLINE}>{CLINIC_LANDLINE}</a> / <a href={"tel:" + CLINIC_PHONE.replace(/\s/g, '')}>{CLINIC_PHONE}</a></li>
+                <li><i className="fas fa-envelope"></i> <a href={"mailto:" + CLINIC_EMAIL}>{CLINIC_EMAIL}</a></li>
+                <li><i className="fas fa-clock"></i> {CLINIC_HOURS}</li>
               </ul>
             </div>
           </div>

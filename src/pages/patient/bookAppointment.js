@@ -47,7 +47,7 @@ const BookAppointment = () => {
       try {
         const { data, error } = await supabase
           .from('services')
-          .select('*')
+          .select('service_id, service_name, duration_minutes')
           .eq('status', 'active')
           .order('service_name');
         if (error) throw error;
@@ -250,6 +250,7 @@ const BookAppointment = () => {
               <label className="form-label required">Dental Service</label>
               <select
                 className="form-control"
+                aria-describedby="service-price-notice"
                 value={selectedServiceId}
                 onChange={(e) => setSelectedServiceId(e.target.value)}
                 required
@@ -257,11 +258,12 @@ const BookAppointment = () => {
                 <option value="">Choose a service...</option>
                 {services.map(service => (
                   <option key={service.service_id} value={service.service_id}>
-                    {service.service_name} - ₱{Number(service.price).toFixed(2)}
+                    {service.service_name}
                     {service.duration_minutes && ` (${Math.floor(service.duration_minutes / 60)}h ${service.duration_minutes % 60}m)`}
                   </option>
                 ))}
               </select>
+              <p id="service-price-notice" className="service-price-notice">The final price for your treatment will be confirmed after your oral examination.</p>
             </div>
           </div>
 

@@ -96,10 +96,16 @@ function ResetPassword() {
   };
 
   return (
-    <div className="forgot-password-container">
+    <div className="forgot-password-container recovery-page">
       <div className="container">
         <div className="form-wrapper">
           <div className="form-header">
+            <div className="recovery-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="10" width="16" height="11" rx="3" />
+                <path d="M8 10V7a4 4 0 0 1 8 0v3M12 15v2" />
+              </svg>
+            </div>
             <h1>Reset Password</h1>
             <p>{recoveryReady ? `Choose a new password for ${email}.` : 'Use the recovery link sent to your email.'}</p>
           </div>
@@ -125,7 +131,7 @@ function ResetPassword() {
             </form>
           )}
           <div className="form-footer">
-            <Link to="/forgot-password">Request a New Reset Email</Link> | <Link to="/login">Back to Login</Link>
+            <Link to="/forgot-password">Request a New Reset Email</Link><span className="recovery-divider" aria-hidden="true" /><Link to="/login">Back to Login</Link>
           </div>
         </div>
       </div>

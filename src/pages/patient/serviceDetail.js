@@ -33,7 +33,7 @@ const ServiceDetails = () => {
 
         const { data: serviceData, error: serviceError } = await supabase
             .from('services')
-            .select('*')
+            .select('service_id, service_name, description, duration_minutes')
             .eq('service_id', id)
             .eq('status', 'active')
             .single();
@@ -134,6 +134,9 @@ const ServiceDetails = () => {
       <div className="service-details-wrapper">
         {/* Header Section */}
         <div className="service-header">
+          <Link to="/" className="btn-back-small">
+            <i className="fas fa-arrow-left"></i> Back to services
+          </Link>
           {serviceVideo ? (
             <div className="service-animation-heading">
               <h1 className="service-title">{service.service_name}</h1>
@@ -157,9 +160,6 @@ const ServiceDetails = () => {
             </span>
             <span className="badge doctors">
               <i className="fas fa-user-md"></i> {doctorCount} specialist{doctorCount !== 1 ? 's' : ''}
-            </span>
-            <span className="badge price">
-              ₱{Number(service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </span>
           </div>
           <p className="service-description">{service.description}</p>
@@ -261,7 +261,6 @@ const ServiceDetails = () => {
           {/* Sidebar */}
           <div className="sidebar-column">
             <div className="booking-card">
-              <div className="booking-price">₱{Number(service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
               <div className="booking-details">
                 <div className="detail-row">
                   <span>Duration</span>
@@ -272,12 +271,10 @@ const ServiceDetails = () => {
                   <strong>{doctorCount}</strong>
                 </div>
               </div>
+              <p className="service-price-notice">The final price for your treatment will be confirmed after your oral examination.</p>
               <button className="btn-book" onClick={handleBookNow}>
                 <i className="fas fa-calendar-plus"></i> Book appointment
               </button>
-              <Link to="/" className="btn-back-small">
-                <i className="fas fa-arrow-left"></i> Back to services
-              </Link>
             </div>
 
             <div className="help-card">

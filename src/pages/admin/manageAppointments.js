@@ -140,7 +140,7 @@ const ManageAppointments = () => {
         .select(`
           *,
           patients!inner (patient_id, first_name, last_name, email, contact_no),
-          doctors!inner (doctor_id, first_name, last_name, specialization),
+          doctors!inner (doctor_id, first_name, last_name),
           services!inner (service_name, price, duration_minutes)
         `)
         .order('appointment_datetime', { ascending: false });
@@ -489,7 +489,7 @@ const ManageAppointments = () => {
             <label>Date</label>
             <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="form-control" />
           </div>
-          <div className="filter-group">
+          <div className="filter-group filter-actions">
             <button className="btn btn-primary" onClick={fetchAppointments}>Apply Filters</button>
             <button className="btn btn-secondary" onClick={() => { setSelectedDoctor('all'); setSelectedStatus('all'); setSelectedDate(''); }}>Clear Filters</button>
           </div>

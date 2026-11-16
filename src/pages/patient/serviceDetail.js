@@ -50,8 +50,7 @@ const ServiceDetails = () => {
             doctors!inner (
                 doctor_id,
                 first_name,
-                last_name,
-                specialization
+                last_name
             )
             `)
             .eq('service_id', id)
@@ -249,7 +248,6 @@ const ServiceDetails = () => {
                       <i className="fas fa-user-circle"></i>
                       <div>
                         <strong>Dr. {doc.first_name} {doc.last_name}</strong>
-                        {doc.specialization && <span>{doc.specialization}</span>}
                       </div>
                     </div>
                   ))}

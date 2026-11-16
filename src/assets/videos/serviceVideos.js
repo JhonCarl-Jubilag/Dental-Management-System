@@ -26,6 +26,4 @@ const serviceVideos = {
   27: deepScalingVideo, // Deep Scaling
 };
 
-// tooth-filling-alternate-animation.mp4 is retained as an alternate export.
-// The clinic selected the existing tooth-filling-animation.mp4 for patients.
 export default serviceVideos;

@@ -21,4 +21,4 @@ if (emailConfirmationCallback.received && callbackUrl.pathname !== '/verify-emai
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Explicit provider fields for browser queries; legacy credentials are excluded.
-export const doctorProfileFields = 'doctor_id, first_name, last_name, email, specialization, contact_no, date_created, status, availability';
+export const doctorProfileFields = 'doctor_id, first_name, last_name, email, contact_no, date_created, status, availability';

@@ -52,7 +52,10 @@ export const createBillingStatementPDF = (statement, assets) => {
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor(...style.navy); pdf.text('Description', M + 3, y + 7); pdf.text('Amount', end - 3, y + 7, { align: 'right' }); y += 11;
   };
   if (y + 35 > bottom) nextPage(); tableHeader();
-  const values = [[statement.procedure, formatStatementMoney(statement.gross)], ['Discount', `-${formatStatementMoney(statement.discount)}`], ['Net amount charged', formatStatementMoney(statement.net)], ['Total paid to date', formatStatementMoney(statement.paid)], ['Remaining balance', formatStatementMoney(statement.balance)]];
+  const values = [[statement.procedure, formatStatementMoney(statement.gross)]];
+  if (statement.discount > 0) values.push(['Discount', `-${formatStatementMoney(statement.discount)}`]);
+  values.push(['Total amount due', formatStatementMoney(statement.net)],
+    ['Amount paid', formatStatementMoney(statement.paid)], ['Balance', formatStatementMoney(statement.balance)]);
   for (const [index, row] of values.entries()) {
     body(9); const lines = wrap(row[0], W - 54); let offset = 0;
     while (offset < lines.length) {
@@ -61,10 +64,10 @@ export const createBillingStatementPDF = (statement, assets) => {
       const capacity = Math.floor((bottom - y - 6) / step);
       if (capacity < 1) { nextPage(); tableHeader(); continue; }
       const take = Math.min(capacity, lines.length - offset), height = Math.max(11, take * step + 6);
-      if (index >= 2) { pdf.setFillColor(...(index === 4 ? style.tint : style.mist)); pdf.rect(M, y, W, height, 'F'); }
+      if (index >= values.length - 3) { pdf.setFillColor(...(index === values.length - 1 ? style.tint : style.mist)); pdf.rect(M, y, W, height, 'F'); }
       pdf.setDrawColor(...style.border); pdf.setLineWidth(.18); pdf.rect(M, y, W, height); pdf.line(end - 48, y, end - 48, y + height);
       body(9); pdf.text(lines.slice(offset, offset + take), M + 3, y + 6, { lineHeightFactor: 1.45 });
-      if (offset === 0) { body(index === 4 ? 10 : 9); pdf.text(row[1], end - 3, y + 6, { align: 'right' }); }
+      if (offset === 0) { body(index === values.length - 1 ? 10 : 9); pdf.text(row[1], end - 3, y + 6, { align: 'right' }); }
       y += height; offset += take;
     }
   }

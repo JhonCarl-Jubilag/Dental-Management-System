@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import { clinicDayBounds, formatClinicDateTime } from '../../utils/clinicScheduling';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import './clinicSettings.css';
+import ManageStaff from './manageStaff';
+import ClinicRecordsBackup from '../../components/admin/ClinicRecordsBackup';
+import { isOwner } from '../../utils/accessControl';
 
 const PAGE_SIZE = 20;
 const EMPTY_FILTERS = { actor: '', module: '', date: '', record: '' };
@@ -32,8 +35,10 @@ const ACTION_LABELS = {
   billing_restored: 'Restored bill',
   treatment_created: 'Created treatment record',
   treatment_updated: 'Updated treatment record',
+  records_recovered: 'Recovered missing records',
 };
 const MODULES = {
+  recovery: { name: 'Record Recovery', record: 'Recovery' },
   appointment: { name: 'Appointments', record: 'Appointment' },
   billing: { name: 'Billing', record: 'Bill' },
   treatment: { name: 'Treatment Records', record: 'Treatment record' },
@@ -59,23 +64,30 @@ const FIELD_LABELS = {
 };
 
 function ActivityDetails({ changes }) {
-  const { from_status, to_status, from_time, to_time, appointment_id, fields } = changes || {};
+  const { from_status, to_status, from_time, to_time, appointment_id, fields, recovered_count, backup_date } = changes || {};
   const timeChanged = Boolean(from_time || to_time);
   const fieldLabels = Array.isArray(fields) ? fields.map(field => FIELD_LABELS[field]).filter(Boolean) : [];
   return (
     <>
+      {recovered_count != null && <div>{recovered_count} missing records recovered{backup_date ? ` from backup dated ${formatClinicDateTime(backup_date)}` : ''}.</div>}
       {to_status && <div>{from_status || '—'} → {to_status}</div>}
       {timeChanged && <div>{from_time ? formatClinicDateTime(from_time) : '—'} → {to_time ? formatClinicDateTime(to_time) : '—'}</div>}
       {appointment_id != null && <div>Appointment #{appointment_id}</div>}
       {fieldLabels.length > 0 && <div>{fieldLabels.join(', ')}</div>}
-      {!to_status && !timeChanged && appointment_id == null && fieldLabels.length === 0 && '—'}
+      {recovered_count == null && !to_status && !timeChanged && appointment_id == null && fieldLabels.length === 0 && '—'}
     </>
   );
 }
 
 const ClinicSettings = () => {
-  const { signOut } = useAuth();
+  const { user, userType, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  const { staffId } = useParams();
+  const [searchParams] = useSearchParams();
+  const allowed = Boolean(user && !authLoading && isOwner(userType));
+  const showStaff = Boolean(staffId) || searchParams.get('section') === 'staff';
+  const showBackup = !showStaff && searchParams.get('section') === 'backup';
+  const showActivity = !showStaff && !showBackup;
   const [draft, setDraft] = useState(EMPTY_FILTERS);
   const [query, setQuery] = useState({ filters: EMPTY_FILTERS, page: 1 });
   const [result, setResult] = useState(null);
@@ -83,6 +95,7 @@ const ClinicSettings = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!allowed || !showActivity) return undefined;
     const controller = new AbortController();
     const load = async () => {
       setLoading(true);
@@ -121,7 +134,7 @@ const ClinicSettings = () => {
     };
     load();
     return () => controller.abort();
-  }, [query]);
+  }, [query, allowed, showActivity]);
 
   const apply = event => {
     event.preventDefault();
@@ -143,6 +156,7 @@ const ClinicSettings = () => {
     navigate('/login', { replace: true });
   };
 
+  if (!allowed) return null;
   return (
     <div className="admin-dashboard">
       <Sidebar onLogout={logout} />
@@ -150,11 +164,22 @@ const ClinicSettings = () => {
         <header className="dashboard-header">
           <div className="header-title">
             <h1>Settings</h1>
-            <p className="welcome-message">Review changes to appointments, billing, and treatment records.</p>
+            <p className="welcome-message">Manage Staff accounts, review clinic activity and back up records.</p>
           </div>
         </header>
 
-        <form className="filters" aria-label="Activity filters" onSubmit={apply}>
+        <nav className="settings-navigation" aria-label="Settings sections">
+          <Link to="/admin/settings?section=staff" className={'btn ' + (showStaff ? 'btn-primary' : 'btn-secondary')}
+            aria-current={showStaff ? 'page' : undefined}>Staff Accounts</Link>
+          <Link to="/admin/settings" className={'btn ' + (showActivity ? 'btn-primary' : 'btn-secondary')}
+            aria-current={showActivity ? 'page' : undefined}>Activity History</Link>
+          <Link to="/admin/settings?section=backup" className={'btn ' + (showBackup ? 'btn-primary' : 'btn-secondary')}
+            aria-current={showBackup ? 'page' : undefined}>Backup &amp; Recovery</Link>
+        </nav>
+
+        {showBackup && <ClinicRecordsBackup key={user.id} />}
+        {showStaff && <ManageStaff key={user.id + ':' + (staffId || 'list')} embedded profileId={staffId || ''} />}
+        {showActivity && <form className="filters" aria-label="Activity filters" onSubmit={apply}>
           <div className="filter-grid">
             <div className="filter-group">
               <label htmlFor="activity-actor">Performed by</label>
@@ -183,9 +208,9 @@ const ClinicSettings = () => {
               <button type="button" className="btn btn-secondary" onClick={clear}>Reset</button>
             </div>
           </div>
-        </form>
+        </form>}
 
-        <section className="table-container" aria-labelledby="activity-heading">
+        {showActivity && <section className="table-container" aria-labelledby="activity-heading">
           <div className="table-header">
             <div>
               <h2 id="activity-heading">Activity History</h2>
@@ -233,7 +258,7 @@ const ClinicSettings = () => {
               )}
             </AdminDataRegion>
           )}
-        </section>
+        </section>}
       </main>
     </div>
   );

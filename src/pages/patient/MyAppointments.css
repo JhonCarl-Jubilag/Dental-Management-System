@@ -820,3 +820,58 @@
     grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   }
 }
+
+/* Appointment-linked treatment records, scoped to the patient appointment page. */
+.my-appointments-page .card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; max-width: 260px; }
+.my-appointments-page .appointment-treatment-status { font-size: 13px; color: var(--clinic-muted, #52677d); margin: 0; text-align: right; }
+.my-appointments-page .appointment-treatment-error { padding: 16px; margin-bottom: 20px; border: 1px solid #edc4c4; border-radius: 12px; background: #fff5f5; color: #8d2424; }
+.my-appointments-page .appointment-treatment-dialog { width: min(580px, calc(100% - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; margin: auto; padding: 24px; border: 1px solid #b9cddc; border-radius: 16px; color: var(--clinic-ink); background: white; box-shadow: 0 20px 60px #0b284733; }
+.my-appointments-page .appointment-treatment-dialog::backdrop { background: #071b38a6; }
+.my-appointments-page .appointment-treatment-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.my-appointments-page .appointment-treatment-heading h2 { margin: 0; font-size: 22px; }
+.my-appointments-page .appointment-treatment-dialog dl { margin: 0 0 24px; }
+.my-appointments-page .appointment-treatment-dialog dl > div { padding: 12px 0; border-bottom: 1px solid var(--clinic-line); overflow-wrap: anywhere; }
+.my-appointments-page .appointment-treatment-dialog dt { font-size: 13px; color: var(--clinic-muted); }
+.my-appointments-page .appointment-treatment-dialog dd { margin: 4px 0 0; font-weight: 600; }
+@media (max-width: 768px) {
+ .my-appointments-page .card-right { max-width: none; align-items: stretch; }
+ .my-appointments-page .appointment-treatment-status { text-align: left; }
+ .my-appointments-page .appointment-treatment-heading .btn-view { width: auto; }
+}
+
+/* Color accents for My Appointments; preserve the existing layout. */
+.my-appointments-page { background: linear-gradient(135deg, #eef5fc 0%, #f8fbfd 55%, #edf7f7 100%); color: var(--clinic-ink); }
+.my-appointments-page .page-header h1 { color: var(--clinic-navy); }
+.my-appointments-page .page-header p { color: #4b6680; }
+.my-appointments-page .controls-bar { border-color: #bfd4e5; }
+.my-appointments-page .filter-select { background: #ffffff; border-color: #b7cfdf; color: #123d68; }
+.my-appointments-page .filter-group i { color: #00718f; }
+.my-appointments-page .pagination-info { color: #4b6680; }
+.my-appointments-page .appointment-card { background: #ffffff; box-shadow: 0 4px 12px #163e6610; }
+.my-appointments-page .appointment-card:hover { box-shadow: 0 8px 24px #163e6620; }
+.my-appointments-page .service-header { background: #edf4fc; }
+.my-appointments-page .service-name { color: #123d68; }
+.my-appointments-page .info-row { color: #405b72; }
+.my-appointments-page .info-row i { color: #00718f; }
+.my-appointments-page .status-pending { background: #fff1cf; color: #855200; }
+.my-appointments-page .status-approved { background: #def4e9; color: #176143; }
+.my-appointments-page .status-cancelled { background: #fce6e9; color: #9b3248; }
+.my-appointments-page .status-done { background: #dceefb; color: #165b86; }
+.my-appointments-page .request-pending { background: #fff3d9; color: #805600; }
+.my-appointments-page .card-right .btn-view { background: var(--clinic-navy); border-color: var(--clinic-navy); color: #ffffff; }
+.my-appointments-page .card-right .btn-view:hover { background: var(--clinic-blue-hover); border-color: var(--clinic-blue-hover); }
+.my-appointments-page .card-right .btn-view + .btn-view { background: #e5f4f3; border-color: #96c7c4; color: #145c60; }
+.my-appointments-page .card-right .btn-view + .btn-view:hover { background: #145c60; border-color: #145c60; color: #ffffff; }
+.my-appointments-page .appointment-treatment-status { color: #526a7e; }
+.my-appointments-page .page-prev, .my-appointments-page .page-next { background: #ffffff; border-color: #b7cfdf; color: #123d68; }
+.my-appointments-page .page-prev:hover:not(:disabled), .my-appointments-page .page-next:hover:not(:disabled) { background: var(--clinic-navy); border-color: var(--clinic-navy); color: #ffffff; }
+.my-appointments-page .page-current { color: #405b72; }
+.my-appointments-page .policy-notice { background: #e3f1f8; color: #34546d; }
+.my-appointments-page .policy-notice strong, .my-appointments-page .policy-notice > i { color: #12547c; }
+.my-appointments-page .no-appointments { background: #ffffff; }
+.my-appointments-page .no-appointments > i { color: #6c9bb9; }
+.my-appointments-page .btn-book { background: var(--clinic-blue); color: #ffffff; }
+.my-appointments-page .btn-book:hover { background: var(--clinic-navy); }
+.my-appointments-page .appointment-modal-header { background: #edf4fc; border-color: #cbdce9; }
+.my-appointments-page .appointment-modal-header h3 { color: var(--clinic-navy); }
+.my-appointments-page .appointment-treatment-heading h2 { color: var(--clinic-navy); }

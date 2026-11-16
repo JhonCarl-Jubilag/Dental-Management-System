@@ -7,7 +7,9 @@ import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
 import { loadDoctorBookingSlots } from '../../services/doctorScheduling';
-import { appointmentWriteError, clinicDateTime, formatClinicDate, formatClinicTime, getClinicDate } from '../../utils/clinicScheduling';
+import { appointmentWriteError, clinicDateTime, formatClinicTime } from '../../utils/clinicScheduling';
+import BookingCalendar from '../patient/BookingCalendar';
+import '../patient/bookAppointment.css';
 import './manualBooking.css';
 
 const ManualBooking = () => {
@@ -16,15 +18,12 @@ const ManualBooking = () => {
 
   const [loading, setLoading] = useState(false);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
-  const [loadingDates, setLoadingDates] = useState(false);
-  const [loadingTimes, setLoadingTimes] = useState(false);
-  const busy = loading || loadingDoctors || loadingDates || loadingTimes;
+  const [revision, setRevision] = useState(0);
+  const busy = loading || loadingDoctors;
   const submitting = useRef(false);
   const [patients, setPatients] = useState([]);
   const [services, setServices] = useState([]);
   const [doctors, setDoctors] = useState([]);
-  const [availableDates, setAvailableDates] = useState([]);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
 
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [patientSearch, setPatientSearch] = useState('');
@@ -99,7 +98,7 @@ const ManualBooking = () => {
           .from('doctor_services')
           .select(`
             doctor_id,
-            doctors!inner (doctor_id, first_name, last_name, specialization, email, contact_no, status)
+            doctors!inner (doctor_id, first_name, last_name, email, contact_no, status)
           `)
           .eq('service_id', selectedServiceId)
           .eq('status', 'active')
@@ -118,57 +117,6 @@ const ManualBooking = () => {
     return () => { cancelled = true; };
   }, [selectedServiceId]);
 
-  // Fetch available dates for selected doctor
-  useEffect(() => {
-    let cancelled = false;
-    const fetchAvailableDates = async () => {
-      if (!selectedDoctorId) { setLoadingDates(false); return; }
-      setLoadingDates(true);
-      try {
-        const today = getClinicDate();
-        const { data, error } = await supabase
-          .from('doctor_availability')
-          .select('available_date')
-          .eq('doctor_id', selectedDoctorId)
-          .eq('is_available', true)
-          .gte('available_date', today)
-          .order('available_date');
-
-        if (error) throw error;
-        if (!cancelled) setAvailableDates([...new Set((data || []).map(d => d.available_date))]);
-      } catch (err) {
-        if (!cancelled) toast.error(err.message);
-      } finally {
-        if (!cancelled) setLoadingDates(false);
-      }
-    };
-    fetchAvailableDates();
-    return () => { cancelled = true; };
-  }, [selectedDoctorId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setAvailableTimeSlots([]);
-    setSelectedTime('');
-    if (!selectedDoctorId || !selectedDate || !selectedServiceId) { setLoadingTimes(false); return; }
-    const fetchTimeSlots = async () => {
-      setLoadingTimes(true);
-      try {
-        const slots = await loadDoctorBookingSlots({
-          doctorId: selectedDoctorId, serviceId: selectedServiceId, date: selectedDate,
-          interval: selectedServiceDuration,
-        });
-        if (!cancelled) setAvailableTimeSlots(slots.map(slot => slot.time));
-      } catch (err) {
-        if (!cancelled) { toast.error(err.message); setAvailableTimeSlots([]); }
-      } finally {
-        if (!cancelled) setLoadingTimes(false);
-      }
-    };
-    fetchTimeSlots();
-    return () => { cancelled = true; };
-  }, [selectedDoctorId, selectedDate, selectedServiceId, selectedServiceDuration]);
-
   const handleServiceChange = (e) => {
     const serviceId = e.target.value;
     setSelectedServiceId(serviceId);
@@ -178,8 +126,7 @@ const ManualBooking = () => {
     setSelectedDate('');
     setSelectedTime('');
     setDoctors([]);
-    setAvailableDates([]);
-    setAvailableTimeSlots([]);
+
   };
 
   const handleSubmit = async (e) => {
@@ -201,7 +148,7 @@ const ManualBooking = () => {
       });
       if (!slots.some(slot => slot.time === selectedTime)) {
         setSelectedTime('');
-        setAvailableTimeSlots(slots.map(slot => slot.time));
+        setRevision(value => value + 1);
         throw new Error('Time slot no longer available. Please choose another time.');
       }
       // Insert appointment as 'confirmed' (walk‑in)
@@ -248,8 +195,7 @@ const ManualBooking = () => {
       setSelectedTime('');
       setNotes('');
       setDoctors([]);
-      setAvailableDates([]);
-      setAvailableTimeSlots([]);
+
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -294,7 +240,7 @@ const ManualBooking = () => {
           <form onSubmit={handleSubmit} className="booking-form">
             {/* Patient Section */}
             <div className="form-section">
-              <h2><i className="fas fa-user-injured"></i> Patient</h2>
+              <h2><i className="fas fa-user-injured"></i> Select Patient</h2>
               <div className="form-group">
                 <label className="required">Search / Select Patient</label>
                 <div className="patient-search-wrapper">
@@ -336,7 +282,7 @@ const ManualBooking = () => {
 
             {/* Service Section */}
             <div className="form-section">
-              <h2><i className="fas fa-tooth"></i> Service</h2>
+              <h2><i className="fas fa-tooth"></i> Select Service</h2>
               <div className="form-group">
                 <label className="required">Dental Service</label>
                 <select className="form-control" value={selectedServiceId} onChange={handleServiceChange} required>
@@ -350,98 +296,36 @@ const ManualBooking = () => {
               </div>
             </div>
 
-            {/* Doctor Section */}
-            <div className="form-section">
-              <h2><i className="fas fa-user-md"></i> Specialist</h2>
+            {selectedServiceId && <div className="form-section">
+              <h2><i className="fas fa-user-md" /> Select Specialist</h2>
               <div className="form-group">
-                <label className="required">Doctor</label>
-                {selectedServiceId ? (
-                  <select
-                    className="form-control"
-                    value={selectedDoctorId}
-                    onChange={e => {
-                      setSelectedDoctorId(e.target.value);
-                      setSelectedDate(''); setSelectedTime('');
-                      setAvailableDates([]); setAvailableTimeSlots([]);
-                    }}
-                    required
-                  >
-                    <option value="">Select a doctor...</option>
-                    {doctors.map(d => (
-                      <option key={d.doctor_id} value={d.doctor_id}>
-                        Dr. {d.first_name} {d.last_name} – {d.specialization}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="info-message">Select a service first to see available doctors.</div>
-                )}
+                <label className="required">Available Doctors</label>
+                {loadingDoctors ? <p role="status">Loading doctors...</p> : !doctors.length ? <div className="info-message">No doctors available for this service.</div> :
+                  <div className="manual-doctor-options" role="group" aria-label="Available Doctors">
+                    {doctors.map(d => <button type="button" key={d.doctor_id} disabled={loading}
+                      className={'manual-doctor-option' + (String(selectedDoctorId) === String(d.doctor_id) ? ' selected' : '')}
+                      aria-pressed={String(selectedDoctorId) === String(d.doctor_id)}
+                      onClick={() => { if (String(selectedDoctorId) !== String(d.doctor_id)) { setSelectedDoctorId(String(d.doctor_id)); setSelectedDate(''); setSelectedTime(''); } }}>
+                      <span className="manual-doctor-avatar" aria-hidden="true">{d.first_name?.[0]}{d.last_name?.[0]}</span>
+                      <span className="manual-doctor-info"><strong>Dr. {d.first_name} {d.last_name}</strong>
+                        <span className="manual-doctor-contacts"><span><i className="fas fa-envelope" aria-hidden="true" /> {d.email}</span><span><i className="fas fa-phone" aria-hidden="true" /> {d.contact_no || 'N/A'}</span></span>
+                      </span>
+                    </button>)}
+                  </div>}
               </div>
-            </div>
+            </div>}
 
-            {/* Date Section */}
-            <div className="form-section">
-              <h2><i className="fas fa-calendar-alt"></i> Date & Time (Philippine time)</h2>
-              <div className="form-group">
-                <label className="required">Date</label>
-                <select
-                  className="form-control"
-                  value={selectedDate}
-                  onChange={e => {
-                    setSelectedDate(e.target.value); setSelectedTime(''); setAvailableTimeSlots([]);
-                  }}
-                  disabled={!selectedDoctorId}
-                  required
-                >
-                  <option value="">Select a date...</option>
-                  {availableDates.map(date => (
-                    <option key={date} value={date}>
-                      {formatClinicDate(date)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Time Slots */}
-              {selectedDate && (
-                <div className="form-group">
-                  <label className="required">Available Time Slots</label>
-                  {loadingTimes ? (
-                    <div className="loading-slots">Loading available slots...</div>
-                  ) : availableTimeSlots.length > 0 ? (
-                    <div className="time-slots-grid">
-                      {availableTimeSlots.map(time => (
-                        <button
-                          key={time}
-                          type="button"
-                          className={`time-slot-btn ${selectedTime === time ? 'selected' : ''}`}
-                          onClick={() => setSelectedTime(time)}
-                        >
-                          {formatClinicTime(time)}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="info-message">No available time slots for this date.</div>
-                  )}
-                  {selectedTime && (
-                    <div className="selected-time-info">
-                      <i className="fas fa-clock"></i> Selected time: {formatClinicTime(selectedTime)}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selectedServiceDuration && selectedDate && (
-                <div className="duration-info">
-                  <i className="fas fa-clock"></i> This service takes {selectedServiceDuration} minutes.
-                </div>
-              )}
-            </div>
+            {selectedDoctorId && <div className="form-section">
+              <h2><i className="fas fa-calendar-alt" /> Select Date & Time</h2>
+              <BookingCalendar key={selectedServiceId + ':' + selectedDoctorId} doctorId={selectedDoctorId} serviceId={selectedServiceId}
+                interval={selectedServiceDuration} leadMinutes={0} date={selectedDate} time={selectedTime}
+                setDate={setSelectedDate} setTime={setSelectedTime} revision={revision} locked={loading} />
+              <div className="duration-info"><i className="fas fa-clock" /> This service takes {selectedServiceDuration} minutes.{selectedTime && ' Selected time: ' + formatClinicTime(selectedTime)}</div>
+            </div>}
 
             {/* Notes Section */}
             <div className="form-section">
-              <h2><i className="fas fa-notes-medical"></i> Notes</h2>
+              <h2><i className="fas fa-notes-medical"></i> Additional Information</h2>
               <div className="form-group">
                 <label>Additional Information (optional)</label>
                 <textarea
@@ -458,7 +342,7 @@ const ManualBooking = () => {
               <button type="button" className="btn btn-secondary" onClick={() => navigate('/admin/appointments')}>
                 Cancel
               </button>
-              <button type="submit" className="btn btn-primary" disabled={busy}>
+              <button type="submit" className="btn btn-primary" disabled={busy || !selectedPatient || !selectedServiceId || !selectedDoctorId || !selectedDate || !selectedTime}>
                 {loading ? 'Booking...' : 'Book Appointment (Confirmed)'}
               </button>
             </div>

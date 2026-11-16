@@ -251,15 +251,6 @@
   margin-top: 2px;
 }
 
-.specialization-badge {
-  background: var(--clinic-tint);
-  color: #1565c0;
-  padding: 5px 10px;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  display: inline-block;
-}
 
 .text-muted {
   color: var(--clinic-muted);
@@ -604,3 +595,20 @@
 .provider-cutover-notice details { margin-top: 16px; }
 .provider-cutover-notice summary { cursor: pointer; font-weight: 600; }
 .provider-cutover-notice ul { padding-left: 22px; line-height: 1.8; overflow-wrap: anywhere; }
+
+/* Compact filters specific to Manage Doctors. */
+.admin-dashboard.admin-doctors .filters { padding: 18px 22px; }
+.admin-dashboard.admin-doctors .filters .filter-grid { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 16px; }
+.admin-dashboard.admin-doctors .filters .filter-grid > .filter-group { flex: 0 1 280px; }
+.admin-dashboard.admin-doctors .filters .filter-grid > .filter-group:nth-child(2) { flex-basis: 180px; }
+.admin-dashboard.admin-doctors .filters .filter-grid > .filter-actions { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 10px; }
+.admin-dashboard.admin-doctors .filters .filter-actions .btn { width: auto; min-width: 78px; margin: 0; }
+.admin-dashboard.admin-doctors .filters .filter-group > label { margin-bottom: 6px; font-size: 13px; }
+.admin-dashboard.admin-doctors .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.admin-dashboard.admin-doctors .stats-grid > .stat-card { padding: 18px 22px; }
+@media (max-width: 700px) {
+ .admin-dashboard.admin-doctors .filters .filter-grid > .filter-group { flex: 1 1 220px; }
+ .admin-dashboard.admin-doctors .filters .filter-grid > .filter-group:nth-child(2) { flex: 1 1 140px; }
+ .admin-dashboard.admin-doctors .filters .filter-grid > .filter-actions { flex: 0 0 auto; }
+ .admin-dashboard.admin-doctors .stats-grid { grid-template-columns: minmax(0, 1fr); }
+}

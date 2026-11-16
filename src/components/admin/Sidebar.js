@@ -10,6 +10,8 @@ const Sidebar = ({ onLogout }) => {
   const { userType } = useAuth();
   
   const isActive = (path) => location.pathname === path;
+  const settingsActive = location.pathname.startsWith('/admin/settings')
+    || (isOwner(userType) && isActive('/admin/attendance'));
 
   return (
 <div className="sidebar">
@@ -69,13 +71,6 @@ const Sidebar = ({ onLogout }) => {
         </li>
         
         <li>
-          <Link to="/admin/reports" className={`sidebar-link ${isActive('/admin/reports') ? 'active' : ''}`}>
-            <i className="fas fa-chart-bar nav-icon"></i>
-            <span>Reports</span>
-          </Link>
-        </li>
-        
-        <li>
           <Link to="/admin/inventory" className={`sidebar-link ${isActive('/admin/inventory') ? 'active' : ''}`}>
             <i className="fas fa-boxes nav-icon"></i>
             <span>Inventory</span>
@@ -83,21 +78,15 @@ const Sidebar = ({ onLogout }) => {
         </li>
         
         <li>
-          <Link to="/admin/attendance" className={`sidebar-link ${isActive('/admin/attendance') ? 'active' : ''}`}>
-            <i className="fas fa-clock nav-icon"></i>
-            <span>Daily Time Records</span>
+          <Link to="/admin/reports" className={`sidebar-link ${isActive('/admin/reports') ? 'active' : ''}`}>
+            <i className="fas fa-chart-bar nav-icon"></i>
+            <span>Reports</span>
           </Link>
         </li>
-
+        
         {isOwner(userType) && <li>
-          <Link to="/admin/staff" className={`sidebar-link ${isActive('/admin/staff') ? 'active' : ''}`}>
-            <i className="fas fa-user-shield nav-icon"></i>
-            <span>Staff accounts</span>
-          </Link>
-        </li>}
-        {isOwner(userType) && <li>
-          <Link to="/admin/settings" aria-label="Settings" aria-current={isActive('/admin/settings') ? 'page' : undefined}
-            className={`sidebar-link ${isActive('/admin/settings') ? 'active' : ''}`}>
+          <Link to="/admin/settings" aria-label="Settings" aria-current={settingsActive ? 'page' : undefined}
+            className={`sidebar-link ${settingsActive ? 'active' : ''}`}>
             <i className="fas fa-cog nav-icon" aria-hidden="true"></i>
             <span>Settings</span>
           </Link>

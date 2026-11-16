@@ -17,6 +17,7 @@ import VerifyResetToken from './pages/public/VerifyResetToken';
 // Patient Pages
 import Profile from './pages/patient/profile';
 import MyAppointments from './pages/patient/myAppointments';
+import TreatmentHistory from './pages/patient/treatmentHistory';
 import BookAppointment from './pages/patient/bookAppointment';
 
 
@@ -30,7 +31,6 @@ import ManualBooking from './pages/admin/manualBooking';
 import Billing from './pages/admin/manageBilling';
 import Reports from './pages/admin/reports';
 import ManageInventory from './pages/admin/manageInventory';
-import ManageStaff from './pages/admin/manageStaff';
 import DailyTimeRecords from './pages/admin/dailyTimeRecords';
 import ClinicSettings from './pages/admin/clinicSettings';
 
@@ -94,6 +94,11 @@ function AppRoutes() {
       <Route path="/my-appointments" element={
         <ProtectedRoute allowedUserType="patient">
           <MyAppointments />
+        </ProtectedRoute>
+      } />
+      <Route path="/treatment-history" element={
+        <ProtectedRoute allowedUserType="patient">
+          <TreatmentHistory />
         </ProtectedRoute>
       } />
       <Route path="/profile" element={
@@ -166,7 +171,13 @@ function AppRoutes() {
 
       <Route path="/admin/staff" element={
         <ProtectedRoute allowedUserType="super_admin">
-          <ManageStaff />
+          <Navigate to="/admin/settings?section=staff" replace />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/admin/settings/staff/:staffId" element={
+        <ProtectedRoute allowedUserType="super_admin">
+          <ClinicSettings />
         </ProtectedRoute>
       } />
 

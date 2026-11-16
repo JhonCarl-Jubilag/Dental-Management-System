@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import { isOwner } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
+import { StaffAttendanceRecords } from './dailyTimeRecords';
+import { formatClinicDateTime } from '../../utils/clinicScheduling';
 import './manageStaff.css';
 
 const staffPasswordLimits = { minLength: 12, maxLength: 4096 };
@@ -39,7 +41,7 @@ const manageStaffAccount = async body => {
   return data;
 };
 
-const ManageStaff = () => {
+const ManageStaff = ({ embedded = false, profileId = '' }) => {
   const { user, userType, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const allowed = Boolean(user && isOwner(userType));
@@ -53,6 +55,7 @@ const ManageStaff = () => {
   const [form, setForm] = useState(emptyForm);
   const [mode, setMode] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState(null);
+  const [editSection, setEditSection] = useState('details');
   const [editNames, setEditNames] = useState({ first_name: '', last_name: '' });
   const [editEmail, setEditEmail] = useState('');
   const [editPasswords, setEditPasswords] = useState(emptyPasswords);
@@ -68,6 +71,20 @@ const ManageStaff = () => {
     const version = ++request.current;
     setLoading(true); setError('');
     try {
+      if (profileId) {
+        const id = Number(profileId);
+        if (!/^[1-9]\d*$/.test(String(profileId)) || !Number.isSafeInteger(id)) throw new Error('Choose a valid Staff account.');
+        const { data, error: profileError } = await supabase.from('admin')
+          .select('admin_id, first_name, last_name, email, status, date_created, auth_user_id')
+          .eq('role', 'admin').eq('admin_id', id).maybeSingle();
+        if (profileError) throw new Error('Could not load this Staff account. Please refresh.');
+        if (!data || data.admin_id !== id) throw new Error('Staff account not found.');
+        const { auth_user_id, ...profile } = data;
+        if (version === request.current) {
+          setStaffAccounts([{ ...profile, linked: Boolean(auth_user_id) }]); setTotal(1); setHasLoaded(true);
+        }
+        return;
+      }
       const result = await manageStaffAccount({ action: 'list', page });
       if (!Array.isArray(result.staff) || !Number.isSafeInteger(result.total) || result.page_size !== 10) {
         throw new Error('Staff accounts could not be loaded. Please refresh.');
@@ -78,15 +95,16 @@ const ManageStaff = () => {
     } catch (err) {
       if (version === request.current) setError(err.message);
     } finally { if (version === request.current) setLoading(false); }
-  }, [allowed, page]);
+  }, [allowed, page, profileId]);
   useEffect(() => { load(); return () => { request.current += 1; }; }, [load]);
 
   const closeForm = () => {
-    setMode(null); setSelectedStaff(null); setForm(emptyForm);
+    setMode(null); setSelectedStaff(null); setForm(emptyForm); setEditSection('details');
     setEditNames({ first_name: '', last_name: '' }); setEditEmail(''); setNameSnapshot(null);
     setEditPasswords(emptyPasswords);
   };
-  const openEdit = staff => {
+  const openEdit = (staff, section = 'details') => {
+    setEditSection(section); setEditPasswords(emptyPasswords);
     setSelectedStaff(staff); setEditNames({ first_name: staff.first_name, last_name: staff.last_name });
     setEditEmail(staff.email); setNameSnapshot(staffSnapshot(staff)); setMode('edit');
   };
@@ -178,20 +196,33 @@ const ManageStaff = () => {
     }
   };
 
+  useEffect(() => {
+    const closeMenus = event => {
+      if (event.target.closest?.('.staff-actions-menu')) return;
+      document.querySelectorAll('.staff-account-page .staff-actions-menu[open]').forEach(menu => { menu.open = false; });
+    };
+    document.addEventListener('pointerdown', closeMenus);
+    return () => document.removeEventListener('pointerdown', closeMenus);
+  }, []);
+
   if (authLoading || !allowed) return null;
+  const Content = embedded ? 'section' : 'main';
+  const Heading = embedded ? 'h2' : 'h1';
   return (
-    <div className="admin-dashboard">
-      <Sidebar onLogout={async () => { await signOut(); navigate('/login'); }} />
-      <main className="main-content staff-account-page">
+    <div className={embedded ? undefined : 'admin-dashboard'}>
+      {!embedded && <Sidebar onLogout={async () => { await signOut(); navigate('/login'); }} />}
+      <Content className={embedded ? 'staff-account-page' : 'main-content staff-account-page'}>
         <div className="staff-account-heading">
-          <h1>Staff accounts {hasLoaded && <span className="staff-account-count">{total}</span>}</h1>
+          <Heading>{profileId ? 'Staff details' : <>Staff accounts {hasLoaded && <span className="staff-account-count">{total}</span>}</>}</Heading>
           <div className="staff-heading-actions">
+            {profileId && <Link to="/admin/settings?section=staff" className="staff-refresh-button">Back to Staff Accounts</Link>}
+            <Link to="/admin/attendance" className="staff-refresh-button">View All Daily Time Records</Link>
             <button type="button" className="staff-refresh-button" onClick={() => load()} disabled={loading || busy || Boolean(mode)}>
               <i className={`fas fa-sync-alt${loading ? ' fa-spin' : ''}`} aria-hidden="true"></i> Refresh
             </button>
-            <button type="button" className="staff-submit-button" disabled={loading || busy || Boolean(error) || Boolean(mode)} onClick={() => { setForm(emptyForm); setMode('create'); }}>
+            {!profileId && <button type="button" className="staff-submit-button" disabled={loading || busy || Boolean(error) || Boolean(mode)} onClick={() => { setForm(emptyForm); setMode('create'); }}>
               <i className="fas fa-plus" aria-hidden="true"></i> Add Staff
-            </button>
+            </button>}
           </div>
         </div>
         {loading && !hasLoaded && <div className="staff-account-state" role="status">Loading Staff accounts…</div>}
@@ -222,10 +253,10 @@ const ManageStaff = () => {
         </form>}
         {mode === 'edit' && selectedStaff && <section className="staff-account-card staff-account-editor" aria-label="Edit Staff account">
           <div className="staff-form-heading staff-editor-heading">
-            <h2>Edit Staff account</h2>
+            <h2>{editSection === 'email' ? 'Change login email' : editSection === 'password' ? 'Change password' : 'Edit Staff details'}</h2>
             <button type="button" className="staff-refresh-button" disabled={busy} onClick={closeForm}>Done</button>
           </div>
-          <form onSubmit={saveNames} aria-label="Staff name">
+          {editSection === 'details' && <form onSubmit={saveNames} aria-label="Staff name">
             <fieldset disabled={busy}>
               <div className="staff-form-grid">
                 <div className="staff-form-field"><label htmlFor="staff-edit-first-name">First name</label>
@@ -235,16 +266,16 @@ const ManageStaff = () => {
               </div>
               <div className="staff-name-actions"><button type="submit" className="staff-submit-button">{busy ? 'Saving…' : 'Save details'}</button></div>
             </fieldset>
-          </form>
-          <form onSubmit={saveEmail} className="staff-email-editor" aria-label="Staff login email">
+          </form>}
+          {editSection === 'email' && <form onSubmit={saveEmail} className="staff-email-editor" aria-label="Staff login email">
             <fieldset disabled={busy}>
               <div className="staff-form-field"><label htmlFor="staff-edit-email">Login email</label>
                 <input id="staff-edit-email" type="email" required maxLength={254} autoComplete="off" aria-describedby="staff-email-hint" value={editEmail} onChange={event => setEditEmail(event.target.value)} />
                 <small id="staff-email-hint">Changing this address also changes the Staff login email.</small></div>
               <button type="submit" className="staff-submit-button" disabled={editEmail.trim().toLowerCase() === selectedStaff.email.toLowerCase()}>Update email</button>
             </fieldset>
-          </form>
-          <form onSubmit={savePassword} className="staff-password-editor" aria-labelledby="staff-password-heading">
+          </form>}
+          {editSection === 'password' && <form onSubmit={savePassword} className="staff-password-editor" aria-labelledby="staff-password-heading">
             <fieldset disabled={busy}>
               <div className="staff-form-grid">
                 <div className="staff-form-field staff-form-field-wide">
@@ -258,37 +289,66 @@ const ManageStaff = () => {
                 <button type="submit" className="staff-submit-button">Change password</button>
               </div>
             </fieldset>
-          </form>
+          </form>}
         </section>}
-        {hasLoaded && <div className="staff-account-grid">
+        {hasLoaded && <div className={'staff-account-grid' + (profileId ? ' staff-profile-grid' : '')}>
           {staffAccounts.map(staff => <section key={staff.admin_id} className="staff-account-card" aria-label={`Staff account: ${staff.first_name} ${staff.last_name}`}>
             <div className="staff-profile-heading">
               <div className="staff-profile-identity">
                 <span className="staff-profile-avatar" aria-hidden="true">{staff.first_name?.charAt(0)}{staff.last_name?.charAt(0)}</span>
-                <div><span className="staff-profile-label">Clinic staff</span><h2>{staff.first_name} {staff.last_name}</h2></div>
+                <div><span className="staff-profile-label">Clinic staff</span><h2>{profileId ? <>{staff.first_name} {staff.last_name}</> : (
+                  <Link className="staff-profile-link" to={'/admin/settings/staff/' + staff.admin_id}
+                    aria-label={'View details and time records for ' + staff.first_name + ' ' + staff.last_name}
+                    aria-disabled={busy || loading || Boolean(error) || Boolean(mode)}
+                    onClick={event => { if (busy || loading || error || mode) event.preventDefault(); }}>
+                    {staff.first_name} {staff.last_name}
+                  </Link>
+                )}</h2></div>
               </div>
-              <span className={`staff-status-badge ${staff.status === 'active' ? 'staff-status-active' : 'staff-status-inactive'}`}><span aria-hidden="true"></span>{staff.status === 'active' ? 'Active' : 'Inactive'}</span>
+              <div className="staff-profile-controls">
+                <span className={'staff-status-badge ' + (staff.status === 'active' ? 'staff-status-active' : 'staff-status-inactive')}><span aria-hidden="true"></span>{staff.status === 'active' ? 'Active' : 'Inactive'}</span>
+                <details className="staff-actions-menu" name="staff-account-actions"
+                  onKeyDown={event => {
+                    if (event.key === 'Escape') {
+                      event.currentTarget.open = false;
+                      event.currentTarget.querySelector('summary').focus();
+                    }
+                  }}>
+                  <summary aria-label={'Actions for ' + staff.first_name + ' ' + staff.last_name}><span aria-hidden="true">⋮</span></summary>
+                  <div className="staff-actions-list" role="group" aria-label={'Account actions for ' + staff.first_name + ' ' + staff.last_name}>
+                    <button type="button" onClick={event => { event.currentTarget.closest('details').open = false; openEdit(staff, 'details'); }}
+                      disabled={busy || loading || Boolean(error) || Boolean(mode) || !staff.linked}>Edit details</button>
+                    <button type="button" onClick={event => { event.currentTarget.closest('details').open = false; openEdit(staff, 'email'); }}
+                      disabled={busy || loading || Boolean(error) || Boolean(mode) || !staff.linked}>Change login email</button>
+                    <button type="button" onClick={event => { event.currentTarget.closest('details').open = false; openEdit(staff, 'password'); }}
+                      disabled={busy || loading || Boolean(error) || Boolean(mode) || !staff.linked}>Change password</button>
+                    <button type="button" className={staff.status === 'active' ? 'staff-menu-disable' : ''}
+                      onClick={event => { event.currentTarget.closest('details').open = false; changeStatus(staff); }}
+                      disabled={busy || loading || Boolean(error) || Boolean(mode) || !staff.linked}>
+                      {staff.status === 'active' ? 'Disable access' : 'Enable access'}
+                    </button>
+                  </div>
+                </details>
+
+              </div>
             </div>
             <dl className="staff-account-details">
               <div><dt>Email address</dt><dd>{staff.email}</dd></div>
               <div><dt>Account role</dt><dd>Admin / Staff</dd></div>
+              {profileId && <><div><dt>Staff ID</dt><dd>#{staff.admin_id}</dd></div><div><dt>Account created</dt><dd>{Number.isFinite(Date.parse(staff.date_created)) ? formatClinicDateTime(staff.date_created) : 'Not recorded'}</dd></div></>}
             </dl>
             {!staff.linked && <p className="staff-account-error staff-account-link-error" role="alert">This Staff account has no linked login. Review the account before editing.</p>}
-            <div className="staff-access-settings">
-              <button type="button" className="staff-edit-button" onClick={() => openEdit(staff)} disabled={busy || loading || Boolean(error) || Boolean(mode) || !staff.linked} aria-label={`Edit details for ${staff.first_name} ${staff.last_name}`}>Edit details</button>
-              <button type="button" className={`staff-access-button ${staff.status === 'active' ? 'staff-access-disable' : 'staff-access-enable'}`} onClick={() => changeStatus(staff)} disabled={busy || loading || Boolean(error) || Boolean(mode) || !staff.linked} aria-label={`${staff.status === 'active' ? 'Disable' : 'Enable'} access for ${staff.first_name} ${staff.last_name}`}>
-                {staff.status === 'active' ? 'Disable access' : 'Enable access'}
-              </button>
-            </div>
+
           </section>)}
         </div>}
+        {profileId && hasLoaded && staffAccounts[0] && <StaffAttendanceRecords staffId={staffAccounts[0].admin_id} />}
         {hasLoaded && !error && staffAccounts.length === 0 && !mode && <div className="staff-account-state">No Staff accounts yet. Select Add Staff to create one.</div>}
         {total > 10 && <nav className="staff-pagination" aria-label="Staff account pages">
           <button type="button" className="staff-refresh-button" disabled={page === 1 || loading || busy || Boolean(mode)} onClick={() => setPage(current => current - 1)}>Previous</button>
           <span>Page {page} of {Math.ceil(total / 10)}</span>
           <button type="button" className="staff-refresh-button" disabled={page >= Math.ceil(total / 10) || loading || busy || Boolean(mode)} onClick={() => setPage(current => current + 1)}>Next</button>
         </nav>}
-      </main>
+      </Content>
       <ToastContainer position="bottom-right" autoClose={3000} />
     </div>
   );

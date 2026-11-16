@@ -28,3 +28,34 @@
 .clinic-settings .activity-unavailable {
   padding: var(--admin-panel-padding);
 }
+
+.clinic-settings .settings-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: var(--admin-section-gap);
+}
+
+.clinic-records-backup { display: grid; gap: var(--admin-section-gap, 24px); }
+.clinic-records-backup .records-backup-panel { padding: var(--admin-panel-padding, 24px); }
+.clinic-records-backup h2 { margin: 0 0 8px; color: var(--clinic-navy, #0c2e60); font-size: 20px; }
+.clinic-records-backup h3 { margin: 0 0 10px; color: var(--clinic-navy, #0c2e60); font-size: 17px; }
+.clinic-records-backup p { margin: 0 0 18px; line-height: 1.6; }
+.clinic-records-backup .records-backup-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; margin: 24px 0; }
+.clinic-records-backup .records-backup-actions > div { min-width: 0; }
+.clinic-records-backup label { display: block; margin-bottom: 10px; font-weight: 600; }
+.clinic-records-backup input[type="file"] { display: block; width: 100%; margin: 0 0 16px; color: var(--clinic-navy, #0c2e60); }
+.clinic-records-backup input[type="file"]::file-selector-button { padding: 9px 12px; margin-right: 12px; border: 1px solid #b5c9da; border-radius: 6px; background: #f3f7fb; color: #123c69; cursor: pointer; }
+.clinic-records-backup .btn { white-space: normal; min-height: 44px; }
+.clinic-records-backup .records-backup-note { margin: 18px 0 0; color: var(--clinic-muted, #52677d); font-size: 13px; }
+.clinic-records-backup .records-backup-error, .clinic-records-backup .records-backup-success { padding: 16px; border-radius: 8px; margin: 0; border: 1px solid; overflow-wrap: anywhere; }
+.clinic-records-backup .records-backup-error { color: #8c2424; background: #fff5f5; border-color: #ecc5c5; }
+.clinic-records-backup .records-backup-success { color: #196044; background: #f0faf5; border-color: #bddfcd; }
+.clinic-records-backup .records-backup-confirm { display: flex; align-items: flex-start; gap: 12px; margin: 24px 0 16px; line-height: 1.6; font-weight: 500; }
+.clinic-records-backup .records-backup-confirm input { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 4px; accent-color: #0c2e60; }
+.clinic-records-backup .records-backup-issues { margin-top: 20px; line-height: 1.7; }
+.clinic-records-backup .records-backup-issues summary { cursor: pointer; font-weight: 600; }
+.clinic-records-backup .records-backup-issues ul { padding-left: 24px; }
+@media (max-width: 1000px) {
+  .clinic-records-backup .records-backup-actions { grid-template-columns: 1fr; gap: 28px; }
+}

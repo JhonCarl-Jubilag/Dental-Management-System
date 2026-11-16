@@ -36,11 +36,9 @@ const ManageDoctors = () => {
   const [loadError, setLoadError] = useState(null);
   const [doctors, setDoctors] = useState([]);
   const [allServices, setAllServices] = useState([]);
-  const [specializations, setSpecializations] = useState([]);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [specializationFilter, setSpecializationFilter] = useState('');
   const [totalDoctors, setTotalDoctors] = useState(0);
   const [activeDoctors, setActiveDoctors] = useState(0);
 
@@ -62,7 +60,7 @@ const ManageDoctors = () => {
     first_name: '',
     last_name: '',
     email: '',
-    specialization: '',
+
     contact_no: '',
     service_ids: []
   });
@@ -71,7 +69,7 @@ const ManageDoctors = () => {
     first_name: '',
     last_name: '',
     email: '',
-    specialization: '',
+
     contact_no: '',
     status: 'active',
     service_ids: []
@@ -131,14 +129,11 @@ const ManageDoctors = () => {
 
       if (debouncedSearch) {
         doctorsQuery = doctorsQuery.or(
-          `first_name.ilike.%${debouncedSearch}%,last_name.ilike.%${debouncedSearch}%,email.ilike.%${debouncedSearch}%,specialization.ilike.%${debouncedSearch}%`
+          `first_name.ilike.%${debouncedSearch}%,last_name.ilike.%${debouncedSearch}%,email.ilike.%${debouncedSearch}%`
         );
       }
       if (statusFilter) {
         doctorsQuery = doctorsQuery.eq('status', statusFilter);
-      }
-      if (specializationFilter) {
-        doctorsQuery = doctorsQuery.ilike('specialization', `%${specializationFilter}%`);
       }
 
       doctorsQuery = doctorsQuery.order('first_name', { ascending: true });
@@ -159,7 +154,6 @@ const ManageDoctors = () => {
         setDoctorStats({});
         setTotalDoctors(0);
         setActiveDoctors(0);
-        setSpecializations([]);
         setAvailabilityCounts({});
         setHasLoaded(true);
         setLoading(false);
@@ -232,8 +226,6 @@ const ManageDoctors = () => {
       setTotalDoctors(count || 0);
       setActiveDoctors(doctorsList.filter(d => d.status === 'active').length);
 
-      const uniqueSpecs = [...new Set(doctorsList.map(d => d.specialization).filter(Boolean))];
-      setSpecializations(uniqueSpecs);
 
       setHasLoaded(true);
 
@@ -244,7 +236,7 @@ const ManageDoctors = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, userType, debouncedSearch, statusFilter, specializationFilter, page]);
+  }, [user, userType, debouncedSearch, statusFilter, page]);
 
   useEffect(() => {
     fetchData();
@@ -254,7 +246,6 @@ const ManageDoctors = () => {
     setSearch('');
     setDebouncedSearch('');
     setStatusFilter('');
-    setSpecializationFilter('');
     setPage(1);
   };
 
@@ -282,7 +273,7 @@ const ManageDoctors = () => {
       await manageDoctorAccount({ action: editing ? 'update' : 'create',
         ...(editing ? { doctor_id: form.doctor_id, expected: form.expected } : {}),
         profile: { first_name: form.first_name, last_name: form.last_name, email: form.email,
-          specialization: form.specialization || null, contact_no: form.contact_no || null, status: editing ? form.status : 'active' },
+          contact_no: form.contact_no || null, status: editing ? form.status : 'active' },
         service_ids: form.service_ids,
       });
       toast.success(editing ? 'Dentist profile and services updated.' : 'Dentist profile created. No login account was created.');
@@ -307,7 +298,7 @@ const ManageDoctors = () => {
   const openAddModal = () => {
     setAddForm({
       first_name: '', last_name: '', email: '',
-      specialization: '', contact_no: '', service_ids: []
+      contact_no: '', service_ids: []
     });
     setShowAddModal(true);
   };
@@ -319,9 +310,8 @@ const ManageDoctors = () => {
       last_name: doctor.last_name,
       email: doctor.email,
       expected: { profile: { first_name: doctor.first_name, last_name: doctor.last_name, email: doctor.email,
-        specialization: doctor.specialization, contact_no: doctor.contact_no, status: doctor.status },
+        contact_no: doctor.contact_no, status: doctor.status },
         service_ids: (doctorServicesMap[doctor.doctor_id] || []).map(service => service.service_id).sort((a,b) => a-b) },
-      specialization: doctor.specialization || '',
       contact_no: doctor.contact_no || '',
       status: doctor.status,
       service_ids: doctorServicesMap[doctor.doctor_id]?.map(s => s.service_id) || []
@@ -394,10 +384,6 @@ const ManageDoctors = () => {
             <div className="stat-label">Active Doctors</div>
           </div>
           <div className="stat-card">
-            <div className="stat-number">{specializations.length}</div>
-            <div className="stat-label">Specializations</div>
-          </div>
-          <div className="stat-card">
             <div className="stat-number">{allServices.length}</div>
             <div className="stat-label">Services Offered</div>
           </div>
@@ -411,7 +397,7 @@ const ManageDoctors = () => {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Name, email, specialization..."
+                placeholder="Name or email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -424,16 +410,7 @@ const ManageDoctors = () => {
                 <option value="inactive">Inactive</option>
               </select>
             </div>
-            <div className="filter-group">
-              <label>Specialization</label>
-              <select className="form-control" value={specializationFilter} onChange={(e) => setSpecializationFilter(e.target.value)}>
-                <option value="">All Specializations</option>
-                {specializations.map(spec => (
-                  <option key={spec} value={spec}>{spec}</option>
-                ))}
-              </select>
-            </div>
-            <div className="filter-group">
+            <div className="filter-group filter-actions">
               <button className="btn btn-primary" onClick={fetchData}>Apply</button>
               <button className="btn btn-secondary" onClick={resetFilters}>Reset</button>
             </div>
@@ -450,9 +427,8 @@ const ManageDoctors = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: '25%' }}>Doctor</th>
-                  <th style={{ width: '25%' }}>Specialization</th>
-                  <th style={{ width: '20%' }}>Statistics</th>
+                  <th style={{ width: '35%' }}>Doctor</th>
+                  <th style={{ width: '30%' }}>Statistics</th>
                   <th style={{ width: '10%' }}>Status</th>
                   <th style={{ width: '20%' }}>Actions</th>
                 </tr>
@@ -460,7 +436,7 @@ const ManageDoctors = () => {
               <tbody>
                 {doctors.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="empty-state">
+                    <td colSpan="4" className="empty-state">
                       <div>👨‍⚕️</div>
                       <p>No doctors found</p>
                     </td>
@@ -486,13 +462,6 @@ const ManageDoctors = () => {
                               <div className="doctor-id">ID: {doctor.doctor_id}</div>
                             </div>
                           </div>
-                        </td>
-                        <td style={{ verticalAlign: 'middle' }}>
-                          {doctor.specialization ? (
-                            <span className="specialization-badge">{doctor.specialization}</span>
-                          ) : (
-                            <span className="text-muted">Not specified</span>
-                          )}
                         </td>
                         <td style={{ verticalAlign: 'middle' }}>
                           <div className="stats-cells">
@@ -569,10 +538,6 @@ const ManageDoctors = () => {
                 </div>
 
                 <div className="form-group">
-                  <label>Specialization</label>
-                  <input type="text" className="form-control" value={addForm.specialization} onChange={e => setAddForm({...addForm, specialization: e.target.value})} placeholder="e.g., General Dentistry, Orthodontics" />
-                </div>
-                <div className="form-group">
                   <label>Contact Number</label>
                   <input type="tel" className="form-control" value={addForm.contact_no} onChange={e => setAddForm({...addForm, contact_no: e.target.value})} />
                 </div>
@@ -632,10 +597,6 @@ const ManageDoctors = () => {
                   <label>Contact Email *</label>
                   <input type="email" className="form-control" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} disabled={isSubmitting} maxLength={254} required />
                   <small>This changes dentist contact information only. No login account is changed.</small>
-                </div>
-                <div className="form-group">
-                  <label>Specialization</label>
-                  <input type="text" className="form-control" value={editForm.specialization} onChange={e => setEditForm({...editForm, specialization: e.target.value})} />
                 </div>
                 <div className="form-group">
                   <label>Contact Number</label>

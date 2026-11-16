@@ -8,12 +8,12 @@ const shiftMonth = (month, offset) => {
   return new Date(Date.UTC(year, number - 1 + offset, 1)).toISOString().slice(0, 7);
 };
 
-export default function BookingCalendar({ doctorId, serviceId, leadMinutes, date, time, setDate, setTime, revision, locked }) {
+export default function BookingCalendar({ doctorId, serviceId, leadMinutes, date, time, setDate, setTime, revision, locked, interval }) {
   const today = getClinicDate();
   const [month, setMonth] = useState(today.slice(0, 7));
   const [retry, setRetry] = useState(0);
   const [snapshot, setSnapshot] = useState(null);
-  const key = [doctorId, serviceId, leadMinutes, month, date, revision, retry].join(':');
+  const key = [doctorId, serviceId, leadMinutes, interval, month, date, revision, retry].join(':');
   const current = snapshot?.key === key ? snapshot : null;
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export default function BookingCalendar({ doctorId, serviceId, leadMinutes, date
     async function refresh() {
       const request = ++sequence;
       try {
-        const data = await loadDoctorBookingMonth({ doctorId, serviceId, month, leadMinutes });
+        const data = await loadDoctorBookingMonth({ doctorId, serviceId, month, leadMinutes, interval });
         if (!active || request !== sequence) return;
         const days = Object.fromEntries(data.filter(row => row.times?.length).map(row => [row.booking_date, row.times]));
         setSnapshot({ key, days });
@@ -44,7 +44,7 @@ export default function BookingCalendar({ doctorId, serviceId, leadMinutes, date
       window.clearInterval(timer);
       window.removeEventListener('focus', refreshVisible);
     };
-  }, [key, month, date, doctorId, serviceId, leadMinutes, setDate, setTime]);
+  }, [key, month, date, doctorId, serviceId, leadMinutes, interval, setDate, setTime]);
 
   function navigate(offset) {
     setMonth(shiftMonth(month, offset));
@@ -59,6 +59,7 @@ export default function BookingCalendar({ doctorId, serviceId, leadMinutes, date
 
   return <fieldset className="booking-picker" disabled={locked}>
     <legend className="form-label required">Preferred date</legend>
+    <div className="booking-date-time-layout">
     <div className="booking-month">
       <div className="booking-month-bar">
         <strong aria-live="polite">{label}</strong>
@@ -79,15 +80,20 @@ export default function BookingCalendar({ doctorId, serviceId, leadMinutes, date
       </div>
       <div className="booking-legend"><span>Available</span><span>Unavailable</span><span>Selected</span></div>
     </div>
+    <section className="booking-time-panel" aria-label="Choose an appointment time">
+    <h3>Available times</h3>
     <p role="status">{!current ? 'Checking availability…' : current.error ? 'Availability could not be loaded.' :
       date ? 'Available times for ' + formatClinicDate(date) :
       Object.keys(days).length ? 'Choose an available date to see appointment times.' : 'No available appointments this month. Try another month.'}</p>
     {current?.error && <button type="button" onClick={() => setRetry(n => n + 1)}>Retry availability</button>}
     {slots.length > 0 && <div className="time-slots-grid" role="group" aria-label="Available appointment times">
       {slots.map(slot => <button type="button" key={slot} aria-pressed={time === slot}
-        className={'time-slot' + (time === slot ? ' selected' : '')} onClick={() => setTime(slot)}>
-        {formatClinicTime(slot)}
+        aria-label={formatClinicTime(slot)} className={'booking-time-card' + (time === slot ? ' selected' : '')} onClick={() => setTime(slot)}>
+        <span className="booking-time-card-top"><strong>{formatClinicTime(slot)}</strong><span className="booking-time-indicator" aria-hidden="true">{time === slot ? '●' : '○'}</span></span>
+        <span className="booking-time-card-status" aria-hidden="true">{time === slot ? 'Selected' : 'Available'}</span>
       </button>)}
     </div>}
+    </section>
+    </div>
   </fieldset>;
 }

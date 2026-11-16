@@ -48,3 +48,10 @@
 .staff-dtr-dialog article p { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.7; }
 @media(max-width:992px) { .main-content.staff-dtr-page { margin-left:80px; width:calc(100% - 80px); } .staff-dtr-page .staff-dtr-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:640px) { .staff-time-card { padding:18px; } .staff-time-card__actions { width:100%; } .staff-time-card__actions button { flex:1; } .staff-dtr-page .staff-dtr-summary { grid-template-columns:minmax(0,1fr); } .staff-dtr-dialog .staff-dtr-form-grid { grid-template-columns:minmax(0,1fr); } .staff-dtr-dialog form, .staff-dtr-dialog > header { padding:18px; } }
+
+.staff-dtr-page .staff-dtr-back {
+  display: inline-block;
+  margin-bottom: 18px;
+  color: var(--clinic-blue);
+  font-weight: 600;
+}

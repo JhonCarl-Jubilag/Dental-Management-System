@@ -100,3 +100,55 @@ export const savePatientTreatment = async (client, patientId, editor, form) => {
   }
   return data;
 };
+
+// Patient-only read model: the server resolves ownership; no patient ID is sent.
+export const readMyTreatmentHistory = async (client, expectedPatientId, query, signal) => {
+  let request = client.rpc('list_my_treatment_history', {
+    p_page: query.page, p_from: query.from || null, p_to: query.to || null,
+  });
+  if (signal) request = request.abortSignal(signal);
+  const { data, error } = await request;
+  if (error) {
+    if (migrationError(error)) throw new Error('Treatment History is not available yet. Please contact the clinic.');
+    if (error.code === '42501') throw new Error('Please log in with an active patient account to view treatment history.');
+    if (error.code === '22023') throw new Error('Choose a valid date range and try again.');
+    throw new Error('Could not load treatment history. Check your connection and try again.');
+  }
+  const fields = ['doctor_name','procedure_name','tooth_numbers','tooth_scope','treated_at','treatment_id'];
+  const validRow = row => row && Object.keys(row).sort().join(',') === fields.join(',')
+    && idIsValid(row.treatment_id) && typeof row.procedure_name === 'string' && row.procedure_name.trim()
+    && typeof row.doctor_name === 'string' && typeof row.treated_at === 'string' && Number.isFinite(Date.parse(row.treated_at))
+    && ['specific','whole_mouth','not_applicable'].includes(row.tooth_scope) && Array.isArray(row.tooth_numbers)
+    && (row.tooth_scope === 'specific' ? row.tooth_numbers.length > 0 && row.tooth_numbers.every(Number.isInteger) : row.tooth_numbers.length === 0);
+  if (!data || String(data.patient_id) !== String(expectedPatientId) || !Number.isSafeInteger(data.total) || data.total < 0
+    || data.page !== query.page || data.page_size !== 10 || !Array.isArray(data.rows)
+    || data.rows.length !== Math.min(10, Math.max(0, data.total - (query.page - 1) * 10))
+    || data.rows.some(row => !validRow(row)) || new Set(data.rows.map(row => String(row.treatment_id))).size !== data.rows.length) {
+    throw new Error('Could not verify your treatment history. Please refresh or contact the clinic.');
+  }
+  return data;
+};
+
+// Batch only the visible completed appointments; ownership is resolved on the server.
+export const readMyAppointmentTreatments = async (client, patientId, appointmentIds, signal) => {
+  if (!appointmentIds.length || appointmentIds.length > 5 || appointmentIds.some(id => !idIsValid(id))) throw new Error('Choose valid appointments.');
+  let request = client.rpc('list_my_appointment_treatments', { p_appointment_ids: appointmentIds });
+  if (signal) request = request.abortSignal(signal);
+  const { data, error } = await request;
+  if (error) throw new Error(migrationError(error)
+    ? 'Treatment record links are not available yet. Please contact the clinic.'
+    : 'Could not check treatment records. Please try again.');
+  const fields = ['appointment_id','doctor_name','procedure_name','tooth_numbers','tooth_scope','treated_at','treatment_id'];
+  if (!data || String(data.patient_id) !== String(patientId) || !Array.isArray(data.rows) || data.rows.length > appointmentIds.length
+    || data.rows.some(row => !row || Object.keys(row).sort().join(',') !== fields.join(',')
+      || !appointmentIds.some(id => String(id) === String(row.appointment_id)) || !idIsValid(row.treatment_id)
+      || typeof row.procedure_name !== 'string' || !row.procedure_name.trim() || typeof row.doctor_name !== 'string'
+      || typeof row.treated_at !== 'string' || !Number.isFinite(Date.parse(row.treated_at))
+      || !['specific','whole_mouth','not_applicable'].includes(row.tooth_scope) || !Array.isArray(row.tooth_numbers)
+      || (row.tooth_scope === 'specific' ? !row.tooth_numbers.length || !row.tooth_numbers.every(Number.isInteger) : row.tooth_numbers.length !== 0))
+    || new Set(data.rows.map(row => String(row.appointment_id))).size !== data.rows.length
+    || new Set(data.rows.map(row => String(row.treatment_id))).size !== data.rows.length) {
+    throw new Error('Could not verify your treatment records. Please try again.');
+  }
+  return data.rows;
+};

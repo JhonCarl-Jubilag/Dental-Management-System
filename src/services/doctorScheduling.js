@@ -1,10 +1,10 @@
 import { supabase } from './supabase';
 import { formatClinicTime, getClinicDate, toClinicDateTimeInput } from '../utils/clinicScheduling';
 
-export const loadDoctorBookingMonth = async ({ doctorId, serviceId, month, leadMinutes }) => {
-  const { data, error } = await supabase.rpc('get_booking_month_slots', {
+export const loadDoctorBookingMonth = async ({ doctorId, serviceId, month, leadMinutes, interval }) => {
+  const { data, error } = interval === undefined ? await supabase.rpc('get_booking_month_slots', {
     p_doctor_id: Number(doctorId), p_service_id: Number(serviceId), p_month: month + '-01',
-  });
+  }) : { error: { code: 'PGRST202' } };
   if (!error) return data || [];
   // Older deployments already support date queries and the times-only RPC.
   // Only fall back when the monthly function is missing from the API schema.
@@ -20,7 +20,7 @@ export const loadDoctorBookingMonth = async ({ doctorId, serviceId, month, leadM
 
   const dates = [...new Set((availability || []).map(row => row.available_date))];
   const days = await Promise.all(dates.map(async date => {
-    const slots = await loadDoctorBookingSlots({ doctorId, serviceId, date, leadMinutes });
+    const slots = await loadDoctorBookingSlots({ doctorId, serviceId, date, leadMinutes, interval });
     return { booking_date: date, times: slots.map(slot => slot.time) };
   }));
   return days.filter(day => day.times.length > 0);

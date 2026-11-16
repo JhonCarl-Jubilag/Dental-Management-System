@@ -289,3 +289,142 @@
   .staff-account-page .staff-email-editor { padding: 22px; }
   .staff-account-page .staff-email-editor fieldset { grid-template-columns: minmax(0, 1fr); }
 }
+
+.staff-account-page .staff-account-heading h2 {
+  margin: 0;
+  color: var(--clinic-navy);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.staff-account-page .staff-heading-actions a {
+  text-decoration: none;
+}
+
+.staff-account-page .staff-account-grid .staff-account-card {
+  position: relative;
+  overflow: visible;
+}
+
+.staff-account-page .staff-account-grid .staff-profile-heading {
+  border-radius: 18px 18px 0 0;
+}
+
+.staff-account-page .staff-profile-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.staff-account-page .staff-profile-link::after {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  content: '';
+}
+
+.staff-account-page .staff-profile-link:focus-visible {
+  outline: none;
+}
+
+.staff-account-page .staff-profile-link:focus-visible::after {
+  outline: 3px solid var(--clinic-blue);
+  outline-offset: 3px;
+}
+
+.staff-account-page .staff-profile-controls {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.staff-account-page .staff-actions-menu {
+  position: relative;
+  pointer-events: auto;
+}
+
+.staff-account-page .staff-actions-menu summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--clinic-line);
+  border-radius: 9px;
+  background: white;
+  color: var(--clinic-navy);
+  font-size: 26px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.staff-account-page .staff-actions-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.staff-account-page .staff-actions-menu summary:focus-visible,
+.staff-account-page .staff-actions-list button:focus-visible {
+  outline: 3px solid var(--clinic-blue);
+  outline-offset: 2px;
+}
+
+.staff-account-page .staff-actions-list {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--clinic-line);
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 8px 24px #16335126;
+}
+
+.staff-account-page .staff-actions-list button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: white;
+  color: var(--clinic-navy);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.staff-account-page .staff-actions-list button:hover:not(:disabled) {
+  background: var(--clinic-canvas);
+}
+
+.staff-account-page .staff-actions-list button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.staff-account-page .staff-actions-list .staff-menu-disable {
+  color: var(--clinic-danger);
+}
+
+.staff-account-page .staff-dtr-embedded {
+  margin-top: 28px;
+}
+
+.staff-dtr-embedded .staff-dtr-page-heading h3 {
+  margin: 0;
+  color: var(--clinic-navy);
+  font-size: 22px;
+}
+
+.staff-account-page .staff-profile-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.staff-account-page .staff-dtr-embedded {
+  max-width: 1100px;
+}

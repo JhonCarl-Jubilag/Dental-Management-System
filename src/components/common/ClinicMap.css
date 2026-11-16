@@ -81,7 +81,8 @@
   width: 18px;
 }
 
-.map-directions-btn {
+/* Override Leaflet link colors only for this popup button. */
+.clinic-map .map-directions-btn {
   display: inline-block;
   background: var(--secondary-color);
   color: white;
@@ -94,9 +95,16 @@
   transition: var(--transition);
 }
 
-.map-directions-btn:hover {
-  background: lightblue;
+.clinic-map .map-directions-btn:hover,
+.clinic-map .map-directions-btn:focus-visible {
+  background: var(--clinic-blue-hover, #074b80);
+  color: white;
   transform: translateY(-2px);
+}
+
+.clinic-map .map-directions-btn:focus-visible {
+  outline: 3px solid var(--clinic-navy, #08265a);
+  outline-offset: 3px;
 }
 
 /* Overlay card */

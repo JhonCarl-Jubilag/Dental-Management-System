@@ -13,3 +13,12 @@ entrypoint = './functions/recover-patient-registration/index.js'
 [functions.manage-staff-account]
 verify_jwt = true
 entrypoint = './functions/manage-staff-account/index.js'
+
+[functions.send-test-email]
+verify_jwt = true
+entrypoint = './functions/send-test-email/index.js'
+
+[functions.process-appointment-emails]
+# Cron authenticates with a private Vault token, verified by service-only RPCs.
+verify_jwt = false
+entrypoint = './functions/process-appointment-emails/index.js'

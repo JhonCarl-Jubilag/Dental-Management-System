@@ -8,10 +8,11 @@ import { savePatientAppointmentAction } from '../../services/appointmentNotes';
 import { loadDoctorBookingSlots, validateAppointmentReschedule } from '../../services/doctorScheduling';
 import { getAppointmentDuration } from '../../utils/appointmentTiming';
 import { CLINIC_TIME_ZONE, clinicDateTime, formatClinicDate, getClinicDate } from '../../utils/clinicScheduling';
+import { readMyAppointmentTreatments } from '../../services/treatmentRecords';
 import './MyAppointments.css';
 import DentalLogo from '../../assets/DentalLogo.png';
 
-const MyAppointments = () => {
+const MyAppointmentsContent = () => {
   const { user, userDetails, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -67,8 +68,7 @@ const MyAppointments = () => {
           doctors!inner (
             doctor_id,
             first_name,
-            last_name,
-            specialization
+            last_name
           ),
           services!inner (
             service_id,
@@ -89,7 +89,6 @@ const MyAppointments = () => {
       const formattedData = data?.map(app => ({
         ...app,
         doctor_name: `Dr. ${app.doctors.first_name} ${app.doctors.last_name}`,
-        specialization: app.doctors.specialization,
         service_name: app.services.service_name,
         duration_minutes: getAppointmentDuration(app),
         ...(app.billing && app.billing[0] ? {
@@ -113,7 +112,7 @@ const MyAppointments = () => {
   useEffect(() => {
     let filtered = [...appointments];
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(app => app.status?.toLowerCase() === statusFilter.toLowerCase());
+      filtered = filtered.filter(app => statusFilter === 'completed' ? ['completed','done'].includes(app.status?.toLowerCase()) : app.status?.toLowerCase() === statusFilter.toLowerCase());
     }
     setFilteredAppointments(filtered);
     setCurrentPage(1);
@@ -123,6 +122,29 @@ const MyAppointments = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredAppointments.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
+  const completedIds = JSON.stringify(currentItems.filter(app => ['completed','done'].includes(app.status?.toLowerCase())).map(app => app.appointment_id));
+  const [treatments, setTreatments] = useState(null);
+  const [treatmentError, setTreatmentError] = useState('');
+  const [treatmentRetry, setTreatmentRetry] = useState(0);
+  const [selectedTreatment, setSelectedTreatment] = useState(null);
+  const treatmentDialog = useRef(null);
+  const treatmentKey = userDetails?.patient_id + ':' + completedIds;
+  useEffect(() => {
+    const controller = new AbortController();
+    setTreatments(null); setTreatmentError(''); setSelectedTreatment(null);
+    const ids = JSON.parse(completedIds);
+    if (ids.length && userDetails?.patient_id) {
+      readMyAppointmentTreatments(supabase, userDetails.patient_id, ids, controller.signal).then(rows => {
+        if (!controller.signal.aborted) setTreatments({ key: treatmentKey, rows });
+      }).catch(error => { if (!controller.signal.aborted) setTreatmentError(error.message); });
+    }
+    return () => controller.abort();
+  }, [completedIds, userDetails?.patient_id, treatmentKey, treatmentRetry]);
+  useEffect(() => {
+    if (selectedTreatment && treatmentDialog.current && !treatmentDialog.current.open) treatmentDialog.current.showModal();
+  }, [selectedTreatment]);
+  const treatmentFor = appointment => treatments?.key === treatmentKey
+    ? treatments.rows.find(row => String(row.appointment_id) === String(appointment.appointment_id)) : null;
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   const getAppointmentStatusClass = (status) => {
@@ -130,6 +152,7 @@ const MyAppointments = () => {
       case 'pending': return 'status-pending';
       case 'confirmed': return 'status-approved';
       case 'cancelled': return 'status-cancelled';
+      case 'completed':
       case 'done': return 'status-done';
       default: return '';
     }
@@ -413,6 +436,7 @@ const MyAppointments = () => {
               <div className={`user-dropdown ${userDropdownOpen ? 'active' : ''}`}>
                 <Link to="/book-appointment" onClick={() => setUserDropdownOpen(false)}><i className="fas fa-book"></i> Book Appointment</Link>
                 <Link to="/my-appointments" onClick={() => setUserDropdownOpen(false)}><i className="fas fa-calendar-check"></i> My Appointments</Link>
+                <Link to="/treatment-history" onClick={() => setUserDropdownOpen(false)}><i className="fas fa-notes-medical" aria-hidden="true"></i> Treatment History</Link>
                 <Link to="/profile" onClick={() => setUserDropdownOpen(false)}><i className="fas fa-user"></i> My Profile</Link>
                 <button onClick={handleLogout} className="dropdown-logout-btn"><i className="fas fa-sign-out-alt"></i> Logout</button>
               </div>
@@ -435,7 +459,7 @@ const MyAppointments = () => {
               <option value="pending">Pending</option>
               <option value="confirmed">Confirmed</option>
               <option value="cancelled">Cancelled</option>
-              <option value="done">Done</option>
+              <option value="completed">Completed</option>
             </select>
           </div>
           <div className="pagination-info">
@@ -443,6 +467,7 @@ const MyAppointments = () => {
           </div>
         </div>
 
+        {treatmentError && <div className="appointment-treatment-error" role="alert"><p>{treatmentError}</p><button type="button" className="btn-view" onClick={() => setTreatmentRetry(value => value + 1)}>Retry treatment records</button></div>}
         <div className="appointments-list">
           {currentItems.length === 0 ? (
             <div className="no-appointments">
@@ -485,6 +510,10 @@ const MyAppointments = () => {
                   <button className="btn-view" onClick={() => openViewModal(appointment)}>
                     <i className="fas fa-eye"></i> View Details
                   </button>
+                  {['completed','done'].includes(appointment.status?.toLowerCase()) && (
+                    treatmentFor(appointment) ? <button type="button" className="btn-view" onClick={() => setSelectedTreatment(treatmentFor(appointment))}><i className="fas fa-notes-medical" aria-hidden="true" /> View Treatment Record</button>
+                    : <p className="appointment-treatment-status">{treatmentError ? 'Treatment records could not be checked.' : treatments?.key !== treatmentKey ? 'Checking treatment record…' : 'Treatment record not yet available.'}</p>
+                  )}
                 </div>
               </div>
             ))
@@ -531,7 +560,7 @@ const MyAppointments = () => {
                 <p><strong>{formatDateTime(selectedAppointment.appointment_datetime)}</strong></p>
               </div>
               <div className="appointment-availability-section">
-                <h4><i className="fas fa-calendar-check"></i> Select New Date & Time (Philippine time)</h4>
+                <h4><i className="fas fa-calendar-check"></i> Select New Date & Time</h4>
                 <div className="appointment-calendar-nav">
                   <button disabled={savingReschedule} type="button" className="appointment-nav-btn" onClick={() => changeMonth(-1)}>
                     <i className="fas fa-chevron-left"></i> Prev
@@ -649,7 +678,7 @@ const MyAppointments = () => {
             <div className="appointment-modal-body">
               <p>Current appointment: <strong>{formatDateTime(selectedAppointment.appointment_datetime)}</strong></p>
               <div className="appointment-availability-section">
-                <h4><i className="fas fa-calendar-check"></i> Select New Date & Time (Philippine time)</h4>
+                <h4><i className="fas fa-calendar-check"></i> Select New Date & Time</h4>
                 <div className="appointment-calendar-nav">
                   <button disabled={savingReschedule} type="button" className="appointment-nav-btn" onClick={() => changeMonth(-1)}>
                     <i className="fas fa-chevron-left"></i> Prev
@@ -768,7 +797,6 @@ const MyAppointments = () => {
               <div className="appointment-details-grid">
                 <div className="appointment-detail-row"><strong>Service:</strong> {selectedAppointment.service_name}</div>
                 <div className="appointment-detail-row"><strong>Doctor:</strong> {selectedAppointment.doctor_name}</div>
-                <div className="appointment-detail-row"><strong>Specialization:</strong> {selectedAppointment.specialization || 'General Dentist'}</div>
                 <div className="appointment-detail-row"><strong>Date & Time:</strong> {formatDateTime(selectedAppointment.appointment_datetime)}</div>
                 <div className="appointment-detail-row"><strong>Status:</strong> <span className={`appointment-status-badge ${getAppointmentStatusClass(selectedAppointment.status)}`}>{selectedAppointment.status?.toUpperCase()}</span></div>
                 {selectedAppointment.remarks && <div className="appointment-detail-row full-width"><strong>Remarks:</strong> {selectedAppointment.remarks}</div>}
@@ -808,6 +836,15 @@ const MyAppointments = () => {
         </div>
       )}
 
+      {selectedTreatment && <dialog ref={treatmentDialog} className="appointment-treatment-dialog" aria-labelledby="appointment-treatment-title" onClose={() => setSelectedTreatment(null)} onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close(); }}>
+        <div className="appointment-treatment-heading"><h2 id="appointment-treatment-title">Treatment Record</h2><button type="button" className="btn-view" aria-label="Close treatment record" autoFocus onClick={() => treatmentDialog.current.close()}>Close</button></div>
+        <dl>
+          <div><dt>Procedure</dt><dd>{selectedTreatment.procedure_name}</dd></div>
+          <div><dt>Treatment Date</dt><dd>{formatDateTime(selectedTreatment.treated_at)}</dd></div>
+          <div><dt>Tooth / Teeth</dt><dd>{selectedTreatment.tooth_scope === 'specific' ? selectedTreatment.tooth_numbers.join(', ') : selectedTreatment.tooth_scope === 'whole_mouth' ? 'Whole mouth' : 'Not tooth-specific'}</dd></div>
+          <div><dt>Dentist</dt><dd>{selectedTreatment.doctor_name === 'Not recorded' ? selectedTreatment.doctor_name : 'Dr. ' + selectedTreatment.doctor_name}</dd></div>
+        </dl><p>For corrections or further information, please contact the clinic.</p>
+      </dialog>}
       {isLoggingOut && (
         <div className="logout-overlay">
           <div className="logout-content">
@@ -822,4 +859,8 @@ const MyAppointments = () => {
   );
 };
 
-export default MyAppointments;
+export default function MyAppointments() {
+  const { user, userType, userDetails, loading } = useAuth();
+  if (loading || !user || userType !== 'patient' || userDetails?.status !== 'active' || !userDetails.patient_id) return null;
+  return <MyAppointmentsContent key={user.id + ':' + userDetails.patient_id} />;
+}

@@ -214,6 +214,7 @@ const Profile = () => {
                 <Link to="/my-appointments" onClick={() => setUserDropdownOpen(false)}>
                   <i className="fas fa-calendar-check"></i> My Appointments
                 </Link>
+                <Link to="/treatment-history" onClick={() => setUserDropdownOpen(false)}><i className="fas fa-notes-medical" aria-hidden="true"></i> Treatment History</Link>
                 <Link to="/profile" onClick={() => setUserDropdownOpen(false)}>
                   <i className="fas fa-user"></i> My Profile
                 </Link>

@@ -92,10 +92,10 @@ const BillingStatement = ({ billingId, onClose }) => {
           </dl>
           <table><thead><tr><th scope="col">Description</th><th scope="col">Amount</th></tr></thead><tbody>
             <tr><td>{statement.procedure}</td><td>{formatStatementMoney(statement.gross)}</td></tr>
-            <tr><td>Discount</td><td>-{formatStatementMoney(statement.discount)}</td></tr>
-            <tr className="clinic-billing-statement-total"><td>Net amount charged</td><td>{formatStatementMoney(statement.net)}</td></tr>
-            <tr className="clinic-billing-statement-total"><td>Total paid to date</td><td>{formatStatementMoney(statement.paid)}</td></tr>
-            <tr className="clinic-billing-statement-balance"><td>Remaining balance</td><td>{formatStatementMoney(statement.balance)}</td></tr>
+            {statement.discount > 0 && <tr><td>Discount</td><td>-{formatStatementMoney(statement.discount)}</td></tr>}
+            <tr className="clinic-billing-statement-total"><td>Total amount due</td><td>{formatStatementMoney(statement.net)}</td></tr>
+            <tr className="clinic-billing-statement-total"><td>Amount paid</td><td>{formatStatementMoney(statement.paid)}</td></tr>
+            <tr className="clinic-billing-statement-balance"><td>Balance</td><td>{formatStatementMoney(statement.balance)}</td></tr>
           </tbody></table>
           {statement.latestPayment ? <section><h4>Latest recorded payment details</h4><p className="clinic-billing-statement-note">{STATEMENT_PAYMENT_NOTE}</p><dl>
             <div><dt>Method</dt><dd>{statement.latestPayment.method}</dd></div><div><dt>Payment date</dt><dd>{statement.latestPayment.date}</dd></div>

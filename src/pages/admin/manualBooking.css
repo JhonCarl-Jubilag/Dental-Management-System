@@ -195,3 +195,31 @@
   text-align: center;
   color: var(--clinic-muted);
 }
+/* Match the patient booking form within the clinic workspace. */
+.manual-booking-page .booking-form-container { max-width: 1200px; }
+.manual-booking-page .booking-form { display: flex; flex-direction: column; gap: 24px; }
+.manual-booking-page .form-section { margin: 0; padding: 30px; border: 1px solid var(--clinic-line); }
+.manual-booking-page .form-section h2 { color: var(--clinic-navy); font-size: 1.4rem; margin-bottom: 25px; }
+.manual-booking-page .form-group:last-child { margin-bottom: 0; }
+.manual-booking-page .form-control { border-radius: 8px; font: inherit; box-sizing: border-box; }
+.manual-booking-page .manual-doctor-options { display: flex; flex-direction: column; gap: 15px; }
+.manual-booking-page .manual-doctor-option { display: flex; align-items: center; gap: 20px; width: 100%; padding: 20px; border: 2px solid var(--clinic-line); border-radius: 12px; background: white; color: var(--clinic-ink); text-align: left; font: inherit; cursor: pointer; }
+.manual-booking-page .manual-doctor-option:hover:not(:disabled) { border-color: var(--clinic-blue); background: #f8fafd; }
+.manual-booking-page .manual-doctor-option.selected { border-color: var(--clinic-blue); background: linear-gradient(135deg, #f0f9ff, #e6f7ff); box-shadow: 0 5px 15px #0069a81a; }
+.manual-booking-page .manual-doctor-option:focus-visible { outline: 3px solid var(--clinic-blue); outline-offset: 3px; }
+.manual-booking-page .manual-doctor-avatar { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, var(--clinic-navy), var(--clinic-blue)); color: white; font-weight: 700; }
+.manual-booking-page .manual-doctor-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; overflow-wrap: anywhere; text-align: left; }
+.manual-booking-page .manual-doctor-info strong { font-size: 1.2rem; }
+.manual-booking-page .manual-doctor-contacts { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--clinic-muted); font-size: .9rem; }
+.manual-booking-page .manual-doctor-contacts i { color: var(--clinic-blue); }
+.manual-booking-page .booking-picker { min-width: 0; width: 100%; }
+.manual-booking-page .booking-picker legend { font-weight: 600; margin-bottom: 10px; font-size: .95rem; }
+.manual-booking-page .booking-picker legend::after { content: ' *'; color: var(--clinic-danger); }
+@media (max-width: 1100px) {
+ .manual-booking-page .booking-date-time-layout { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 600px) {
+ .manual-booking-page .form-section { padding: 20px 16px; }
+ .manual-booking-page .manual-doctor-option { padding: 16px; gap: 12px; }
+ .manual-booking-page .manual-doctor-contacts { flex-direction: column; }
+}

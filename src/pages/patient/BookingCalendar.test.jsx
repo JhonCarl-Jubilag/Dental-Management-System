@@ -9,11 +9,11 @@ jest.mock('../../services/supabase', () => ({ supabase: { rpc: jest.fn(), from: 
 
 beforeEach(() => jest.resetAllMocks());
 
-function Form() {
+function Form({ manual = false, locked = false }) {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   return <BookingCalendar doctorId={3} serviceId="5" leadMinutes={60} date={date} time={time}
-    setDate={setDate} setTime={setTime} revision={0} />;
+    setDate={setDate} setTime={setTime} revision={0} interval={manual ? 90 : undefined} locked={locked} />;
 }
 
 test('only enables returned days and clears a selection when a booking takes the last slot', async () => {
@@ -90,4 +90,45 @@ test('keeps dates disabled if checking daily availability fails', async () => {
   render(<Form />);
   await screen.findByRole('button', { name: 'Retry availability' });
   expect(screen.getByRole('button', { name: formatClinicDate(today) })).toBeDisabled();
+});
+
+
+test('manual calendar keeps service-duration intervals and zero lead time', async () => {
+  const today = getClinicDate();
+  const query = {};
+  ['select', 'eq', 'gte', 'lt'].forEach(method => { query[method] = jest.fn(() => query); });
+  query.order = jest.fn().mockResolvedValue({ data: [{ available_date: today }] });
+  supabase.from.mockReturnValue(query);
+  supabase.rpc.mockResolvedValue({ data: [{ time_slot: '14:30' }] });
+  // The staff caller supplies zero lead minutes, unlike patient booking.
+  const Manual = () => {
+    const [date, setDate] = useState('');
+    const [time, setTime] = useState('');
+    return <BookingCalendar doctorId={3} serviceId="5" leadMinutes={0} interval={90} date={date} time={time} setDate={setDate} setTime={setTime} revision={0} />;
+  };
+  render(<Manual />);
+  const day = screen.getByRole('button', { name: formatClinicDate(today) });
+  await waitFor(() => expect(day).toBeEnabled());
+  expect(supabase.rpc).toHaveBeenCalledWith('get_booking_time_slots', {
+    p_doctor_id: 3, p_service_id: 5, p_date: today, p_interval: 90, p_lead_minutes: 0,
+    p_exclude_appointment_id: null, p_time: null,
+  });
+  expect(supabase.rpc.mock.calls.some(([name]) => name === 'get_booking_month_slots')).toBe(false);
+  fireEvent.click(day);
+  const slot = await screen.findByRole('button', { name: '02:30 PM' });
+  fireEvent.click(slot);
+  expect(slot).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('calendar controls are disabled during submission', async () => {
+  const today = getClinicDate();
+  supabase.rpc.mockResolvedValue({ data: [{ booking_date: today, times: ['14:30'] }] });
+  const view = render(<Form />);
+  const day = screen.getByRole('button', { name: formatClinicDate(today) });
+  await waitFor(() => expect(day).toBeEnabled());
+  fireEvent.click(day);
+  await screen.findByRole('button', { name: '02:30 PM' });
+  view.rerender(<Form locked />);
+  expect(screen.getByRole('button', { name: '02:30 PM' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Next month' })).toBeDisabled();
 });

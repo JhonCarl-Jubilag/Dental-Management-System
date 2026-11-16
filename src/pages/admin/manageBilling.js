@@ -24,7 +24,7 @@ const matchBillingSnapshot = (query, record) => billingSnapshotFields.reduce((fi
 const toCents = value => {
   if (value == null || value === '' || !Number.isFinite(Number(value)) || Number(value) < 0) return null;
   const cents = Math.round((Number(value) + Number.EPSILON) * 100);
-  return Number.isSafeInteger(cents) && cents >= 0 ? cents : null;
+  return Number.isSafeInteger(cents) && cents >= 0 && Math.abs(Number(value) * 100 - cents) < 0.00001 ? cents : null;
 };
 
 const validateSeniorID = (id_no) => {
@@ -78,7 +78,6 @@ const ManageBilling = () => {
   const billingWriteInProgress = useRef(false);
   const editSnapshot = useRef(null);
   const paymentSnapshot = useRef(null);
-  const [allowsPartial, setAllowsPartial] = useState(false);
 
   const [createForm, setCreateForm] = useState({
     appointment_id: '',
@@ -117,6 +116,10 @@ const ManageBilling = () => {
     current_balance: 0
   });
   const isSuperAdmin = isOwner(userType);
+  const createStandardCents = toCents(unbilledAppointments.find(item =>
+    Number(item.appointment_id) === Number(createForm.appointment_id))?.services?.price);
+  const editStandardCents = toCents(billingRecords.find(item =>
+    item.billing_id === editForm.billing_id)?.appointments?.services?.price);
 
   useEffect(() => {
     if (!authLoading) {
@@ -238,17 +241,16 @@ const ManageBilling = () => {
       payment_date: getClinicDate(),
       remarks: ''
     });
-    setAllowsPartial(false);
   };
 
   useEffect(() => {
     const { total_amount, discount_type, discount_id_no } = createForm;
     let discountAmount = 0;
     if (discount_type === 'senior' || discount_type === 'pwd') {
-      discountAmount = total_amount * 0.2;
+      const totalCents = toCents(total_amount);
+      discountAmount = totalCents == null ? 0 : Math.round(totalCents * 0.2) / 100;
     } else if (discount_type === 'manual') {
-      const manual = parseFloat(discount_id_no) || 0;
-      discountAmount = (manual > 0 && manual <= total_amount) ? manual : 0;
+      discountAmount = discount_id_no === '' ? 0 : Number(discount_id_no);
     }
     setCreateForm(prev => ({ ...prev, discount: discountAmount }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -258,10 +260,10 @@ const ManageBilling = () => {
     const { total_amount, discount_type, discount_id_no } = editForm;
     let discountAmount = 0;
     if (discount_type === 'senior' || discount_type === 'pwd') {
-      discountAmount = total_amount * 0.2;
+      const totalCents = toCents(total_amount);
+      discountAmount = totalCents == null ? 0 : Math.round(totalCents * 0.2) / 100;
     } else if (discount_type === 'manual') {
-      const manual = parseFloat(discount_id_no) || 0;
-      discountAmount = (manual > 0 && manual <= total_amount) ? manual : 0;
+      discountAmount = discount_id_no === '' ? 0 : Number(discount_id_no);
     }
     setEditForm(prev => ({ ...prev, discount: discountAmount }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -312,8 +314,8 @@ const ManageBilling = () => {
       setIsSubmitting(false);
       return;
     }
-    if (!allowsPartial && amount_paid !== afterDiscount) {
-      toast.error(`This service requires full payment (${formatCurrency(afterDiscount)}).`);
+    if (totalCents - discountCents < 300000 && paidCents !== totalCents - discountCents) {
+      toast.error(`Bills below ₱3,000 after discount require full payment (${formatCurrency(afterDiscount)}).`);
       setIsSubmitting(false);
       return;
     }
@@ -406,6 +408,13 @@ const ManageBilling = () => {
       toast.error('Close and reopen this bill before saving changes.');
       return;
     }
+    const amountsChanged = toCents(editSnapshot.current.total_amount) !== totalCents
+      || toCents(editSnapshot.current.discount) !== discountCents
+      || toCents(editSnapshot.current.amount_paid) !== paidCents;
+    if (amountsChanged && totalCents - discountCents < 300000 && paidCents !== totalCents - discountCents) {
+      toast.error('Bills below ₱3,000 after discount require full payment. Review the amount paid.');
+      return;
+    }
     const balance = (totalCents - discountCents - paidCents) / 100;
     let newRemarks = remarks || '';
     if (discount_type === 'senior') newRemarks = '[Discount Applied]: Senior Citizen (20%) - ₱' + (discountCents / 100).toFixed(2) + ' | ID: ' + discount_id_no + '\n' + newRemarks;
@@ -468,18 +477,22 @@ const ManageBilling = () => {
     let writeStarted = false;
     try {
       const { data: bill, error: readError } = await supabase.from('billing')
-        .select('*, appointments(services(price))').eq('billing_id', billing_id).single();
+        .select('*').eq('billing_id', billing_id).single();
       if (readError) throw readError;
       if (!bill || bill.archived) throw new Error('This bill is unavailable or archived. Reload the billing list.');
       const unchanged = billingSnapshotFields.every(field =>
         (bill[field] ?? null) === (paymentSnapshot.current[field] ?? null));
       if (!unchanged) throw new Error('This bill changed since you opened it. Close and reopen the payment form to review the latest balance. No payment was recorded.');
       const balanceCents = toCents(bill.balance), paidCents = toCents(bill.amount_paid);
-      if (balanceCents == null || paidCents == null) throw new Error('The bill has invalid amounts. Review it before recording a payment.');
+      const totalCents = toCents(bill.total_amount), discountCents = toCents(bill.discount);
+      if ([balanceCents, paidCents, totalCents, discountCents].some(value => value == null)
+        || discountCents > totalCents || balanceCents + paidCents !== totalCents - discountCents) {
+        throw new Error('The bill has invalid amounts. Review it before recording a payment.');
+      }
       if (amountCents > balanceCents) throw new Error('Payment cannot exceed the latest balance (' + formatCurrency(balanceCents / 100) + ').');
-      const price = bill.appointments?.services?.price;
-      if (price == null || !Number.isFinite(Number(price)) || Number(price) < 0) throw new Error('Could not verify this service. Reload before recording a payment.');
-      if (Number(price) < 3000 && amountCents !== balanceCents) throw new Error('This service requires full payment. Pay the latest balance (' + formatCurrency(balanceCents / 100) + ').');
+      if (totalCents - discountCents < 300000 && amountCents !== balanceCents) {
+        throw new Error('Bills below ₱3,000 after discount require full payment. Pay the latest balance (' + formatCurrency(balanceCents / 100) + ').');
+      }
       const newPaidCents = paidCents + amountCents;
       if (!Number.isSafeInteger(newPaidCents)) throw new Error('Payment exceeds the supported amount.');
       const newBalance = (balanceCents - amountCents) / 100;
@@ -691,7 +704,6 @@ const ManageBilling = () => {
                                       remarks: '',
                                       current_balance: record.balance
                                     });
-                                    setAllowsPartial(service.price >= 3000);
                                     setShowPaymentModal(true);
                                   }}>Pay</button>
                                 )}
@@ -709,14 +721,13 @@ const ManageBilling = () => {
                                     total_amount: record.total_amount,
                                     discount_type: discType,
                                     discount: record.discount,
-                                    discount_id_no: record.discount_id_no || '',
+                                    discount_id_no: discType === 'manual' ? String(record.discount) : record.discount_id_no || '',
                                     amount_paid: record.amount_paid,
                                     payment_method: record.payment_method,
                                     reference_number: record.reference_number || '',
                                     payment_date: record.payment_date || getClinicDate(),
                                     remarks: record.remarks || ''
                                   });
-                                  setAllowsPartial(service.price >= 3000);
                                   setShowEditModal(true);
                                 }}>Edit</button>
                                 <button className="btn btn-secondary btn-sm" onClick={() => handleArchive(record.billing_id)}>Archive</button>
@@ -745,24 +756,35 @@ const ManageBilling = () => {
             </div>
             <form onSubmit={handleCreateBilling}>
               <div className="modal-billing-create-body">
-                <div className="form-group"><label>Select Appointment *</label><select disabled={isSubmitting} className="form-control" value={createForm.appointment_id} onChange={async (e) => {
+                <div className="form-group"><label htmlFor="billing-create-appointment">Select Appointment *</label><select id="billing-create-appointment" disabled={isSubmitting} className="form-control" value={createForm.appointment_id} onChange={async (e) => {
                   const aptId = e.target.value;
                   const appointment = unbilledAppointments.find(a => a.appointment_id === parseInt(aptId));
                   if (appointment) {
                     const service = appointment.services;
-                    setAllowsPartial(service.price >= 3000);
-                    setCreateForm({ ...createForm, appointment_id: aptId, patient_id: appointment.patients.patient_id, doctor_id: appointment.doctors.doctor_id, service_id: service.service_id, service_name: service.service_name, total_amount: service.price, amount_paid: service.price >= 3000 ? 0 : service.price });
-                  } else setCreateForm({ ...createForm, appointment_id: aptId, total_amount: 0 });
-                }} required><option value="">-- Select Appointment --</option>{unbilledAppointments.map(apt => (<option key={apt.appointment_id} value={apt.appointment_id}>{new Date(apt.appointment_datetime).toLocaleString()} - {apt.patients.first_name} {apt.patients.last_name} - {apt.services.service_name} (₱{apt.services.price.toFixed(2)})</option>))}</select></div>
+                    const standardCents = toCents(service.price);
+                    setCreateForm(previous => ({ ...previous, appointment_id: aptId, patient_id: appointment.patients.patient_id,
+                      doctor_id: appointment.doctors.doctor_id, service_id: service.service_id, service_name: service.service_name,
+                      total_amount: standardCents == null ? '' : standardCents / 100,
+                      discount_type: 'none', discount: 0, discount_id_no: '',
+                      amount_paid: standardCents != null && standardCents < 300000 ? standardCents / 100 : 0 }));
+                  } else resetCreateForm();
+                }} required><option value="">-- Select Appointment --</option>{unbilledAppointments.map(apt => (<option key={apt.appointment_id} value={apt.appointment_id}>{new Date(apt.appointment_datetime).toLocaleString()} - {apt.patients.first_name} {apt.patients.last_name} - {apt.services.service_name}</option>))}</select></div>
                 <div className="form-group"><label>Service</label><input type="text" className="form-control" value={createForm.service_name} readOnly disabled /></div>
+                <div className="form-group"><label htmlFor="billing-create-standard">Current standard price — internal reference</label><input id="billing-create-standard" type="text" className="form-control" value={createStandardCents == null ? 'Not available' : formatCurrency(createStandardCents / 100)} readOnly /></div>
                 <div className="form-row">
-                  <div className="form-group"><label>Total Amount (₱)</label><input type="number" className="form-control" value={createForm.total_amount} readOnly disabled /></div>
-                  <div className="form-group"><label>Discount Type</label><select disabled={isSubmitting} className="form-control" value={createForm.discount_type} onChange={e => setCreateForm({ ...createForm, discount_type: e.target.value })}><option value="none">No Discount</option><option value="senior">Senior Citizen (20%)</option><option value="pwd">PWD (20%)</option><option value="manual">Manual Discount</option></select></div>
+                  <div className="form-group">
+                    <label htmlFor="billing-create-charge">Agreed treatment charge (₱)</label>
+                    <input id="billing-create-charge" type="number" className="form-control" value={createForm.total_amount}
+                      onChange={event => setCreateForm(previous => ({ ...previous, total_amount: event.target.value }))}
+                      disabled={isSubmitting || !createForm.appointment_id} min="0" step="0.01" required aria-describedby="billing-create-charge-help" />
+                    <small id="billing-create-charge-help">Enter the treatment charge before any separate discount. Confirm the amount paid separately.</small>
+                  </div>
+                  <div className="form-group"><label htmlFor="billing-create-discount-type">Discount Type</label><select id="billing-create-discount-type" disabled={isSubmitting} className="form-control" value={createForm.discount_type} onChange={e => setCreateForm({ ...createForm, discount_type: e.target.value })}><option value="none">No Discount</option><option value="senior">Senior Citizen (20%)</option><option value="pwd">PWD (20%)</option><option value="manual">Manual Discount</option></select></div>
                 </div>
-                {createForm.discount_type !== 'none' && (<div className="form-group"><label>{createForm.discount_type === 'manual' ? 'Discount Amount (₱)' : 'ID Number *'}</label><input disabled={isSubmitting} type={createForm.discount_type === 'manual' ? 'number' : 'text'} className="form-control" value={createForm.discount_id_no} onChange={e => setCreateForm({ ...createForm, discount_id_no: e.target.value })} placeholder={createForm.discount_type === 'manual' ? 'Enter amount' : 'Enter ID number'} required /></div>)}
+                {createForm.discount_type !== 'none' && (<div className="form-group"><label htmlFor="billing-create-discount-value">{createForm.discount_type === 'manual' ? 'Discount Amount (₱)' : 'ID Number *'}</label><input id="billing-create-discount-value" min="0" step="0.01" disabled={isSubmitting} type={createForm.discount_type === 'manual' ? 'number' : 'text'} className="form-control" value={createForm.discount_id_no} onChange={e => setCreateForm({ ...createForm, discount_id_no: e.target.value })} placeholder={createForm.discount_type === 'manual' ? 'Enter amount' : 'Enter ID number'} required /></div>)}
                 <div className="discount-summary"><strong>Amount after discount:</strong> ₱{(createForm.total_amount - createForm.discount).toFixed(2)} {createForm.discount > 0 && <span>(Discount: ₱{createForm.discount.toFixed(2)})</span>}</div>
                 <div className="form-row">
-                  <div className="form-group"><label>Amount Paid (₱)</label><input disabled={isSubmitting} type="number" className="form-control" value={createForm.amount_paid} onChange={e => setCreateForm({ ...createForm, amount_paid: parseFloat(e.target.value) || 0 })} step="0.01" min="0" /></div>
+                  <div className="form-group"><label htmlFor="billing-create-paid">Amount Paid (₱)</label><input id="billing-create-paid" disabled={isSubmitting} type="number" className="form-control" value={createForm.amount_paid} onChange={e => setCreateForm({ ...createForm, amount_paid: parseFloat(e.target.value) || 0 })} step="0.01" min="0" /></div>
                   <div className="form-group"><label>Payment Method</label><select disabled={isSubmitting} className="form-control" value={createForm.payment_method} onChange={e => setCreateForm({ ...createForm, payment_method: e.target.value })}>
                     <option value="cash">Cash</option>
                     <option value="gcash">GCash</option>
@@ -792,10 +814,11 @@ const ManageBilling = () => {
             <div className="modal-header"><h3>Edit Billing Record</h3><button className="modal-close" disabled={isSubmitting} onClick={() => setShowEditModal(false)}>&times;</button></div>
             <form onSubmit={handleEditBilling}>
               <div className="modal-body">
-                <div className="form-row"><div className="form-group"><label>Total Amount (₱)</label><input disabled={isSubmitting} type="number" className="form-control" value={editForm.total_amount} onChange={e => setEditForm({ ...editForm, total_amount: parseFloat(e.target.value) || 0 })} required /></div><div className="form-group"><label>Discount Type</label><select disabled={isSubmitting} className="form-control" value={editForm.discount_type} onChange={e => setEditForm({ ...editForm, discount_type: e.target.value })}><option value="none">No Discount</option><option value="senior">Senior Citizen (20%)</option><option value="pwd">PWD (20%)</option><option value="manual">Manual Discount</option></select></div></div>
-                {editForm.discount_type !== 'none' && (<div className="form-group"><label>{editForm.discount_type === 'manual' ? 'Discount Amount (₱)' : 'ID Number *'}</label><input disabled={isSubmitting} type={editForm.discount_type === 'manual' ? 'number' : 'text'} className="form-control" value={editForm.discount_id_no} onChange={e => setEditForm({ ...editForm, discount_id_no: e.target.value })} placeholder={editForm.discount_type === 'manual' ? 'Enter amount' : 'Enter ID number'} required /></div>)}
+                <div className="form-group"><label htmlFor="billing-edit-standard">Current standard price — internal reference</label><input id="billing-edit-standard" type="text" className="form-control" value={editStandardCents == null ? 'Not available' : formatCurrency(editStandardCents / 100)} readOnly /></div>
+                <div className="form-row"><div className="form-group"><label htmlFor="billing-edit-charge">Agreed treatment charge (₱)</label><input id="billing-edit-charge" disabled={isSubmitting} type="number" className="form-control" value={editForm.total_amount} onChange={event => setEditForm(previous => ({ ...previous, total_amount: event.target.value }))} min="0" step="0.01" required /></div><div className="form-group"><label htmlFor="billing-edit-discount-type">Discount Type</label><select id="billing-edit-discount-type" disabled={isSubmitting} className="form-control" value={editForm.discount_type} onChange={e => setEditForm({ ...editForm, discount_type: e.target.value })}><option value="none">No Discount</option><option value="senior">Senior Citizen (20%)</option><option value="pwd">PWD (20%)</option><option value="manual">Manual Discount</option></select></div></div>
+                {editForm.discount_type !== 'none' && (<div className="form-group"><label htmlFor="billing-edit-discount-value">{editForm.discount_type === 'manual' ? 'Discount Amount (₱)' : 'ID Number *'}</label><input id="billing-edit-discount-value" min="0" step="0.01" disabled={isSubmitting} type={editForm.discount_type === 'manual' ? 'number' : 'text'} className="form-control" value={editForm.discount_id_no} onChange={e => setEditForm({ ...editForm, discount_id_no: e.target.value })} placeholder={editForm.discount_type === 'manual' ? 'Enter amount' : 'Enter ID number'} required /></div>)}
                 <div className="discount-summary"><strong>Amount after discount:</strong> ₱{(editForm.total_amount - editForm.discount).toFixed(2)} {editForm.discount > 0 && <span>(Discount: ₱{editForm.discount.toFixed(2)})</span>}</div>
-                <div className="form-row"><div className="form-group"><label>Amount Paid (₱)</label><input disabled={isSubmitting} type="number" className="form-control" value={editForm.amount_paid} onChange={e => setEditForm({ ...editForm, amount_paid: parseFloat(e.target.value) || 0 })} step="0.01" min="0" /></div><div className="form-group"><label>Payment Method</label><select disabled={isSubmitting} className="form-control" value={editForm.payment_method} onChange={e => setEditForm({ ...editForm, payment_method: e.target.value })}>
+                <div className="form-row"><div className="form-group"><label htmlFor="billing-edit-paid">Amount Paid (₱)</label><input id="billing-edit-paid" disabled={isSubmitting} type="number" className="form-control" value={editForm.amount_paid} onChange={e => setEditForm({ ...editForm, amount_paid: parseFloat(e.target.value) || 0 })} step="0.01" min="0" /></div><div className="form-group"><label>Payment Method</label><select disabled={isSubmitting} className="form-control" value={editForm.payment_method} onChange={e => setEditForm({ ...editForm, payment_method: e.target.value })}>
                   <option value="cash">Cash</option>
                   <option value="gcash">GCash</option>
                   <option value="maya">Maya</option>
@@ -821,7 +844,7 @@ const ManageBilling = () => {
             <form onSubmit={handleRecordPayment}>
               <div className="modal-body">
                 <div className="form-group"><label>Current Balance</label><div className="balance-display">{formatCurrency(paymentForm.current_balance)}</div></div>
-                <div className="form-group"><label>Payment Amount (₱)</label><input disabled={isSubmitting} type="number" className="form-control" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} step="0.01" min="0" required /></div>
+                <div className="form-group"><label htmlFor="billing-payment-amount">Payment Amount (₱)</label><input id="billing-payment-amount" disabled={isSubmitting} type="number" className="form-control" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} step="0.01" min="0" required /></div>
                 <div className="form-group"><label>Payment Method</label><select disabled={isSubmitting} className="form-control" value={paymentForm.payment_method} onChange={e => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}>
                   <option value="cash">Cash</option>
                   <option value="gcash">GCash</option>

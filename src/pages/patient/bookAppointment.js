@@ -209,6 +209,7 @@ const BookAppointment = () => {
               <div className={`user-dropdown ${userDropdownOpen ? 'active' : ''}`}>
                 <Link to="/book-appointment" onClick={() => setUserDropdownOpen(false)}><i className="fas fa-book"></i> Book Appointment</Link>
                 <Link to="/my-appointments" onClick={() => setUserDropdownOpen(false)}><i className="fas fa-calendar-check"></i> My Appointments</Link>
+                <Link to="/treatment-history" onClick={() => setUserDropdownOpen(false)}><i className="fas fa-notes-medical" aria-hidden="true"></i> Treatment History</Link>
                 <Link to="/profile" onClick={() => setUserDropdownOpen(false)}><i className="fas fa-user"></i> My Profile</Link>
                 <button onClick={handleLogout} className="dropdown-logout-btn"><i className="fas fa-sign-out-alt"></i> Logout</button>
               </div>
@@ -287,7 +288,6 @@ const BookAppointment = () => {
                         <div className="doctor-avatar">{doctor.first_name?.[0]}{doctor.last_name?.[0]}</div>
                         <div className="doctor-info">
                           <div className="doctor-name">Dr. {doctor.first_name} {doctor.last_name}</div>
-                          <div className="doctor-specialization">{doctor.specialization || 'General Dentist'}</div>
                           <div className="doctor-details">
                             <span><i className="fas fa-envelope"></i> {doctor.email}</span>
                             <span><i className="fas fa-phone"></i> {doctor.contact_no || 'N/A'}</span>
@@ -303,7 +303,7 @@ const BookAppointment = () => {
 
           {selectedDoctorId && (
             <div className="form-section">
-              <h2 className="section-title"><i className="fas fa-calendar-alt"></i> Select Date & Time (Philippine time)</h2>
+              <h2 className="section-title"><i className="fas fa-calendar-alt"></i> Select Date & Time</h2>
               <BookingCalendar key={selectedServiceId + ':' + selectedDoctorId}
                 doctorId={selectedDoctorId} serviceId={selectedServiceId} leadMinutes={serviceDuration} date={selectedDate} time={selectedTime}
                 setDate={setSelectedDate} setTime={setSelectedTime} revision={revision} locked={isSubmitting} />

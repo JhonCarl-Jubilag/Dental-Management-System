@@ -417,7 +417,8 @@ const Landing = () => {
                   <Link to="/my-appointments" onClick={() => setUserDropdownOpen(false)}>
                     <i className="fas fa-calendar-check"></i> My Appointments
                   </Link>
-                  <Link to="/profile" onClick={() => setUserDropdownOpen(false)}>
+                  <Link to="/treatment-history" onClick={() => setUserDropdownOpen(false)}><i className="fas fa-notes-medical" aria-hidden="true"></i> Treatment History</Link>
+                <Link to="/profile" onClick={() => setUserDropdownOpen(false)}>
                     <i className="fas fa-user"></i> My Profile
                   </Link>
                   <a href="/" onClick={handleLogout} className={isLoggingOut ? 'logging-out' : ''}>
@@ -484,7 +485,7 @@ const Landing = () => {
               <Info size={16} aria-hidden="true" />
               {user && userType === 'patient'
                 ? "You're logged in! Book appointments directly"
-                : <> <Link to="/register">Register</Link> or <Link to="/login">loginyou</Link> to book appointments</>}
+                : <> <Link to="/register">Register</Link> or <Link to="/login">login</Link> to book appointments</>}
             </p>
           </header>
 
@@ -674,6 +675,7 @@ const Landing = () => {
                 {user && userType === 'patient' ? (
                   <>
                     <li><Link to="/my-appointments">My Appointments</Link></li>
+                    <li><Link to="/treatment-history">Treatment History</Link></li>
                     <li><Link to="/profile">My Profile</Link></li>
                   </>
                 ) : (

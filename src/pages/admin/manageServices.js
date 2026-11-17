@@ -51,6 +51,7 @@ const ManageServices = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const perPage = 5;
+  const listReadId = useRef(0);
   const searchTimeout = useRef(null);
   const isSuperAdmin = isOwner(userType);
 
@@ -64,35 +65,51 @@ const ManageServices = () => {
 
   // Fetch services
   const fetchServices = useCallback(async () => {
+    const readId = ++listReadId.current;
     setLoading(true);
     setLoadError(null);
     try {
-      let query = supabase.from('services').select('*', { count: 'exact' });
+      const buildQuery = (countOnly = false) => {
+        let query = supabase.from('services').select('*', { count: 'exact', head: countOnly });
 
-      if (debouncedSearch) {
-        query = query.ilike('service_name', `%${debouncedSearch}%`);
-      }
-      if (statusFilter) {
-        query = query.eq('status', statusFilter);
-      }
+        if (debouncedSearch) {
+          query = query.ilike('service_name', `%${debouncedSearch}%`);
+        }
+        if (statusFilter) {
+          query = query.eq('status', statusFilter);
+        }
 
-      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+        query = query.order(sortBy, { ascending: sortOrder === 'asc' }).order('service_id', { ascending: true });
+
+        return query;
+      };
 
       const from = (page - 1) * perPage;
       const to = from + perPage - 1;
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
+      const { data, error, count } = await buildQuery().range(from, to);
+      if (readId !== listReadId.current) return;
+      // A concurrent edit can remove the last row of the current page.
+      // PostgREST reports an out-of-range offset before returning row data.
+      if (error?.code === 'PGRST103') {
+        const result = await buildQuery(true);
+        if (readId !== listReadId.current) return;
+        if (result.error) throw result.error;
+        const lastPage = Math.max(1, Math.ceil((result.count || 0) / perPage));
+        if (page > lastPage) { setPage(lastPage); return; }
+      }
       if (error) throw error;
+      const lastPage = Math.max(1, Math.ceil((count || 0) / perPage));
+      if (page > lastPage) { setPage(lastPage); return; }
 
       setServices(data || []);
       setTotalCount(count || 0);
-      setTotalPages(Math.ceil((count || 0) / perPage));
+      setTotalPages(lastPage);
 
       // Update stats
       const { data: allData, error: statsError } = await supabase
         .from('services')
         .select('status');
+      if (readId !== listReadId.current) return;
       if (!statsError && allData) {
         const active = allData.filter(s => s.status === 'active').length;
         const inactive = allData.filter(s => s.status === 'inactive').length;
@@ -100,11 +117,12 @@ const ManageServices = () => {
       }
       setHasLoaded(true);
     } catch (err) {
+      if (readId !== listReadId.current) return;
       setLoadError(err);
       console.error(err);
       toast.error('Failed to load services');
     } finally {
-      setLoading(false);
+      if (readId === listReadId.current) setLoading(false);
     }
   }, [debouncedSearch, statusFilter, sortBy, sortOrder, page]);
 
@@ -330,7 +348,7 @@ const ManageServices = () => {
             </div>
             <div className="filter-group">
               <label>Status</label>
-              <select className="form-control" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <select className="form-control" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
                 <option value="">All</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -338,7 +356,7 @@ const ManageServices = () => {
             </div>
             <div className="filter-group">
               <label>Sort By</label>
-              <select className="form-control" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <select className="form-control" value={sortBy} onChange={(e) => { setSortBy(e.target.value); setPage(1); }}>
                 <option value="service_name">Service Name</option>
                 <option value="price">Price</option>
                 <option value="created_at">Date Created</option>
@@ -346,7 +364,7 @@ const ManageServices = () => {
             </div>
             <div className="filter-group">
               <label>Order</label>
-              <select className="form-control" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+              <select className="form-control" value={sortOrder} onChange={(e) => { setSortOrder(e.target.value); setPage(1); }}>
                 <option value="asc">Ascending</option>
                 <option value="desc">Descending</option>
               </select>
@@ -431,9 +449,9 @@ const ManageServices = () => {
           </div>
           {totalPages > 1 && (
             <div className="pagination">
-              <button className="page-link" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</button>
+              <button className="page-link" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</button>
               <span className="page-info">Page {page} of {totalPages}</span>
-              <button className="page-link" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
+              <button className="page-link" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
             </div>
           )}
         </div>

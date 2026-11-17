@@ -843,6 +843,7 @@ const MyAppointmentsContent = () => {
           <div><dt>Treatment Date</dt><dd>{formatDateTime(selectedTreatment.treated_at)}</dd></div>
           <div><dt>Tooth / Teeth</dt><dd>{selectedTreatment.tooth_scope === 'specific' ? selectedTreatment.tooth_numbers.join(', ') : selectedTreatment.tooth_scope === 'whole_mouth' ? 'Whole mouth' : 'Not tooth-specific'}</dd></div>
           <div><dt>Dentist</dt><dd>{selectedTreatment.doctor_name === 'Not recorded' ? selectedTreatment.doctor_name : 'Dr. ' + selectedTreatment.doctor_name}</dd></div>
+          <div><dt>Remarks / Aftercare</dt><dd className="appointment-treatment-remarks">{selectedTreatment.patient_remarks.trim() || 'No remarks recorded.'}</dd></div>
         </dl><p>For corrections or further information, please contact the clinic.</p>
       </dialog>}
       {isLoggingOut && (

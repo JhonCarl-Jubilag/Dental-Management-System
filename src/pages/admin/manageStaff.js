@@ -12,23 +12,41 @@ import './manageStaff.css';
 const staffPasswordLimits = { minLength: 12, maxLength: 4096 };
 const emptyPasswords = { password: '', confirm_password: '' };
 const emptyForm = { first_name: '', last_name: '', email: '', ...emptyPasswords };
-const StaffPasswordFields = ({ prefix, label, values, setValues }) => (
-  <>
+const StaffPasswordFields = ({ prefix, label, values, setValues }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  useEffect(() => {
+    if (!values.password) setShowPassword(false);
+    if (!values.confirm_password) setShowConfirmation(false);
+  }, [values.password, values.confirm_password]);
+  return <>
     <div className="staff-form-field">
-      <label htmlFor={`${prefix}-password`}>{label}</label>
-      <input id={`${prefix}-password`} type="password" required {...staffPasswordLimits}
-        autoComplete="new-password" aria-describedby={`${prefix}-password-hint`}
-        value={values.password} onChange={event => setValues({ ...values, password: event.target.value })} />
-      <small id={`${prefix}-password-hint`}>At least {staffPasswordLimits.minLength} characters.</small>
+      <label htmlFor={prefix + '-password'}>{label}</label>
+      <div className="staff-password-input">
+        <input id={prefix + '-password'} type={showPassword ? 'text' : 'password'} required {...staffPasswordLimits}
+          autoComplete="new-password" aria-describedby={prefix + '-password-hint'}
+          value={values.password} onChange={event => setValues({ ...values, password: event.target.value })} />
+        <button type="button" className="staff-password-toggle" aria-label={(showPassword ? 'Hide ' : 'Show ') + label.toLowerCase()}
+          aria-pressed={showPassword} aria-controls={prefix + '-password'} onClick={() => setShowPassword(current => !current)}>
+          <i className={'fas fa-' + (showPassword ? 'eye-slash' : 'eye')} aria-hidden="true" />
+        </button>
+      </div>
+      <small id={prefix + '-password-hint'}>At least {staffPasswordLimits.minLength} characters.</small>
     </div>
     <div className="staff-form-field">
-      <label htmlFor={`${prefix}-confirm-password`}>Confirm password</label>
-      <input id={`${prefix}-confirm-password`} type="password" required {...staffPasswordLimits}
-        autoComplete="new-password" value={values.confirm_password}
-        onChange={event => setValues({ ...values, confirm_password: event.target.value })} />
+      <label htmlFor={prefix + '-confirm-password'}>Confirm password</label>
+      <div className="staff-password-input">
+        <input id={prefix + '-confirm-password'} type={showConfirmation ? 'text' : 'password'} required {...staffPasswordLimits}
+          autoComplete="new-password" value={values.confirm_password}
+          onChange={event => setValues({ ...values, confirm_password: event.target.value })} />
+        <button type="button" className="staff-password-toggle" aria-label={showConfirmation ? 'Hide confirm password' : 'Show confirm password'}
+          aria-pressed={showConfirmation} aria-controls={prefix + '-confirm-password'} onClick={() => setShowConfirmation(current => !current)}>
+          <i className={'fas fa-' + (showConfirmation ? 'eye-slash' : 'eye')} aria-hidden="true" />
+        </button>
+      </div>
     </div>
-  </>
-);
+  </>;
+};
 const staffSnapshot = profile => Object.fromEntries(['first_name', 'last_name', 'email', 'status'].map(key => [key, profile[key]]));
 const manageStaffAccount = async body => {
   const { data, error } = await supabase.functions.invoke('manage-staff-account', { body });
@@ -60,6 +78,8 @@ const ManageStaff = ({ embedded = false, profileId = '' }) => {
   const [editEmail, setEditEmail] = useState('');
   const [editPasswords, setEditPasswords] = useState(emptyPasswords);
   const [nameSnapshot, setNameSnapshot] = useState(null);
+  const createDialog = useRef(null);
+  const addStaffButton = useRef(null);
   const saving = useRef(false);
   const request = useRef(0);
 
@@ -97,6 +117,20 @@ const ManageStaff = ({ embedded = false, profileId = '' }) => {
     } finally { if (version === request.current) setLoading(false); }
   }, [allowed, page, profileId]);
   useEffect(() => { load(); return () => { request.current += 1; }; }, [load]);
+
+  useEffect(() => {
+    if (mode !== 'create' || !createDialog.current) return;
+    const dialog = createDialog.current;
+    const previousFocus = addStaffButton.current || document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    if (!dialog.open) dialog.showModal();
+    document.body.style.overflow = 'hidden';
+    return () => {
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [mode]);
 
   const closeForm = () => {
     setMode(null); setSelectedStaff(null); setForm(emptyForm); setEditSection('details');
@@ -220,15 +254,19 @@ const ManageStaff = ({ embedded = false, profileId = '' }) => {
             <button type="button" className="staff-refresh-button" onClick={() => load()} disabled={loading || busy || Boolean(mode)}>
               <i className={`fas fa-sync-alt${loading ? ' fa-spin' : ''}`} aria-hidden="true"></i> Refresh
             </button>
-            {!profileId && <button type="button" className="staff-submit-button" disabled={loading || busy || Boolean(error) || Boolean(mode)} onClick={() => { setForm(emptyForm); setMode('create'); }}>
+            {!profileId && <button ref={addStaffButton} type="button" className="staff-submit-button" disabled={loading || busy || Boolean(error) || Boolean(mode)} onClick={() => { setForm(emptyForm); setMode('create'); }}>
               <i className="fas fa-plus" aria-hidden="true"></i> Add Staff
             </button>}
           </div>
         </div>
         {loading && !hasLoaded && <div className="staff-account-state" role="status">Loading Staff accounts…</div>}
         {error && <div className="staff-account-error" role="alert">{error}</div>}
-        {mode === 'create' && <form className="staff-account-card staff-account-form staff-account-editor" onSubmit={createStaff}>
-          <div className="staff-form-heading"><h2>Add Staff account</h2></div>
+        {mode === 'create' && <dialog ref={createDialog} className="staff-create-dialog" aria-labelledby="staff-create-title"
+          onCancel={event => { event.preventDefault(); if (!saving.current) closeForm(); }}>
+          <form className="staff-account-form" onSubmit={createStaff}>
+          <div className="staff-form-heading staff-editor-heading"><h2 id="staff-create-title">Add Staff account</h2>
+            <button type="button" className="staff-refresh-button staff-dialog-close" aria-label="Close Add Staff account" disabled={busy} onClick={closeForm}>×</button>
+          </div>
           <fieldset disabled={busy}>
             <div className="staff-form-grid">
               <div className="staff-form-field">
@@ -250,7 +288,8 @@ const ManageStaff = ({ embedded = false, profileId = '' }) => {
               </div>
             </div>
           </fieldset>
-        </form>}
+          </form>
+        </dialog>}
         {mode === 'edit' && selectedStaff && <section className="staff-account-card staff-account-editor" aria-label="Edit Staff account">
           <div className="staff-form-heading staff-editor-heading">
             <h2>{editSection === 'email' ? 'Change login email' : editSection === 'password' ? 'Change password' : 'Edit Staff details'}</h2>

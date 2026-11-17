@@ -116,12 +116,12 @@ function HistoryContent({ patientId, patientName, signOut }) {
           <div className="pth-records-heading"><h2 id="pth-records-title">Recorded treatments</h2></div>
           {loading ? <p className="pth-state" role="status">Loading treatment history…</p> : result && <>
             {result.rows.length > 0 ? <table className="pth-table"><caption className="pth-sr-only">Your recorded dental treatments, newest first</caption>
-              <thead><tr><th scope="col">Treatment date</th><th scope="col">Procedure</th><th scope="col">Tooth / Teeth</th><th scope="col">Dentist</th><th scope="col"><span className="pth-sr-only">Details</span></th></tr></thead>
+              <thead><tr><th scope="col">Treatment date</th><th scope="col">Procedure</th><th scope="col">Tooth / Teeth</th><th scope="col">Dentist</th><th scope="col">Remarks / Aftercare</th><th scope="col"><span className="pth-sr-only">Details</span></th></tr></thead>
               <tbody>{result.rows.map(row => <tr key={row.treatment_id}>
                 <td data-label="Date"><time dateTime={row.treated_at}>{formatClinicDateTime(row.treated_at)}</time></td>
                 <td data-label="Procedure"><strong>{row.procedure_name}</strong></td><td data-label="Teeth">{teethLabel(row)}</td>
                 <td data-label="Dentist">{row.doctor_name === 'Not recorded' ? row.doctor_name : `Dr. ${row.doctor_name}`}</td>
-                <td className="pth-details-cell"><button type="button" className="pth-button" aria-label={`View ${row.procedure_name} on ${formatClinicDateTime(row.treated_at)}`} onClick={() => setSelected(row)}>View Details</button></td>
+                <td data-label="Remarks" className="pth-remarks">{row.patient_remarks.trim() || 'No remarks recorded.'}</td><td className="pth-details-cell"><button type="button" className="pth-button" aria-label={`View ${row.procedure_name} on ${formatClinicDateTime(row.treated_at)}`} onClick={() => setSelected(row)}>View Details</button></td>
               </tr>)}</tbody>
             </table> : <div className="pth-state"><i className="fas fa-tooth" aria-hidden="true" /><h3>{query.from || query.to ? 'No treatments in this date range' : 'No treatment records yet'}</h3><p>{query.from || query.to ? 'Choose another date range or clear the filters.' : 'Your treatments will appear here after the clinic saves a treatment record. Contact the clinic if a treatment is missing.'}</p></div>}
             {result.total > 0 && <nav className="pth-pagination" aria-label="Treatment history pages"><button type="button" className="pth-button" disabled={query.page <= 1} onClick={() => setQuery({ ...query, page: query.page - 1 })}>Previous</button><span>Page {query.page} of {pageCount}</span><button type="button" className="pth-button" disabled={query.page >= pageCount} onClick={() => setQuery({ ...query, page: query.page + 1 })}>Next</button></nav>}
@@ -132,7 +132,7 @@ function HistoryContent({ patientId, patientName, signOut }) {
       </main>
       {selected && <dialog ref={dialog} className="pth-dialog" aria-labelledby="pth-detail-title" onClose={() => setSelected(null)} onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close(); }}>
         <div className="pth-dialog-heading"><h2 id="pth-detail-title">Treatment Details</h2><button type="button" className="pth-button" aria-label="Close treatment details" onClick={() => dialog.current.close()} autoFocus>Close</button></div>
-        <dl><div><dt>Procedure</dt><dd>{selected.procedure_name}</dd></div><div><dt>Treatment date</dt><dd>{formatClinicDateTime(selected.treated_at)}</dd></div><div><dt>Tooth / Teeth</dt><dd>{teethLabel(selected)}</dd></div><div><dt>Treating dentist</dt><dd>{selected.doctor_name === 'Not recorded' ? selected.doctor_name : `Dr. ${selected.doctor_name}`}</dd></div></dl>
+        <dl><div><dt>Procedure</dt><dd>{selected.procedure_name}</dd></div><div><dt>Treatment date</dt><dd>{formatClinicDateTime(selected.treated_at)}</dd></div><div><dt>Tooth / Teeth</dt><dd>{teethLabel(selected)}</dd></div><div><dt>Treating dentist</dt><dd>{selected.doctor_name === 'Not recorded' ? selected.doctor_name : `Dr. ${selected.doctor_name}`}</dd></div><div><dt>Remarks / Aftercare</dt><dd className="pth-remarks">{selected.patient_remarks.trim() || 'No remarks recorded.'}</dd></div></dl>
         <p>For corrections or further information, please contact the clinic.</p>
       </dialog>}
     </div>

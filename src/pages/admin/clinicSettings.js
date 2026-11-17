@@ -61,6 +61,7 @@ const FIELD_LABELS = {
   tooth_selection: 'Tooth selection',
   treatment_time: 'Treatment time',
   treatment_notes: 'Treatment notes',
+  patient_remarks: 'Patient remarks / Aftercare',
 };
 
 function ActivityDetails({ changes }) {

@@ -280,20 +280,22 @@ const BookAppointment = () => {
                 ) : (
                   <div className="doctor-options">
                     {doctors.map(doctor => (
-                      <div
+                      <button
+                        type="button"
                         key={doctor.doctor_id}
                         className={`doctor-option ${selectedDoctorId === doctor.doctor_id ? 'selected' : ''}`}
+                        aria-pressed={selectedDoctorId === doctor.doctor_id}
                         onClick={() => handleDoctorChange(doctor.doctor_id)}
                       >
-                        <div className="doctor-avatar">{doctor.first_name?.[0]}{doctor.last_name?.[0]}</div>
-                        <div className="doctor-info">
-                          <div className="doctor-name">Dr. {doctor.first_name} {doctor.last_name}</div>
-                          <div className="doctor-details">
+                        <span className="doctor-avatar">{doctor.first_name?.[0]}{doctor.last_name?.[0]}</span>
+                        <span className="doctor-info">
+                          <span className="doctor-name">Dr. {doctor.first_name} {doctor.last_name}</span>
+                          <span className="doctor-details">
                             <span><i className="fas fa-envelope"></i> {doctor.email}</span>
                             <span><i className="fas fa-phone"></i> {doctor.contact_no || 'N/A'}</span>
-                          </div>
-                        </div>
-                      </div>
+                          </span>
+                        </span>
+                      </button>
                     ))}
                   </div>
                 )}

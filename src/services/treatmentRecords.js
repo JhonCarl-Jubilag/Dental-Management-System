@@ -89,11 +89,11 @@ export const savePatientTreatment = async (client, patientId, editor, form) => {
   // The minute-based input must not truncate an unchanged saved timestamp.
   const treatedAt = editor.record && form.treatedAt === toClinicDateTimeInput(editor.record.treated_at)
     ? editor.record.treated_at : clinicDateTime(date, time);
-  const data = await callTreatmentRPC(client, 'save_patient_treatment', {
+  const data = await callTreatmentRPC(client, 'save_patient_treatment_with_remarks', {
     p_patient_id: patientId, p_appointment_id: editor.appointment.appointment_id,
     p_treatment_id: editor.record?.treatment_id ?? null, p_expected_version: editor.record?.version ?? null,
     p_request_id: editor.requestId ?? null, p_procedure_name: form.procedureName.trim(), p_tooth_scope: form.scope,
-    p_tooth_numbers: teeth, p_treated_at: treatedAt, p_notes: form.notes.trim(), p_confirm_performed: form.confirmed,
+    p_tooth_numbers: teeth, p_treated_at: treatedAt, p_notes: form.notes.trim(), p_confirm_performed: form.confirmed, p_patient_remarks: (form.patientRemarks || '').trim(),
   });
   if (!idIsValid(data) || (editor.record && String(data) !== String(editor.record.treatment_id))) {
     throw new Error('Save result could not be verified. Refresh this patient’s records before retrying.');
@@ -103,7 +103,7 @@ export const savePatientTreatment = async (client, patientId, editor, form) => {
 
 // Patient-only read model: the server resolves ownership; no patient ID is sent.
 export const readMyTreatmentHistory = async (client, expectedPatientId, query, signal) => {
-  let request = client.rpc('list_my_treatment_history', {
+  let request = client.rpc('list_my_treatment_history_with_remarks', {
     p_page: query.page, p_from: query.from || null, p_to: query.to || null,
   });
   if (signal) request = request.abortSignal(signal);
@@ -114,9 +114,9 @@ export const readMyTreatmentHistory = async (client, expectedPatientId, query, s
     if (error.code === '22023') throw new Error('Choose a valid date range and try again.');
     throw new Error('Could not load treatment history. Check your connection and try again.');
   }
-  const fields = ['doctor_name','procedure_name','tooth_numbers','tooth_scope','treated_at','treatment_id'];
+  const fields = ['doctor_name','patient_remarks','procedure_name','tooth_numbers','tooth_scope','treated_at','treatment_id'];
   const validRow = row => row && Object.keys(row).sort().join(',') === fields.join(',')
-    && idIsValid(row.treatment_id) && typeof row.procedure_name === 'string' && row.procedure_name.trim()
+    && typeof row.patient_remarks === 'string' && idIsValid(row.treatment_id) && typeof row.procedure_name === 'string' && row.procedure_name.trim()
     && typeof row.doctor_name === 'string' && typeof row.treated_at === 'string' && Number.isFinite(Date.parse(row.treated_at))
     && ['specific','whole_mouth','not_applicable'].includes(row.tooth_scope) && Array.isArray(row.tooth_numbers)
     && (row.tooth_scope === 'specific' ? row.tooth_numbers.length > 0 && row.tooth_numbers.every(Number.isInteger) : row.tooth_numbers.length === 0);
@@ -132,17 +132,17 @@ export const readMyTreatmentHistory = async (client, expectedPatientId, query, s
 // Batch only the visible completed appointments; ownership is resolved on the server.
 export const readMyAppointmentTreatments = async (client, patientId, appointmentIds, signal) => {
   if (!appointmentIds.length || appointmentIds.length > 5 || appointmentIds.some(id => !idIsValid(id))) throw new Error('Choose valid appointments.');
-  let request = client.rpc('list_my_appointment_treatments', { p_appointment_ids: appointmentIds });
+  let request = client.rpc('list_my_appointment_treatments_with_remarks', { p_appointment_ids: appointmentIds });
   if (signal) request = request.abortSignal(signal);
   const { data, error } = await request;
   if (error) throw new Error(migrationError(error)
     ? 'Treatment record links are not available yet. Please contact the clinic.'
     : 'Could not check treatment records. Please try again.');
-  const fields = ['appointment_id','doctor_name','procedure_name','tooth_numbers','tooth_scope','treated_at','treatment_id'];
+  const fields = ['appointment_id','doctor_name','patient_remarks','procedure_name','tooth_numbers','tooth_scope','treated_at','treatment_id'];
   if (!data || String(data.patient_id) !== String(patientId) || !Array.isArray(data.rows) || data.rows.length > appointmentIds.length
     || data.rows.some(row => !row || Object.keys(row).sort().join(',') !== fields.join(',')
       || !appointmentIds.some(id => String(id) === String(row.appointment_id)) || !idIsValid(row.treatment_id)
-      || typeof row.procedure_name !== 'string' || !row.procedure_name.trim() || typeof row.doctor_name !== 'string'
+      || typeof row.patient_remarks !== 'string' || typeof row.procedure_name !== 'string' || !row.procedure_name.trim() || typeof row.doctor_name !== 'string'
       || typeof row.treated_at !== 'string' || !Number.isFinite(Date.parse(row.treated_at))
       || !['specific','whole_mouth','not_applicable'].includes(row.tooth_scope) || !Array.isArray(row.tooth_numbers)
       || (row.tooth_scope === 'specific' ? !row.tooth_numbers.length || !row.tooth_numbers.every(Number.isInteger) : row.tooth_numbers.length !== 0))

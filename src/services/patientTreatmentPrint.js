@@ -25,7 +25,7 @@ export const createPatientTreatmentPDF = ({ patient, rows, assets, printedAt = n
   const pdf = createClinicPdf(assets);
   const { margin: M, width: W, bottom, line, padding } = CLINIC_PDF_STYLE;
   const widths = [29, 18, 64, 30, 29, 29, 72];
-  const headings = ['Treatment Date', 'Tooth No.', 'Procedure / Dentist', 'Amount Charged', 'Amount Paid', 'Balance', 'Notes / Remarks'];
+  const headings = ['Treatment Date', 'Tooth No.', 'Procedure / Dentist', 'Amount Charged', 'Amount Paid', 'Balance', 'Clinical notes / Patient remarks'];
   let y = 0;
   const setBody = size => setClinicPdfBody(pdf, size);
   const wrap = (value, width) => wrapClinicPdfText(pdf, value, width);
@@ -61,7 +61,7 @@ export const createPatientTreatmentPDF = ({ patient, rows, assets, printedAt = n
     if (amounts[0] - amounts[1] !== amounts[2]) throw new Error('Billing totals are inconsistent. Refresh Billing before printing.');
     amounts.forEach((amount, i) => { totals[i] += amount; if (!Number.isSafeInteger(totals[i])) throw new Error('The print totals exceed the supported amount.'); });
     setBody(8.5);
-    const values = [formatClinicDateTime(row.treated_at), row.tooth_scope === 'specific' ? row.tooth_numbers.join(', ') : row.tooth_scope === 'whole_mouth' ? 'Whole mouth' : 'Not tooth-specific', `${row.procedure_name}\nDr. ${row.doctor_name || 'Not recorded'}\nAppointment #${row.appointment_id}`, ...amounts.map(money), row.notes || '—'];
+    const values = [formatClinicDateTime(row.treated_at), row.tooth_scope === 'specific' ? row.tooth_numbers.join(', ') : row.tooth_scope === 'whole_mouth' ? 'Whole mouth' : 'Not tooth-specific', `${row.procedure_name}\nDr. ${row.doctor_name || 'Not recorded'}\nAppointment #${row.appointment_id}`, ...amounts.map(money), [row.notes ? `Internal: ${row.notes}` : '', row.patient_remarks ? `Patient remarks: ${row.patient_remarks}` : ''].filter(Boolean).join('\n\n') || '—'];
     const cells = values.map((value, i) => wrap(value, widths[i] - padding * 2)), length = Math.max(...cells.map(cell => cell.length));
     let offset = 0;
     while (offset < length) {

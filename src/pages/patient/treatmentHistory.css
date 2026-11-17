@@ -41,9 +41,10 @@
 .patient-treatment-history .pth-dialog dl > div { padding: 12px 0; border-bottom: 1px solid var(--clinic-line, #d3e0e5); overflow-wrap: anywhere; }
 .patient-treatment-history .pth-dialog dt { font-size: 13px; color: var(--clinic-muted, #52677d); }
 .patient-treatment-history .pth-dialog dd { margin: 4px 0 0; font-weight: 600; }
+.patient-treatment-history .pth-remarks { white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 1000px) {
 }
-@media (max-width: 650px) {
+@media (max-width: 850px) {
  .patient-treatment-history .pth-content { padding: 28px 16px; }
  .patient-treatment-history h1 { font-size: 26px; }
 

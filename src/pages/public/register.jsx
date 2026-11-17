@@ -61,10 +61,14 @@ const Register = () => {
     switch (name) {
       case 'first_name':
       case 'last_name':
-        if (!value.trim()) return 'This field is required';
-        if (value.trim().length < 2) return 'Must be at least 2 characters';
-        if (value.trim().length > 200) return 'Must be at most 200 characters';
-        if (!/^[a-zA-Z\s]+$/.test(value)) return 'Only letters and spaces allowed';
+        const normalizedName = value.normalize('NFC').trim();
+        if (!normalizedName) return 'This field is required';
+        if (normalizedName.length < 2) return 'Must be at least 2 characters';
+        if (normalizedName.length > 200) return 'Must be at most 200 characters';
+        // Preserve accented letters, combining marks, initials and name punctuation.
+        if (/\p{Cc}/u.test(value) || !/^\p{L}[\p{L}\p{M}]*(?:(?:[ '\u2019-]|\. ?)\p{L}[\p{L}\p{M}]*)*\.?$/u.test(normalizedName)) {
+          return 'Use letters, spaces, hyphens, apostrophes, or periods in your name';
+        }
         return '';
       case 'email':
         if (!value) return 'Email is required';
@@ -143,8 +147,8 @@ const Register = () => {
       setGeneralError('');
       const completing = completingRegistration;
       const profile = {
-        first_name: formData.first_name,
-        last_name: formData.last_name,
+        first_name: formData.first_name.normalize('NFC').trim(),
+        last_name: formData.last_name.normalize('NFC').trim(),
         address: formData.address,
         contact_no: formData.contact_no,
         birthday: formData.birthday

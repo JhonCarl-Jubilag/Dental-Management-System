@@ -1,70 +1,27 @@
-# Getting Started with Create React App
+# Diolata Dental Clinic Management System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React application for patient bookings and treatment history, clinic operations, billing, inventory, reports, staff accounts, and daily time records. Supabase provides authentication, database access, and Edge Functions.
 
-## Available Scripts
+## Development
 
-In the project directory, you can run:
+- Install the locked dependencies with `npm ci`.
+- Configure the required public Supabase settings in the local `.env` file; see `src/services/supabase.js` for the variable names. Never put a service-role key or database password in React environment variables.
+- Run `npm start` for local development.
+- Run `npm run build` to generate the production `build` folder.
 
-### `npm start`
+## Project folders
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- `src/pages/public`: landing page, login, registration, and account verification/recovery.
+- `src/pages/patient`: service details, appointment booking, appointments, profile, and treatment history.
+- `src/pages/admin`: shared Owner/Staff clinic pages. Settings and staff-account management require Owner access.
+- `src/components`, `src/services`, `src/utils`: shared UI, database calls, document generation, and scheduling helpers.
+- `src/assets`, `public`: imported media/fonts and browser entry files/icons.
+- `supabase/functions`: account-management and email functions. Deployment entry points are declared in `supabase/config.toml`.
+- `supabase/migrations`: ordered database history. Keep rollback and replacement migrations; do not remove older files simply because newer migrations supersede them.
+- `supabase/demo`: manually reviewed sample-data scripts. They are not normal migrations and must not be applied automatically.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Deployment and data safety
 
-### `npm test`
+The frontend build and Supabase functions/database changes are separate deployment steps. Apply only reviewed database updates for the intended project. Keep secrets, private account lists, recovery copies, and database backups outside Git. The `vercel.json` rewrite supports direct navigation to application routes.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Dentists are clinic provider profiles; they do not have a primary login role. The login roles are Owner (`super_admin`), Staff (`admin`), and Patient (`patient`). Backend checks and database policies enforce access in addition to protected frontend routes.

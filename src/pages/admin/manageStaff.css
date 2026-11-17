@@ -428,3 +428,43 @@
 .staff-account-page .staff-dtr-embedded {
   max-width: 1100px;
 }
+
+/* Scoped to Staff accounts; native dialog keeps the background list inert. */
+.staff-account-page .staff-create-dialog {
+  box-sizing: border-box;
+  width: min(740px, calc(100% - 32px));
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--clinic-line, #dce5f0);
+  border-radius: 18px;
+  background: #fff;
+  color: var(--clinic-navy, #0c2e60);
+  font: inherit;
+  box-shadow: 0 20px 60px #0b284740;
+}
+.staff-account-page .staff-create-dialog::backdrop { background: #071b3899; }
+.staff-account-page .staff-dialog-close { min-width: 42px; padding: 5px 12px; font-size: 24px; line-height: 1; }
+.staff-account-page .staff-password-input { position: relative; }
+.staff-account-page .staff-password-input input { padding-right: 52px; }
+.staff-account-page .staff-password-toggle {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  bottom: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--clinic-navy, #0c2e60);
+  font-size: 16px;
+  cursor: pointer;
+}
+.staff-account-page .staff-password-toggle:hover:not(:disabled) { background: #edf4fa; }
+.staff-account-page .staff-password-toggle:focus-visible { outline: 3px solid var(--clinic-sky, #82b0f5); outline-offset: 1px; }
+.staff-account-page .staff-password-toggle:disabled { opacity: .55; cursor: not-allowed; }

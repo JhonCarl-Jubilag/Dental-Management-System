@@ -13,6 +13,8 @@ import { getBillingStatus, formatStatementDate } from '../../services/billingSta
 import { getClinicDate } from '../../utils/clinicScheduling';
 import './manageBilling.css';
 
+const normalizePaymentMethod = value => String(value ?? '').trim().toLowerCase() || 'cash';
+
 const billingSnapshotFields = ['appointment_id', 'total_amount', 'discount', 'discount_id_no',
   'amount_paid', 'balance', 'payment_method', 'reference_number', 'payment_date', 'remarks', 'archived'];
 
@@ -62,6 +64,8 @@ const ManageBilling = () => {
   const [stats, setStats] = useState({ totalRevenue: 0, totalPending: 0, totalPaid: 0, totalUnbilled: 0 });
 
   const [search, setSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const billingReadId = useRef(0);
   const [statusFilter, setStatusFilter] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -138,37 +142,51 @@ const ManageBilling = () => {
   }, []);
 
   const fetchData = useCallback(async () => {
+    const readId = ++billingReadId.current;
     setLoading(true);
     setLoadError(null);
     try {
       await autoUpdateExpiredConfirmed();
 
-      let query = supabase
-        .from('billing')
-        .select(`
-          *,
-          patients!inner (first_name, last_name, email, contact_no, address),
-          doctors (first_name, last_name),
-          appointments!inner (
-            appointment_datetime,
-            status,
-            services (service_id, service_name, price, description)
-          )
-        `)
-        .eq('archived', showArchived)
-        .order('created_at', { ascending: false });
+      const buildBillingQuery = () => {
+        let query = supabase
+          .from('billing')
+          .select(`
+            *,
+            patients!inner (first_name, last_name, email, contact_no, address),
+            doctors (first_name, last_name),
+            appointments!inner (
+              appointment_datetime,
+              status,
+              services (service_id, service_name, price, description)
+            )
+          `)
+          .eq('archived', showArchived)
+          .order('created_at', { ascending: false })
+          .order('billing_id', { ascending: false });
+        if (paymentFilter) query = query.eq('payment_method', paymentFilter);
+        if (dateFrom) query = query.gte('payment_date', dateFrom);
+        if (dateTo) query = query.lte('payment_date', dateTo);
 
-      if (search) {
-        query = query.or(`patients.first_name.ilike.%${search}%,patients.last_name.ilike.%${search}%,appointments.services.service_name.ilike.%${search}%,discount_id_no.ilike.%${search}%,remarks.ilike.%${search}%`);
+        return query;
+      };
+
+      // Read only rows allowed by RLS. Paging avoids searching just the API's
+      // first response. Search text is never inserted into query syntax.
+      const billingData = [];
+      const pageSize = 500;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await buildBillingQuery().range(offset, offset + pageSize - 1);
+        if (readId !== billingReadId.current) return;
+        if (error) throw error;
+        billingData.push(...(data || []));
+        if (!data || data.length < pageSize) break;
       }
-      if (paymentFilter) query = query.eq('payment_method', paymentFilter);
-      if (dateFrom) query = query.gte('payment_date', dateFrom);
-      if (dateTo) query = query.lte('payment_date', dateTo);
-
-      const { data: billingData, error: billingError } = await query;
-      if (billingError) throw billingError;
-
-      let filtered = billingData || [];
+      const term = appliedSearch.trim().toLocaleLowerCase();
+      let filtered = billingData.filter(record => !term || [
+        `${record.patients?.first_name || ''} ${record.patients?.last_name || ''}`,
+        record.appointments?.services?.service_name, record.discount_id_no, record.remarks,
+      ].some(value => String(value ?? '').toLocaleLowerCase().includes(term)));
       if (statusFilter === 'pending') {
         filtered = filtered.filter(b => b.balance > 0 && Number(b.amount_paid) === 0);
       } else if (statusFilter === 'paid') {
@@ -176,14 +194,18 @@ const ManageBilling = () => {
       } else if (statusFilter === 'partial') {
         filtered = filtered.filter(b => b.balance > 0 && b.amount_paid > 0);
       }
-      setBillingRecords(filtered);
 
-      let totalRevenue = 0, totalPending = 0, totalPaid = 0;
+      // Count every received payment, including payments on outstanding bills.
+      // Accumulate cents so numeric strings and decimal amounts sum consistently.
+      let revenueCents = 0, pendingCents = 0, paidCents = 0;
       filtered.forEach(b => {
-        totalRevenue += Number(b.total_amount);
-        if (b.balance > 0) totalPending += b.balance;
-        else totalPaid += b.amount_paid;
+        revenueCents += toCents(b.total_amount) ?? 0;
+        pendingCents += toCents(b.balance) ?? 0;
+        paidCents += toCents(b.amount_paid) ?? 0;
       });
+      const totalRevenue = revenueCents / 100;
+      const totalPending = pendingCents / 100;
+      const totalPaid = paidCents / 100;
 
       const { data: allBilledIdsData } = await supabase
         .from('billing')
@@ -203,7 +225,9 @@ const ManageBilling = () => {
         `)
         .in('status', ['confirmed', 'completed'])
         .not('appointment_id', 'in', `(${billedIdsStr})`);
+      if (readId !== billingReadId.current) return;
       if (unbilledError) throw unbilledError;
+      setBillingRecords(filtered);
       setUnbilledAppointments(unbilled || []);
 
       setStats({
@@ -214,15 +238,25 @@ const ManageBilling = () => {
       });
       setHasLoaded(true);
     } catch (err) {
+      if (readId !== billingReadId.current) return;
       setLoadError(err);
       console.error(err);
       toast.error(err.message);
     } finally {
-      setLoading(false);
+      if (readId === billingReadId.current) setLoading(false);
     }
-  }, [search, statusFilter, paymentFilter, dateFrom, dateTo, showArchived, autoUpdateExpiredConfirmed]);
+  }, [appliedSearch, statusFilter, paymentFilter, dateFrom, dateTo, showArchived, autoUpdateExpiredConfirmed]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+    return () => { billingReadId.current += 1; };
+  }, [fetchData]);
+
+  const applySearch = () => {
+    const nextSearch = search.trim();
+    if (nextSearch === appliedSearch) fetchData();
+    else setAppliedSearch(nextSearch);
+  };
 
   const resetCreateForm = () => {
     setCreateForm({
@@ -636,14 +670,14 @@ const ManageBilling = () => {
 
         <div className="filters">
           <div className="filter-grid">
-            <div className="filter-group"><label>Search</label><input type="text" className="form-control" placeholder="Patient, service, ID..." value={search} onChange={e => setSearch(e.target.value)} /></div>
+            <div className="filter-group"><label htmlFor="billing-search">Search</label><input id="billing-search" type="text" className="form-control" placeholder="Patient, service, ID..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applySearch(); } }} /></div>
             <div className="filter-group"><label>Payment Status</label><select className="form-control" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="">All</option><option value="pending">Pending</option><option value="paid">Paid</option><option value="partial">Partial</option></select></div>
             <div className="filter-group"><label>Payment Method</label><select className="form-control" value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)}><option value="">All</option><option value="cash">Cash</option><option value="gcash">GCash</option><option value="maya">Maya</option><option value="other">Other e-Bank</option></select></div>
             <div className="filter-group"><label>Date From</label><input type="date" className="form-control" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
             <div className="filter-group"><label>Date To</label><input type="date" className="form-control" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
             <div className="filter-group filter-actions">
-              <button className="btn btn-primary" onClick={fetchData}>Apply</button>
-              <button className="btn btn-secondary" onClick={() => { setSearch(''); setStatusFilter(''); setPaymentFilter(''); setDateFrom(''); setDateTo(''); }}>Reset</button>
+              <button className="btn btn-primary" onClick={applySearch}>Apply</button>
+              <button className="btn btn-secondary" onClick={() => { setSearch(''); setAppliedSearch(''); setStatusFilter(''); setPaymentFilter(''); setDateFrom(''); setDateTo(''); }}>Reset</button>
             </div>
           </div>
         </div>
@@ -723,7 +757,7 @@ const ManageBilling = () => {
                                     discount: record.discount,
                                     discount_id_no: discType === 'manual' ? String(record.discount) : record.discount_id_no || '',
                                     amount_paid: record.amount_paid,
-                                    payment_method: record.payment_method,
+                                    payment_method: normalizePaymentMethod(record.payment_method),
                                     reference_number: record.reference_number || '',
                                     payment_date: record.payment_date || getClinicDate(),
                                     remarks: record.remarks || ''
@@ -785,7 +819,7 @@ const ManageBilling = () => {
                 <div className="discount-summary"><strong>Amount after discount:</strong> ₱{(createForm.total_amount - createForm.discount).toFixed(2)} {createForm.discount > 0 && <span>(Discount: ₱{createForm.discount.toFixed(2)})</span>}</div>
                 <div className="form-row">
                   <div className="form-group"><label htmlFor="billing-create-paid">Amount Paid (₱)</label><input id="billing-create-paid" disabled={isSubmitting} type="number" className="form-control" value={createForm.amount_paid} onChange={e => setCreateForm({ ...createForm, amount_paid: parseFloat(e.target.value) || 0 })} step="0.01" min="0" /></div>
-                  <div className="form-group"><label>Payment Method</label><select disabled={isSubmitting} className="form-control" value={createForm.payment_method} onChange={e => setCreateForm({ ...createForm, payment_method: e.target.value })}>
+                  <div className="form-group"><label htmlFor="billing-create-method">Payment Method</label><select id="billing-create-method" disabled={isSubmitting} className="form-control" value={createForm.payment_method} onChange={e => setCreateForm({ ...createForm, payment_method: e.target.value, reference_number: e.target.value === 'cash' ? '' : createForm.reference_number })}>
                     <option value="cash">Cash</option>
                     <option value="gcash">GCash</option>
                     <option value="maya">Maya</option>
@@ -793,7 +827,7 @@ const ManageBilling = () => {
                   </select></div>
                 </div>
                 {createForm.payment_method !== 'cash' && (
-                  <div className="form-group"><label>Reference Number *</label><input disabled={isSubmitting} type="text" className="form-control" value={createForm.reference_number} onChange={e => setCreateForm({ ...createForm, reference_number: e.target.value })} placeholder="e.g., GCash transaction ID, bank reference" required /></div>
+                  <div className="form-group"><label htmlFor="billing-create-reference">Reference Number *</label><input id="billing-create-reference" disabled={isSubmitting} type="text" className="form-control" value={createForm.reference_number} onChange={e => setCreateForm({ ...createForm, reference_number: e.target.value })} placeholder="e.g., GCash transaction ID, bank reference" required /></div>
                 )}
                 <div className="form-group"><label>Payment Date</label><input disabled={isSubmitting} type="date" className="form-control" value={createForm.payment_date} onChange={e => setCreateForm({ ...createForm, payment_date: e.target.value })} /></div>
                 <div className="form-group"><label>Remarks</label><textarea disabled={isSubmitting} className="form-control" rows="3" value={createForm.remarks} onChange={e => setCreateForm({ ...createForm, remarks: e.target.value })}></textarea></div>
@@ -818,14 +852,14 @@ const ManageBilling = () => {
                 <div className="form-row"><div className="form-group"><label htmlFor="billing-edit-charge">Agreed treatment charge (₱)</label><input id="billing-edit-charge" disabled={isSubmitting} type="number" className="form-control" value={editForm.total_amount} onChange={event => setEditForm(previous => ({ ...previous, total_amount: event.target.value }))} min="0" step="0.01" required /></div><div className="form-group"><label htmlFor="billing-edit-discount-type">Discount Type</label><select id="billing-edit-discount-type" disabled={isSubmitting} className="form-control" value={editForm.discount_type} onChange={e => setEditForm({ ...editForm, discount_type: e.target.value })}><option value="none">No Discount</option><option value="senior">Senior Citizen (20%)</option><option value="pwd">PWD (20%)</option><option value="manual">Manual Discount</option></select></div></div>
                 {editForm.discount_type !== 'none' && (<div className="form-group"><label htmlFor="billing-edit-discount-value">{editForm.discount_type === 'manual' ? 'Discount Amount (₱)' : 'ID Number *'}</label><input id="billing-edit-discount-value" min="0" step="0.01" disabled={isSubmitting} type={editForm.discount_type === 'manual' ? 'number' : 'text'} className="form-control" value={editForm.discount_id_no} onChange={e => setEditForm({ ...editForm, discount_id_no: e.target.value })} placeholder={editForm.discount_type === 'manual' ? 'Enter amount' : 'Enter ID number'} required /></div>)}
                 <div className="discount-summary"><strong>Amount after discount:</strong> ₱{(editForm.total_amount - editForm.discount).toFixed(2)} {editForm.discount > 0 && <span>(Discount: ₱{editForm.discount.toFixed(2)})</span>}</div>
-                <div className="form-row"><div className="form-group"><label htmlFor="billing-edit-paid">Amount Paid (₱)</label><input id="billing-edit-paid" disabled={isSubmitting} type="number" className="form-control" value={editForm.amount_paid} onChange={e => setEditForm({ ...editForm, amount_paid: parseFloat(e.target.value) || 0 })} step="0.01" min="0" /></div><div className="form-group"><label>Payment Method</label><select disabled={isSubmitting} className="form-control" value={editForm.payment_method} onChange={e => setEditForm({ ...editForm, payment_method: e.target.value })}>
+                <div className="form-row"><div className="form-group"><label htmlFor="billing-edit-paid">Amount Paid (₱)</label><input id="billing-edit-paid" disabled={isSubmitting} type="number" className="form-control" value={editForm.amount_paid} onChange={e => setEditForm({ ...editForm, amount_paid: parseFloat(e.target.value) || 0 })} step="0.01" min="0" /></div><div className="form-group"><label htmlFor="billing-edit-method">Payment Method</label><select id="billing-edit-method" disabled={isSubmitting} className="form-control" value={editForm.payment_method} onChange={e => setEditForm({ ...editForm, payment_method: e.target.value, reference_number: e.target.value === 'cash' ? '' : editForm.reference_number })}>
                   <option value="cash">Cash</option>
                   <option value="gcash">GCash</option>
                   <option value="maya">Maya</option>
                   <option value="other">Other e-Bank</option>
                 </select></div></div>
                 {editForm.payment_method !== 'cash' && (
-                  <div className="form-group"><label>Reference Number *</label><input disabled={isSubmitting} type="text" className="form-control" value={editForm.reference_number} onChange={e => setEditForm({ ...editForm, reference_number: e.target.value })} placeholder="Transaction reference number" required /></div>
+                  <div className="form-group"><label htmlFor="billing-edit-reference">Reference Number *</label><input id="billing-edit-reference" disabled={isSubmitting} type="text" className="form-control" value={editForm.reference_number} onChange={e => setEditForm({ ...editForm, reference_number: e.target.value })} placeholder="Transaction reference number" required /></div>
                 )}
                 <div className="form-group"><label>Payment Date</label><input disabled={isSubmitting} type="date" className="form-control" value={editForm.payment_date} onChange={e => setEditForm({ ...editForm, payment_date: e.target.value })} /></div>
                 <div className="form-group"><label>Remarks</label><textarea disabled={isSubmitting} className="form-control" rows="3" value={editForm.remarks} onChange={e => setEditForm({ ...editForm, remarks: e.target.value })}></textarea></div>
@@ -845,14 +879,14 @@ const ManageBilling = () => {
               <div className="modal-body">
                 <div className="form-group"><label>Current Balance</label><div className="balance-display">{formatCurrency(paymentForm.current_balance)}</div></div>
                 <div className="form-group"><label htmlFor="billing-payment-amount">Payment Amount (₱)</label><input id="billing-payment-amount" disabled={isSubmitting} type="number" className="form-control" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })} step="0.01" min="0" required /></div>
-                <div className="form-group"><label>Payment Method</label><select disabled={isSubmitting} className="form-control" value={paymentForm.payment_method} onChange={e => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}>
+                <div className="form-group"><label htmlFor="billing-payment-method">Payment Method</label><select id="billing-payment-method" disabled={isSubmitting} className="form-control" value={paymentForm.payment_method} onChange={e => setPaymentForm({ ...paymentForm, payment_method: e.target.value, reference_number: e.target.value === 'cash' ? '' : paymentForm.reference_number })}>
                   <option value="cash">Cash</option>
                   <option value="gcash">GCash</option>
                   <option value="maya">Maya</option>
                   <option value="other">Other e-Bank</option>
                 </select></div>
                 {paymentForm.payment_method !== 'cash' && (
-                  <div className="form-group"><label>Reference Number *</label><input disabled={isSubmitting} type="text" className="form-control" value={paymentForm.reference_number} onChange={e => setPaymentForm({ ...paymentForm, reference_number: e.target.value })} placeholder="Transaction reference number" required /></div>
+                  <div className="form-group"><label htmlFor="billing-payment-reference">Reference Number *</label><input id="billing-payment-reference" disabled={isSubmitting} type="text" className="form-control" value={paymentForm.reference_number} onChange={e => setPaymentForm({ ...paymentForm, reference_number: e.target.value })} placeholder="Transaction reference number" required /></div>
                 )}
                 <div className="form-group"><label>Remarks</label><textarea disabled={isSubmitting} className="form-control" rows="2" value={paymentForm.remarks} onChange={e => setPaymentForm({ ...paymentForm, remarks: e.target.value })}></textarea></div>
               </div>
@@ -876,7 +910,7 @@ const ManageBilling = () => {
                     <tr><td className="label-cell">Total Amount</td><td className="value-cell">₱{selectedRecord.total_amount.toFixed(2)}</td><td className="label-cell">Discount</td><td className="value-cell">₱{selectedRecord.discount.toFixed(2)}</td></tr>
                     <tr><td className="label-cell">Discount ID</td><td className="value-cell">{selectedRecord.discount_id_no || 'N/A'}</td><td className="label-cell">Amount Paid</td><td className="value-cell">₱{selectedRecord.amount_paid.toFixed(2)}</td></tr>
                     <tr><td className="label-cell">Balance</td><td className={`value-cell ${selectedRecord.balance > 0 ? 'balance-due' : 'balance-paid'}`}>₱{selectedRecord.balance.toFixed(2)}</td><td className="label-cell">Payment Method</td><td className="value-cell">{selectedRecord.payment_method}</td></tr>
-                    <tr><td className="label-cell">Reference Number</td><td className="value-cell">{selectedRecord.reference_number || 'N/A'}</td><td className="label-cell">Payment Date</td><td className="value-cell">{selectedRecord.payment_date ? new Date(selectedRecord.payment_date).toLocaleDateString() : 'N/A'}</td></tr>
+                    <tr><td className="label-cell">Reference Number</td><td className="value-cell">{normalizePaymentMethod(selectedRecord.payment_method) === 'cash' ? 'Not required for cash' : selectedRecord.reference_number || 'N/A'}</td><td className="label-cell">Payment Date</td><td className="value-cell">{selectedRecord.payment_date ? new Date(selectedRecord.payment_date).toLocaleDateString() : 'N/A'}</td></tr>
                   </tbody>
                 </table>
               </div>

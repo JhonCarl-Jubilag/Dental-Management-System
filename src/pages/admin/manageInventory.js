@@ -27,6 +27,7 @@ const ManageInventory = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState({ totalItems: 0, lowStockItems: 0, totalValue: 0 });
   const perPage = 5;
+  const listReadId = useRef(0);
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -112,41 +113,57 @@ const ManageInventory = () => {
   }, []);
 
   const fetchInventory = useCallback(async () => {
+    const readId = ++listReadId.current;
     setLoading(true);
     setLoadError(null);
     try {
-      let query = supabase
-        .from('inventory')
-        .select('*', { count: 'exact' });
+      const buildQuery = (countOnly = false) => {
+        let query = supabase
+          .from('inventory')
+          .select('*', { count: 'exact', head: countOnly });
 
-      if (debouncedSearch) {
-        query = query.ilike('item_name', `%${debouncedSearch}%`);
-      }
-      if (categoryFilter) {
-        query = query.eq('category', categoryFilter);
-      }
-      if (statusFilter) {
-        query = query.eq('status', statusFilter);
-      }
+        if (debouncedSearch) {
+          query = query.ilike('item_name', `%${debouncedSearch}%`);
+        }
+        if (categoryFilter) {
+          query = query.eq('category', categoryFilter);
+        }
+        if (statusFilter) {
+          query = query.eq('status', statusFilter);
+        }
 
-      query = query.order('item_name', { ascending: true });
+        query = query.order('item_name', { ascending: true }).order('item_id', { ascending: true });
+
+        return query;
+      };
 
       const from = (page - 1) * perPage;
       const to = from + perPage - 1;
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
+      const { data, error, count } = await buildQuery().range(from, to);
+      if (readId !== listReadId.current) return;
+      // A concurrent edit can remove the last row of the current page.
+      // PostgREST reports an out-of-range offset before returning row data.
+      if (error?.code === 'PGRST103') {
+        const result = await buildQuery(true);
+        if (readId !== listReadId.current) return;
+        if (result.error) throw result.error;
+        const lastPage = Math.max(1, Math.ceil((result.count || 0) / perPage));
+        if (page > lastPage) { setPage(lastPage); return; }
+      }
       if (error) throw error;
+      const lastPage = Math.max(1, Math.ceil((count || 0) / perPage));
+      if (page > lastPage) { setPage(lastPage); return; }
 
       setInventory(data || []);
       setTotalCount(count || 0);
-      setTotalPages(Math.ceil((count || 0) / perPage));
+      setTotalPages(lastPage);
       setHasLoaded(true);
     } catch (err) {
+      if (readId !== listReadId.current) return;
       setLoadError(err);
       toast.error(err.message);
     } finally {
-      setLoading(false);
+      if (readId === listReadId.current) setLoading(false);
     }
   }, [debouncedSearch, categoryFilter, statusFilter, page]);
 
@@ -323,7 +340,7 @@ const ManageInventory = () => {
             </div>
             <div className="filter-group">
               <label>Category</label>
-              <select className="form-control" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+              <select className="form-control" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }}>
                 <option value="">All</option>
                 <option value="Disposable">Disposable</option>
                 <option value="Chemical">Chemical</option>
@@ -334,7 +351,7 @@ const ManageInventory = () => {
             </div>
             <div className="filter-group">
               <label>Status</label>
-              <select className="form-control" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <select className="form-control" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
                 <option value="">All</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -398,9 +415,9 @@ const ManageInventory = () => {
           </div>
           {totalPages > 1 && (
             <div className="pagination">
-              <button className="page-link" disabled={page === 1} onClick={() => setPage(p => p-1)}>Previous</button>
+              <button className="page-link" disabled={page <= 1} onClick={() => setPage(p => p-1)}>Previous</button>
               <span className="page-info">Page {page} of {totalPages}</span>
-              <button className="page-link" disabled={page === totalPages} onClick={() => setPage(p => p+1)}>Next</button>
+              <button className="page-link" disabled={page >= totalPages} onClick={() => setPage(p => p+1)}>Next</button>
             </div>
           )}
         </div>

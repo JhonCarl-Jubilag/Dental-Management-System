@@ -9,7 +9,7 @@ import PatientTreatmentHistory from './PatientTreatmentHistory';
 import './PatientTreatmentRecords.css';
 
 const money = value => Number(value).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' });
-const emptyForm = () => ({ procedureName: '', scope: 'specific', teeth: '', treatedAt: '', notes: '', confirmed: false });
+const emptyForm = () => ({ procedureName: '', scope: 'specific', teeth: '', treatedAt: '', notes: '', patientRemarks: '', confirmed: false });
 
 const RecordDialog = ({ title, onClose, busy, children }) => {
   const dialog = useRef(null), titleId = useId();
@@ -32,7 +32,7 @@ const TreatmentEditor = ({ patientId, patientName, record, onClose, onSaved }) =
   const [editor, setEditor] = useState(() => ({ record, appointment: record || null, requestId: record ? null : crypto.randomUUID() }));
   const [form, setForm] = useState(() => record ? {
     procedureName: record.procedure_name, scope: record.tooth_scope, teeth: record.tooth_numbers.join(', '),
-    treatedAt: toClinicDateTimeInput(record.treated_at), notes: record.notes, confirmed: false,
+    treatedAt: toClinicDateTimeInput(record.treated_at), notes: record.notes, patientRemarks: record.patient_remarks || '', confirmed: false,
   } : emptyForm());
   const [dirty, setDirty] = useState(false);
   const [choices, setChoices] = useState([]), [total, setTotal] = useState(0), [page, setPage] = useState(1);
@@ -107,7 +107,8 @@ const TreatmentEditor = ({ patientId, patientName, record, onClose, onSaved }) =
             <div><label htmlFor="treatment-scope">Treatment scope</label><select id="treatment-scope" value={form.scope} onChange={event => change('scope', event.target.value)}><option value="specific">Specific teeth (FDI)</option><option value="whole_mouth">Whole mouth</option><option value="not_applicable">Not tooth-specific</option></select></div>
             <div><label htmlFor="treatment-teeth">Tooth No.</label><input id="treatment-teeth" disabled={form.scope !== 'specific'} required={form.scope === 'specific'} maxLength={200} placeholder="For example: 16, 17" value={form.teeth} onChange={event => change('teeth', event.target.value)} aria-describedby="treatment-teeth-hint" /><small id="treatment-teeth-hint">FDI numbering: permanent quadrants 1–4; primary quadrants 5–8.</small></div>
             <div className="clinic-treatment-wide"><label htmlFor="treatment-date">Treatment date and time (Philippines)</label><input id="treatment-date" type="datetime-local" required value={form.treatedAt} max={toClinicDateTimeInput(new Date())} onChange={event => change('treatedAt', event.target.value)} /></div>
-            <div className="clinic-treatment-wide"><label htmlFor="treatment-notes">Notes / Remarks</label><textarea id="treatment-notes" rows={5} maxLength={10000} value={form.notes} onChange={event => change('notes', event.target.value)} /></div>
+            <div className="clinic-treatment-wide"><label htmlFor="treatment-notes">Internal clinical notes (clinic only)</label><textarea id="treatment-notes" rows={5} maxLength={10000} value={form.notes} onChange={event => change('notes', event.target.value)} /></div>
+            <div className="clinic-treatment-wide"><label htmlFor="treatment-patient-remarks">Patient remarks / Aftercare</label><textarea id="treatment-patient-remarks" rows={4} maxLength={3000} value={form.patientRemarks} onChange={event => change('patientRemarks', event.target.value)} /><small>Visible to this patient. Enter the dentist-approved explanation, aftercare or follow-up instructions here.</small></div>
           </div>
           <dl className="clinic-treatment-money"><div><dt>Amount charged</dt><dd>{money(appointment.amount_charged)}</dd></div><div><dt>Amount paid</dt><dd>{money(appointment.amount_paid)}</dd></div><div><dt>Balance</dt><dd>{money(appointment.balance)}</dd></div></dl>
           <p className="clinic-treatment-hint">Amounts come from Billing after discounts. To change charges or payments, <a href="/admin/billing" target="_blank" rel="noreferrer">open Billing in another tab</a>, then refresh the treatment table.</p>
@@ -198,12 +199,12 @@ const PatientTreatmentRecords = ({ patientId, patientName, patient }) => {
     {loading && <p role="status">Loading treatment records…</p>}
     {printing && <p role="status">Preparing all saved treatments for an A4 landscape printout…</p>}
     {error && <p className="clinic-treatment-error" role="alert">{error} Use Refresh records to retry.</p>}
-    {!error && <div className="clinic-treatment-table-scroll" tabIndex={0} aria-label="Patient treatment records table"><table className="clinic-treatment-table"><thead><tr><th>Tooth No.</th><th>Procedure</th><th>Amount Charged</th><th>Amount Paid</th><th>Balance</th><th>Notes / Remarks</th></tr></thead><tbody>
-      {!loading && !rows.length && <tr><td colSpan={6} className="clinic-treatment-empty">No treatment records have been entered for this patient.</td></tr>}
+    {!error && <div className="clinic-treatment-table-scroll" tabIndex={0} aria-label="Patient treatment records table"><table className="clinic-treatment-table"><thead><tr><th>Tooth No.</th><th>Procedure</th><th>Amount Charged</th><th>Amount Paid</th><th>Balance</th><th>Internal clinical notes</th><th>Patient remarks / Aftercare</th></tr></thead><tbody>
+      {!loading && !rows.length && <tr><td colSpan={7} className="clinic-treatment-empty">No treatment records have been entered for this patient.</td></tr>}
       {rows.map(row => <tr key={row.treatment_id}>
         <td>{row.tooth_scope === 'specific' ? row.tooth_numbers.join(', ') : row.tooth_scope === 'whole_mouth' ? 'Whole mouth' : 'Not tooth-specific'}</td>
         <td><strong>{row.procedure_name}</strong><small>{formatClinicDateTime(row.treated_at)}<br />Dr. {row.doctor_name} · Appointment #{row.appointment_id}<br />Bill #{row.billing_id}{row.bill_archived ? ' (archived)' : ''}</small><button type="button" onClick={() => setEditor({ record: row })} disabled={loading || printing}>Edit treatment</button></td>
-        <td>{money(row.amount_charged)}</td><td>{money(row.amount_paid)}</td><td>{money(row.balance)}</td><td className="clinic-treatment-notes">{row.notes || '—'}</td>
+        <td>{money(row.amount_charged)}</td><td>{money(row.amount_paid)}</td><td>{money(row.balance)}</td><td className="clinic-treatment-notes">{row.notes || '—'}</td><td className="clinic-treatment-notes">{row.patient_remarks || '—'}</td>
       </tr>)}
     </tbody></table></div>}
     <p className="clinic-treatment-hint">Charges are after discounts. Each row uses its linked bill’s current payments; no payment is counted twice here.</p>

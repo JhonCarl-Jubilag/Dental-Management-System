@@ -2,18 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { loadDoctorBookingMonth } from '../../services/doctorScheduling';
 import { formatClinicDate, formatClinicTime, getClinicDate } from '../../utils/clinicScheduling';
 
+import './BookingCalendar.css';
+
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const shiftMonth = (month, offset) => {
   const [year, number] = month.split('-').map(Number);
   return new Date(Date.UTC(year, number - 1 + offset, 1)).toISOString().slice(0, 7);
 };
 
-export default function BookingCalendar({ doctorId, serviceId, leadMinutes, date, time, setDate, setTime, revision, locked, interval }) {
+export default function BookingCalendar({ doctorId, serviceId, leadMinutes, date, time, setDate, setTime, revision, locked, interval, excludeAppointmentId = null }) {
   const today = getClinicDate();
   const [month, setMonth] = useState(today.slice(0, 7));
   const [retry, setRetry] = useState(0);
   const [snapshot, setSnapshot] = useState(null);
-  const key = [doctorId, serviceId, leadMinutes, interval, month, date, revision, retry].join(':');
+  const key = [doctorId, serviceId, leadMinutes, interval, excludeAppointmentId, month, date, revision, retry].join(':');
   const current = snapshot?.key === key ? snapshot : null;
 
   useEffect(() => {
@@ -22,7 +24,7 @@ export default function BookingCalendar({ doctorId, serviceId, leadMinutes, date
     async function refresh() {
       const request = ++sequence;
       try {
-        const data = await loadDoctorBookingMonth({ doctorId, serviceId, month, leadMinutes, interval });
+        const data = await loadDoctorBookingMonth({ doctorId, serviceId, month, leadMinutes, interval, excludeAppointmentId });
         if (!active || request !== sequence) return;
         const days = Object.fromEntries(data.filter(row => row.times?.length).map(row => [row.booking_date, row.times]));
         setSnapshot({ key, days });
@@ -44,7 +46,7 @@ export default function BookingCalendar({ doctorId, serviceId, leadMinutes, date
       window.clearInterval(timer);
       window.removeEventListener('focus', refreshVisible);
     };
-  }, [key, month, date, doctorId, serviceId, leadMinutes, interval, setDate, setTime]);
+  }, [key, month, date, doctorId, serviceId, leadMinutes, interval, excludeAppointmentId, setDate, setTime]);
 
   function navigate(offset) {
     setMonth(shiftMonth(month, offset));

@@ -877,3 +877,8 @@
 .my-appointments-page .appointment-treatment-heading h2 { color: var(--clinic-navy); }
 
 .appointment-treatment-dialog .appointment-treatment-remarks { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.my-appointments-page .appointment-remarks-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

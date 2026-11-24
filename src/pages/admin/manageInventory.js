@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
+import { cleanInventoryName, normalizeInventoryName, reviewInventoryName, INVENTORY_DUPLICATE_MESSAGE } from '../../services/inventoryNames';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import './manageInventory.css';
@@ -34,6 +35,48 @@ const ManageInventory = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const inventoryWrite = useRef(false);
+  const [nameReview, setNameReview] = useState(null);
+
+  const [locationOptions, setLocationOptions] = useState([]);
+  const [locationStatus, setLocationStatus] = useState('loading');
+  const [locationRetry, setLocationRetry] = useState(0);
+
+  useEffect(() => {
+    if (!showAddModal && !showEditModal) return;
+    let closed = false;
+    const loadLocations = async () => {
+      setLocationStatus('loading');
+      setLocationOptions([]);
+      try {
+        const names = new Map();
+        const pageSize = 500;
+        for (let offset = 0; ; offset += pageSize) {
+          const { data, error } = await supabase.from('inventory').select('location')
+            .not('location', 'is', null).order('item_id').range(offset, offset + pageSize - 1);
+          if (closed) return;
+          if (error) throw error;
+          for (const row of data) {
+            const name = row.location.trim().replace(/\s+/g, ' ');
+            const key = name.toLowerCase();
+            if (name && !names.has(key)) names.set(key, name);
+          }
+          if (data.length < pageSize) break;
+        }
+        setLocationOptions([...names.values()].sort((a, b) => a.localeCompare(b)));
+        setLocationStatus('ready');
+      } catch {
+        if (!closed) setLocationStatus('error');
+      }
+    };
+    loadLocations();
+    return () => { closed = true; };
+  }, [showAddModal, showEditModal, locationRetry]);
+
+  const nameInput = useRef(null);
+  useEffect(() => {
+    if (nameReview) nameInput.current?.focus();
+  }, [nameReview]);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -180,56 +223,38 @@ const ManageInventory = () => {
     setPage(1);
   };
 
-  const handleAddItem = async (e) => {
-    e.preventDefault();
+  const saveInventoryItem = async (editing, confirmSimilar = false) => {
+    if (inventoryWrite.current) return;
+    inventoryWrite.current = true;
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
-        .from('inventory')
-        .insert([{
-          item_name: formData.item_name,
-          category: formData.category,
-          stock_quantity: parseInt(formData.stock_quantity) || 0,
-          reorder_level: parseInt(formData.reorder_level) || 0,
-          unit_type: formData.unit_type,
-          unit_cost: parseFloat(formData.unit_cost) || 0,
-          selling_price: parseFloat(formData.selling_price) || 0,
-          location: formData.location || null,
-          status: formData.status
-        }]);
-      if (error) throw error;
-      toast.success('Item added successfully!');
-      setShowAddModal(false);
-      resetForm();
-      fetchInventory();
-      fetchStats();
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+      const review = await reviewInventoryName(supabase, formData.item_name, editing ? selectedItem.item_id : null);
+      if (review.exact) {
+        setNameReview(review);
 
-  const handleEditItem = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase
-        .from('inventory')
-        .update({
-          item_name: formData.item_name,
-          category: formData.category,
-          stock_quantity: parseInt(formData.stock_quantity),
-          reorder_level: parseInt(formData.reorder_level),
-          unit_type: formData.unit_type,
-          unit_cost: parseFloat(formData.unit_cost) || 0,
-          selling_price: parseFloat(formData.selling_price) || 0,
-          location: formData.location || null,
-          status: formData.status
-        })
-        .eq('item_id', selectedItem.item_id);
-      if (error) throw error;
-      toast.success('Item updated successfully!');
+        return;
+      }
+      const nameChanged = !editing || review.key !== normalizeInventoryName(selectedItem.item_name);
+      if (nameChanged && review.matches.length && !(confirmSimilar && nameReview?.key === review.key && nameReview?.signature === review.signature)) {
+        setNameReview(review);
+        return;
+      }
+      const values = {
+        item_name: cleanInventoryName(formData.item_name), category: formData.category,
+        stock_quantity: parseInt(formData.stock_quantity) || 0, reorder_level: parseInt(formData.reorder_level) || 0,
+        unit_type: formData.unit_type, unit_cost: parseFloat(formData.unit_cost) || 0,
+        selling_price: parseFloat(formData.selling_price) || 0, location: formData.location || null, status: formData.status,
+      };
+      const query = editing ? supabase.from('inventory').update(values).eq('item_id', selectedItem.item_id)
+        : supabase.from('inventory').insert([values]);
+      const { data, error } = await query.select('item_id');
+      if (error) {
+        if (error.code === '23505') throw new Error(INVENTORY_DUPLICATE_MESSAGE);
+        throw error;
+      }
+      if (data?.length !== 1) throw new Error('Could not verify the saved inventory item. Refresh inventory before retrying.');
+      toast.success(editing ? 'Item updated successfully!' : 'Item added successfully!');
+      setShowAddModal(false);
       setShowEditModal(false);
       resetForm();
       fetchInventory();
@@ -237,9 +262,82 @@ const ManageInventory = () => {
     } catch (err) {
       toast.error(err.message);
     } finally {
+      inventoryWrite.current = false;
       setIsSubmitting(false);
     }
   };
+  const handleAddItem = e => { e.preventDefault(); saveInventoryItem(false); };
+  const handleEditItem = e => { e.preventDefault(); saveInventoryItem(true); };
+  const closeItemModal = () => {
+    if (inventoryWrite.current) return;
+    setShowAddModal(false);
+    setShowEditModal(false);
+    resetForm();
+  };
+  const renderLocationField = () => {
+    const current = formData.location;
+    const currentKey = current.trim().replace(/\s+/g, ' ').toLowerCase();
+    const options = locationOptions.filter(name => name.toLowerCase() !== currentKey);
+    if (current) options.push(current);
+    options.sort((a, b) => a.localeCompare(b));
+    return (
+      <div className="form-group">
+        <label htmlFor="inventory-location">Location</label>
+        <select id="inventory-location" className="form-control" value={current}
+          disabled={locationStatus !== 'ready'}
+          onChange={event => setFormData({ ...formData, location: event.target.value })}>
+          <option value="">{locationStatus === 'loading' ? 'Loading locations…' : 'Select a location (optional)'}</option>
+          {options.map(name => <option key={name} value={name}>{name}</option>)}
+        </select>
+        {locationStatus === 'ready' && !options.length && <small>No saved locations yet.</small>}
+        {locationStatus === 'error' && <small role="alert">Could not load locations.{' '}
+          <button type="button" onClick={() => setLocationRetry(value => value + 1)}>Retry</button>
+        </small>}
+      </div>
+    );
+  };
+
+  const renderNameField = () => (
+    <div className="form-group">
+      <label htmlFor="inventory-item-name">Item Name *</label>
+      <input id="inventory-item-name" ref={nameInput} type="text" className="form-control"
+        maxLength={200} required value={formData.item_name}
+        aria-invalid={nameReview?.exact || undefined}
+        aria-describedby="inventory-name-feedback"
+        onChange={event => {
+          setFormData({ ...formData, item_name: event.target.value });
+          setNameReview(null);
+        }} />
+      {nameReview ? renderNameReview() : (
+        <small id="inventory-name-feedback" className="inventory-name-hint">
+          Adding more of the same item? Update its existing stock quantity.
+        </small>
+      )}
+    </div>
+  );
+  const renderNameReview = () => (
+    <div id="inventory-name-feedback" className="inventory-name-review" data-exact={nameReview.exact} role="alert">
+      <strong>{nameReview.exact ? 'Item name already in use' : 'Similar item name found'}</strong>
+      <p>{nameReview.exact
+        ? 'Update the existing item’s stock, or choose a different name.'
+        : 'Check the size, strength, and unit before saving this as a different item.'}</p>
+    </div>
+  );
+
+  const renderItemFooter = editing => (
+    <div className="modal-footer inventory-item-footer">
+      <button type="button" className="btn btn-secondary" disabled={isSubmitting} onClick={closeItemModal}>Cancel</button>
+      {nameReview && !nameReview.exact ? (
+        <button type="button" className="btn btn-primary" disabled={isSubmitting} onClick={event => {
+          if (event.currentTarget.form.reportValidity()) saveInventoryItem(editing, true);
+        }}>{editing ? 'Save as a different item' : 'Add as a different item'}</button>
+      ) : (
+        <button type="submit" className="btn btn-primary" disabled={isSubmitting || nameReview?.exact}>
+          {isSubmitting ? 'Saving…' : editing ? 'Save Changes' : 'Add Item'}
+        </button>
+      )}
+    </div>
+  );
 
   const openAddModal = () => {
     resetForm();
@@ -247,6 +345,7 @@ const ManageInventory = () => {
   };
 
   const openEditModal = (item) => {
+    setNameReview(null);
     setSelectedItem(item);
     setFormData({
       item_name: item.item_name,
@@ -263,6 +362,7 @@ const ManageInventory = () => {
   };
 
   const resetForm = () => {
+    setNameReview(null);
     setFormData({
       item_name: '',
       category: 'Disposable',
@@ -426,13 +526,13 @@ const ManageInventory = () => {
 
       {/* Add Modal */}
       {showAddModal && (
-        <div className="modal active" onClick={(e) => e.target === e.currentTarget && setShowAddModal(false)}>
+        <div className="modal active" onClick={(e) => e.target === e.currentTarget && closeItemModal()}>
           <div className="modal-content modal-lg">
-            <div className="modal-header"><h3>Add New Inventory Item</h3><button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button></div>
+            <div className="modal-header"><h3>Add New Inventory Item</h3><button className="modal-close" disabled={isSubmitting} onClick={closeItemModal}>&times;</button></div>
             <form onSubmit={handleAddItem}>
-              <div className="modal-body">
+              <div className="modal-body"><fieldset className="inventory-form-fields" disabled={isSubmitting}>
                 <div className="form-row">
-                  <div className="form-group"><label>Item Name *</label><input type="text" className="form-control" value={formData.item_name} onChange={e => setFormData({...formData, item_name: e.target.value})} required /></div>
+                  {renderNameField()}
                   <div className="form-group"><label>Category *</label><select className="form-control" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                     <option value="Disposable">Disposable</option><option value="Chemical">Chemical</option><option value="Tool">Tool</option><option value="Equipment">Equipment</option><option value="Medicine">Medicine</option>
                   </select></div>
@@ -447,11 +547,12 @@ const ManageInventory = () => {
                 </div>
                 <div className="form-row">
                   <div className="form-group"><label>Selling Price (₱)</label><input type="number" step="0.01" className="form-control" value={formData.selling_price} onChange={e => setFormData({...formData, selling_price: e.target.value})} /></div>
-                  <div className="form-group"><label>Location</label><input type="text" className="form-control" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="Storage location" /></div>
+                  {renderLocationField()}
                 </div>
                 <div className="form-group"><label>Status</label><select className="form-control" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}><option value="active">Active</option><option value="inactive">Inactive</option><option value="discontinued">Discontinued</option></select></div>
+              </fieldset>
               </div>
-              <div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Adding...' : 'Add Item'}</button></div>
+              {renderItemFooter(false)}
             </form>
           </div>
         </div>
@@ -459,13 +560,13 @@ const ManageInventory = () => {
 
       {/* Edit Modal */}
       {showEditModal && selectedItem && (
-        <div className="modal active" onClick={(e) => e.target === e.currentTarget && setShowEditModal(false)}>
+        <div className="modal active" onClick={(e) => e.target === e.currentTarget && closeItemModal()}>
           <div className="modal-content modal-lg">
-            <div className="modal-header"><h3>Edit Item</h3><button className="modal-close" onClick={() => setShowEditModal(false)}>&times;</button></div>
+            <div className="modal-header"><h3>Edit Item</h3><button className="modal-close" disabled={isSubmitting} onClick={closeItemModal}>&times;</button></div>
             <form onSubmit={handleEditItem}>
-              <div className="modal-body">
+              <div className="modal-body"><fieldset className="inventory-form-fields" disabled={isSubmitting}>
                 <div className="form-row">
-                  <div className="form-group"><label>Item Name *</label><input type="text" className="form-control" value={formData.item_name} onChange={e => setFormData({...formData, item_name: e.target.value})} required /></div>
+                  {renderNameField()}
                   <div className="form-group"><label>Category *</label><select className="form-control" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                     <option value="Disposable">Disposable</option><option value="Chemical">Chemical</option><option value="Tool">Tool</option><option value="Equipment">Equipment</option><option value="Medicine">Medicine</option>
                   </select></div>
@@ -480,11 +581,12 @@ const ManageInventory = () => {
                 </div>
                 <div className="form-row">
                   <div className="form-group"><label>Selling Price (₱)</label><input type="number" step="0.01" className="form-control" value={formData.selling_price} onChange={e => setFormData({...formData, selling_price: e.target.value})} /></div>
-                  <div className="form-group"><label>Location</label><input type="text" className="form-control" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} /></div>
+                  {renderLocationField()}
                 </div>
                 <div className="form-group"><label>Status</label><select className="form-control" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}><option value="active">Active</option><option value="inactive">Inactive</option><option value="discontinued">Discontinued</option></select></div>
+              </fieldset>
               </div>
-              <div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save Changes'}</button></div>
+              {renderItemFooter(true)}
             </form>
           </div>
         </div>

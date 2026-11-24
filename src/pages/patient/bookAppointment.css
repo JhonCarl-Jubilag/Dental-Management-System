@@ -695,26 +695,6 @@
   width: 20px;
   color: #ff9800;
 }
-.booking-picker { border: 0; padding: 0; margin: 0; min-width: 0; }
-.booking-month { max-width: 32rem; padding: clamp(.5rem, 2vw, 1rem); border: 1px solid var(--clinic-line); border-radius: 14px; background: white; }
-.booking-month-bar, .booking-legend { display: flex; align-items: center; gap: .5rem; }
-.booking-month-bar strong { flex: 1; color: var(--clinic-ink); font-size: 1.1rem; }
-.booking-month button { border-radius: 8px; font: inherit; cursor: pointer; }
-.booking-month-bar button { width: 2.5rem; height: 2.5rem; background: white; border: 1px solid var(--clinic-line); color: var(--clinic-blue); font-size: 1.4rem; }
-.booking-month-bar button:disabled { opacity: .4; cursor: default; }
-.booking-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: clamp(2px, .7vw, 6px); text-align: center; }
-.booking-days small { padding: .85rem 0 .35rem; color: var(--clinic-muted); }
-.booking-days button { min-height: 2.65rem; padding: 0; border: 1px solid #accedd; color: var(--clinic-navy); background: #edf7fb; }
-.booking-days button:disabled { color: #737c83; border-color: transparent; background: #f3f5f6; cursor: default; }
-.booking-days button:enabled:hover { border-color: var(--clinic-blue); }
-.booking-days button[aria-pressed="true"] { background: var(--clinic-blue); border-color: var(--clinic-blue); color: white; font-weight: 700; }
-.booking-picker button:focus-visible { outline: 3px solid var(--clinic-blue); outline-offset: 2px; }
-.booking-legend { flex-wrap: wrap; gap: .4rem 1rem; margin-top: .9rem; font-size: .78rem; }
-.booking-legend span::before { content: ""; display: inline-block; width: .7rem; height: .7rem; border-radius: 3px; margin-right: .3rem; background: #edf7fb; border: 1px solid #accedd; }
-.booking-legend span:nth-child(2)::before { background: #f3f5f6; border-color: #d8dcdf; }
-.booking-legend span:last-child::before { background: var(--clinic-blue); border-color: var(--clinic-blue); }
-.booking-picker p { margin: 1rem 0 0; color: var(--clinic-ink); }
-.booking-picker .time-slots-grid { grid-template-columns: repeat(auto-fit, minmax(min(6.5rem, 100%), 1fr)); }
 .booking-page .booking-form { gap: 24px; }
 .booking-page .form-section { margin-bottom: 0; }
 
@@ -723,35 +703,6 @@
   color: var(--clinic-muted, #597086);
   font-size: 0.875rem;
   line-height: 1.5;
-}
-
-/* Calendar and time cards share one responsive booking section. */
-:is(.booking-page, .manual-booking-page) .booking-picker > legend { text-align: left; }
-:is(.booking-page, .manual-booking-page) .booking-date-time-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 28px; }
-:is(.booking-page, .manual-booking-page) .booking-date-time-layout .booking-month { max-width: none; width: 100%; min-width: 0; box-sizing: border-box; }
-:is(.booking-page, .manual-booking-page) .booking-time-panel { min-width: 0; text-align: left; padding: 18px; border: 1px solid var(--clinic-line); border-radius: 14px; background: #f7fafc; }
-:is(.booking-page, .manual-booking-page) .booking-time-panel h3 { margin: 0; font-size: 18px; color: var(--clinic-navy); }
-:is(.booking-page, .manual-booking-page) .booking-time-panel p { margin: 8px 0 18px; font-size: 14px; line-height: 1.6; color: var(--clinic-muted); text-align: left; }
-:is(.booking-page, .manual-booking-page) .booking-time-panel .time-slots-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
-:is(.booking-page, .manual-booking-page) .booking-time-card { display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 84px; padding: 14px; border: 1px solid #b9cfdc; border-radius: 12px; background: white; color: var(--clinic-navy); text-align: left; font: inherit; cursor: pointer; }
-:is(.booking-page, .manual-booking-page) .booking-time-card-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; }
-:is(.booking-page, .manual-booking-page) .booking-time-card-top strong { font-size: 15px; white-space: nowrap; }
-:is(.booking-page, .manual-booking-page) .booking-time-indicator { font-size: 20px; color: #14737b; line-height: 1; }
-:is(.booking-page, .manual-booking-page) .booking-time-card-status { color: var(--clinic-muted); font-size: 12px; }
-:is(.booking-page, .manual-booking-page) .booking-time-card:hover:not(:disabled) { background: #edf6fb; border-color: var(--clinic-blue); }
-:is(.booking-page, .manual-booking-page) .booking-time-card.selected { background: var(--clinic-blue); border-color: var(--clinic-blue); color: white; }
-:is(.booking-page, .manual-booking-page) .booking-time-card.selected .booking-time-card-status, :is(.booking-page, .manual-booking-page) .booking-time-card.selected .booking-time-indicator { color: white; }
-:is(.booking-page, .manual-booking-page) .booking-time-card.selected:hover:not(:disabled) { background: var(--clinic-blue-hover); }
-:is(.booking-page, .manual-booking-page) .booking-time-card:disabled { opacity: .65; cursor: default; }
-:is(.booking-page, .manual-booking-page) .booking-time-panel > button { padding: 10px 16px; border: 1px solid var(--clinic-line); border-radius: 8px; color: var(--clinic-navy); background: white; cursor: pointer; }
-@media (max-width: 800px) {
- :is(.booking-page, .manual-booking-page) .booking-date-time-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-}
-@media (max-width: 400px) {
- :is(.booking-page, .manual-booking-page) .booking-time-panel { padding: 12px; }
- :is(.booking-page, .manual-booking-page) .booking-time-panel .time-slots-grid { gap: 8px; }
- :is(.booking-page, .manual-booking-page) .booking-time-card { padding: 10px; }
- :is(.booking-page, .manual-booking-page) .booking-time-card-top strong { font-size: 13px; }
 }
 
 /* Keep native dentist buttons aligned with the existing card layout. */

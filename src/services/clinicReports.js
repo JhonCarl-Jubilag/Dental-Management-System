@@ -20,6 +20,24 @@ const cents = value => {
   if (!Number.isSafeInteger(result)) throw new Error('A billing amount is too large to report accurately.');
   return result;
 };
+
+// Shared table content keeps the screen and downloaded report consistent.
+export const getReportTables = report => [
+  {
+    title: 'Summary',
+    columns: ['Summary', 'Total'],
+    rows: [
+      ['Coverage', report.filters.reportType === 'inventory' ? 'Current active stock' : report.filters.allTime ? 'All records' : `${formatReportDate(report.filters.startDate)} - ${formatReportDate(report.filters.endDate)}`],
+      ...report.summary.map(card => [card.label, card.money ? formatReportCurrency(card.value) : card.value]),
+    ],
+  },
+  ...report.charts.map(group => ({
+    title: group.title.replaceAll(' — bills created in period', '').replaceAll(' (Manila)', ''),
+    columns: ['Category', group.money ? 'Amount' : 'Count'],
+    rows: group.labels.map((label, index) => [label, group.money ? formatReportCurrency(group.values[index]) : group.values[index]]),
+  })),
+  ...report.tables,
+];
 const sum = (rows, field) => rows.reduce((total, row) => total + cents(row[field]), 0) / 100;
 export const formatReportCurrency = value => Number(value).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' });
 export const formatReportDate = value => {
@@ -29,11 +47,12 @@ export const formatReportDate = value => {
 };
 export const defaultReportFilters = (now = new Date()) => {
   const endDate = getClinicDate(now);
-  return { reportType: 'financial', startDate: `${endDate.slice(0, 7)}-01`, endDate, doctorId: 'all', serviceId: 'all' };
+  return { allTime: true, reportType: 'financial', startDate: `${endDate.slice(0, 7)}-01`, endDate, doctorId: 'all', serviceId: 'all' };
 };
 export const validateReportFilters = filters => {
   if (!Object.hasOwn(REPORT_TYPES, filters.reportType)) throw new Error('Choose a valid report type.');
   if (filters.reportType === 'inventory') return null;
+  if (filters.allTime) return { start: null, end: null };
   let start, end;
   try { start = clinicDayBounds(filters.startDate).start; end = clinicDayBounds(filters.endDate).end; }
   catch { throw new Error('Choose valid start and end dates.'); }
@@ -63,14 +82,6 @@ export const readReportRows = async (makeQuery, idField, label, isCurrent = () =
     if (rows.length === expected) return rows;
     if (!data.length || rows.length > expected) throw new Error(`Incomplete ${label}. Please retry.`);
   }
-};
-
-export const loadReportOptions = async (client, isCurrent) => {
-  const [doctors, services] = await Promise.all([
-    readReportRows(() => client.from('doctors').select('doctor_id, first_name, last_name, status', { count: 'exact' }), 'doctor_id', 'dentist filters', isCurrent),
-    readReportRows(() => client.from('services').select('service_id, service_name, status', { count: 'exact' }), 'service_id', 'service filters', isCurrent),
-  ]);
-  return { doctors, services };
 };
 
 const completedRows = (appointments, now) => appointments.filter(row => row.status === 'completed'
@@ -141,7 +152,7 @@ export const buildClinicReport = ({ filters, appointments = [], bills = [], regi
       if (!firstCompleted.has(row.patient_id) || new Date(row.appointment_datetime) < new Date(firstCompleted.get(row.patient_id))) firstCompleted.set(row.patient_id, row.appointment_datetime);
     });
     const bounds = validateReportFilters(filters);
-    const firstInPeriod = [...unique].filter(id => new Date(firstCompleted.get(id)).getTime() >= new Date(bounds.start).getTime()).length;
+    const firstInPeriod = [...unique].filter(id => new Date(firstCompleted.get(id)).getTime() >= (bounds.start ? new Date(bounds.start).getTime() : -Infinity)).length;
     result.summary = [card('Unique patients — recorded completed', unique.size), card('First recorded completed in period', firstInPeriod), card('Previously recorded patients', unique.size - firstInPeriod), card('New registrations — clinic-wide', registrations.length)];
     result.notes.push('Patient activity uses past appointments with the stored completed status. This may be automatic; it is not verified attendance. Each patient is counted once in demographics.');
     result.notes.push('First recorded completed means the earliest retained completed appointment across all dentists/services. Deleted or missing historical records cannot be reconstructed. Registration counts are clinic-wide and are not filtered by dentist or service.');
@@ -211,6 +222,19 @@ export const buildClinicReport = ({ filters, appointments = [], bills = [], regi
     if (rows.some(row => row.value == null)) result.notes.push(`${rows.filter(row => row.value == null).length} item(s) have no recorded unit cost and are excluded from known stock value.`);
     result.tables.push({ title: 'Inventory and reorder review', columns: ['Item', 'Category', 'Quantity', 'Unit', 'Reorder level', 'Status', 'Unit cost', 'Known value'], rows: rows.map(row => [row.item_name, row.category || 'Unspecified', row.stock, row.unit_type || '—', row.reorder, row.state, row.unit_cost == null || row.unit_cost === '' ? 'Not recorded' : formatReportCurrency(row.unit_cost), row.value == null ? 'Not recorded' : formatReportCurrency(row.value)]) });
   }
+  if (filters.allTime) {
+    const label = value => value.replaceAll('in the selected period', '')
+      .replaceAll('in period', '').replaceAll('from this period', '')
+      .replaceAll('— bills created', '').replaceAll('— clinic-wide', '')
+      .replaceAll('¹', '').replace(/\s+/g, ' ').trim();
+    if (filters.reportType === 'patients') {
+      result.summary = result.summary.filter(card => !['First recorded completed in period', 'Previously recorded patients'].includes(card.label));
+    }
+    result.summary = result.summary.map(card => ({ ...card, label: label(card.label) }));
+    result.tables = result.tables.map(table => ({
+      ...table, title: label(table.title), columns: table.columns.map(label),
+    }));
+  }
   return result;
 };
 
@@ -221,23 +245,30 @@ export const loadClinicReport = async (client, filters, { isCurrent = () => true
     const items = await read(() => client.from('inventory').select('item_id, item_name, category, stock_quantity, reorder_level, unit_type, unit_cost', { count: 'exact' }).eq('status', 'active'), 'item_id', 'inventory');
     return buildClinicReport({ filters, items, now });
   }
+  const withinPeriod = (query, column) => bounds.start
+    ? query.gte(column, bounds.start).lt(column, bounds.end)
+    : query;
   const filter = query => {
     if (filters.doctorId !== 'all') query = query.eq('doctor_id', Number(filters.doctorId));
     return query;
   };
   const appointmentQuery = () => {
-    let query = filter(client.from('appointments').select('appointment_id, patient_id, doctor_id, service_id, status, appointment_datetime, appointment_end, scheduled_duration_minutes, created_at, remarks, patients(first_name, last_name, age), doctors(first_name, last_name), services(service_name, status)', { count: 'exact' })
-      .gte('appointment_datetime', bounds.start).lt('appointment_datetime', bounds.end));
+    let query = withinPeriod(filter(client.from('appointments').select('appointment_id, patient_id, doctor_id, service_id, status, appointment_datetime, appointment_end, scheduled_duration_minutes, created_at, remarks, patients(first_name, last_name, age), doctors(first_name, last_name), services(service_name, status)', { count: 'exact' })
+      ), 'appointment_datetime');
     if (filters.serviceId !== 'all') query = query.eq('service_id', Number(filters.serviceId));
     return query;
   };
+  const completedHistoryQuery = () => {
+    const query = client.from('appointments').select('appointment_id, patient_id, status, appointment_datetime, appointment_end', { count: 'exact' }).eq('status', 'completed');
+    return bounds.end ? query.lt('appointment_datetime', bounds.end) : query;
+  };
   const tasks = {};
   if (filters.reportType !== 'financial') tasks.appointments = read(appointmentQuery, 'appointment_id', 'appointments');
-  if (['financial', 'services', 'doctors'].includes(filters.reportType)) tasks.bills = read(() => filter(client.from('billing').select('billing_id, appointment_id, patient_id, doctor_id, total_amount, discount, amount_paid, balance, payment_method, payment_date, created_at, archived, patients(first_name, last_name), doctors(first_name, last_name), appointments(service_id, services(service_name, status))', { count: 'exact' }).gte('created_at', bounds.start).lt('created_at', bounds.end)), 'billing_id', 'billing records');
+  if (['financial', 'services', 'doctors'].includes(filters.reportType)) tasks.bills = read(() => withinPeriod(filter(client.from('billing').select('billing_id, appointment_id, patient_id, doctor_id, total_amount, discount, amount_paid, balance, payment_method, payment_date, created_at, archived, patients(first_name, last_name), doctors(first_name, last_name), appointments(service_id, services(service_name, status))', { count: 'exact' })), 'created_at'), 'billing_id', 'billing records');
   if (filters.reportType === 'services') tasks.services = read(() => client.from('services').select('service_id, service_name, status', { count: 'exact' }), 'service_id', 'service catalogue');
   if (filters.reportType === 'patients') {
-    tasks.registrations = read(() => client.from('patients').select('patient_id, date_created', { count: 'exact' }).gte('date_created', bounds.start).lt('date_created', bounds.end), 'patient_id', 'patient registrations');
-    tasks.history = read(() => client.from('appointments').select('appointment_id, patient_id, status, appointment_datetime, appointment_end', { count: 'exact' }).eq('status', 'completed').lt('appointment_datetime', bounds.end), 'appointment_id', 'completed appointment history');
+    tasks.registrations = read(() => withinPeriod(client.from('patients').select('patient_id, date_created', { count: 'exact' }), 'date_created'), 'patient_id', 'patient registrations');
+    tasks.history = read(() => completedHistoryQuery(), 'appointment_id', 'completed appointment history');
   }
   const entries = await Promise.all(Object.entries(tasks).map(async ([key, promise]) => [key, await promise]));
   const data = Object.fromEntries(entries);

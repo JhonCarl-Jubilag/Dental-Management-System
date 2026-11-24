@@ -5,7 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import { savePatientAppointmentAction } from '../../services/appointmentNotes';
-import { loadDoctorBookingSlots, validateAppointmentReschedule } from '../../services/doctorScheduling';
+import { getBookingInterval, loadDoctorBookingSlots, validateAppointmentReschedule } from '../../services/doctorScheduling';
 import { getAppointmentDuration } from '../../utils/appointmentTiming';
 import { CLINIC_TIME_ZONE, clinicDateTime, formatClinicDate, getClinicDate } from '../../utils/clinicScheduling';
 import { readMyAppointmentTreatments } from '../../services/treatmentRecords';
@@ -231,7 +231,7 @@ const MyAppointmentsContent = () => {
       try {
         const slots = await loadDoctorBookingSlots({
           doctorId: selectedAppointment.doctor_id, serviceId: selectedAppointment.service_id, date: selectedDate,
-          interval: 30, leadMinutes: serviceDuration, excludeAppointmentId: selectedAppointment.appointment_id,
+          interval: getBookingInterval(serviceDuration), leadMinutes: serviceDuration, excludeAppointmentId: selectedAppointment.appointment_id,
         });
         if (!cancelled) setAvailableTimeSlots(slots);
       } catch (error) {
@@ -540,7 +540,7 @@ const MyAppointmentsContent = () => {
               <li>Pending appointments can be edited or cancelled within 1 hour.</li>
               <li>Confirmed appointments require a request at least 24 hours in advance.</li>
               <li>Requests need clinic approval.</li>
-              <li>New appointment time must be at least 1 hour from now (duration‑based buffer applied).</li>
+              <li>Choose a new time at least the service duration from now (for example, 2 hours ahead for a 2-hour service).</li>
               <li>For emergency changes, please contact the clinic directly.</li>
             </ul>
           </div>
@@ -799,7 +799,7 @@ const MyAppointmentsContent = () => {
                 <div className="appointment-detail-row"><strong>Doctor:</strong> {selectedAppointment.doctor_name}</div>
                 <div className="appointment-detail-row"><strong>Date & Time:</strong> {formatDateTime(selectedAppointment.appointment_datetime)}</div>
                 <div className="appointment-detail-row"><strong>Status:</strong> <span className={`appointment-status-badge ${getAppointmentStatusClass(selectedAppointment.status)}`}>{selectedAppointment.status?.toUpperCase()}</span></div>
-                {selectedAppointment.remarks && <div className="appointment-detail-row full-width"><strong>Remarks:</strong> {selectedAppointment.remarks}</div>}
+                {selectedAppointment.remarks && <div className="appointment-detail-row full-width"><strong>Remarks:</strong><div className="appointment-remarks-text">{selectedAppointment.remarks}</div></div>}
                 {selectedAppointment.request_status === 'pending' && (
                   <div className="appointment-detail-row full-width"><strong>Request Status:</strong> Pending approval for {selectedAppointment.request_type === 'reschedule' ? 'reschedule' : 'cancellation'}</div>
                 )}

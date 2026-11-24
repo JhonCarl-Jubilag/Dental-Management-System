@@ -4,7 +4,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, doctorProfileFields } from '../../services/supabase';
-import { loadDoctorBookingSlots } from '../../services/doctorScheduling';
+import { getBookingInterval, loadDoctorBookingSlots } from '../../services/doctorScheduling';
 import { appointmentWriteError, clinicDateTime } from '../../utils/clinicScheduling';
 import BookingCalendar from './BookingCalendar';
 import './bookAppointment.css';
@@ -134,7 +134,7 @@ const BookAppointment = () => {
       const appointmentDateTime = clinicDateTime(selectedDate, selectedTime);
       const slots = await loadDoctorBookingSlots({
         doctorId: selectedDoctorId, serviceId: selectedServiceId, date: selectedDate,
-        interval: 30, leadMinutes: serviceDuration,
+        interval: getBookingInterval(serviceDuration), leadMinutes: serviceDuration,
       });
       if (!slots.some(slot => slot.time === selectedTime)) {
         setSelectedTime('');

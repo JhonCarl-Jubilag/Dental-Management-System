@@ -1,8 +1,28 @@
 import { supabase } from './supabase';
 import { formatClinicTime, getClinicDate, toClinicDateTimeInput } from '../utils/clinicScheduling';
 
-export const loadDoctorBookingMonth = async ({ doctorId, serviceId, month, leadMinutes, interval }) => {
-  const { data, error } = interval === undefined ? await supabase.rpc('get_booking_month_slots', {
+// Confirmed appointments use the same 24-hour eligibility window as patient requests.
+export const isConfirmedRescheduleWindowOpen = (appointment, now = Date.now()) => {
+  const start = Date.parse(appointment?.appointment_datetime);
+  return appointment?.status === 'confirmed' && Number.isFinite(start)
+    && start - Number(now) >= 24 * 60 * 60 * 1000;
+};
+
+export const canClinicRescheduleAppointment = (appointment, now = Date.now()) =>
+  appointment?.status === 'pending' || (
+    isConfirmedRescheduleWindowOpen(appointment, now) && appointment.request_status !== 'pending'
+  );
+
+// Starting-time spacing is separate from the full reserved treatment duration.
+export const getBookingInterval = durationMinutes => {
+  const duration = Number(durationMinutes);
+  if (!Number.isSafeInteger(duration) || duration <= 0) throw new Error('The service duration is unavailable. Contact the clinic.');
+  // Whole-hour treatments use hourly starts; 90-minute treatments need half-hour starts.
+  return duration % 60 === 0 ? 60 : 30;
+};
+
+export const loadDoctorBookingMonth = async ({ doctorId, serviceId, month, leadMinutes, interval, excludeAppointmentId = null }) => {
+  const { data, error } = interval === undefined && excludeAppointmentId == null ? await supabase.rpc('get_booking_month_slots', {
     p_doctor_id: Number(doctorId), p_service_id: Number(serviceId), p_month: month + '-01',
   }) : { error: { code: 'PGRST202' } };
   if (!error) return data || [];
@@ -20,7 +40,7 @@ export const loadDoctorBookingMonth = async ({ doctorId, serviceId, month, leadM
 
   const dates = [...new Set((availability || []).map(row => row.available_date))];
   const days = await Promise.all(dates.map(async date => {
-    const slots = await loadDoctorBookingSlots({ doctorId, serviceId, date, leadMinutes, interval });
+    const slots = await loadDoctorBookingSlots({ doctorId, serviceId, date, leadMinutes, interval, excludeAppointmentId });
     return { booking_date: date, times: slots.map(slot => slot.time) };
   }));
   return days.filter(day => day.times.length > 0);
@@ -70,7 +90,7 @@ export const validateAppointmentReschedule = async ({ appointment, targetDateTim
   }
   const [date, time] = toClinicDateTimeInput(target).split('T');
   const slots = await loadDoctorBookingSlots({
-    doctorId: appointment.doctor_id, serviceId: appointment.service_id, date, interval: 1,
+    doctorId: appointment.doctor_id, serviceId: appointment.service_id, date, interval: getBookingInterval(duration),
     leadMinutes: lead, excludeAppointmentId: appointment.appointment_id, targetTime: time,
   });
   if (!slots.some(slot => slot.time === time)) {

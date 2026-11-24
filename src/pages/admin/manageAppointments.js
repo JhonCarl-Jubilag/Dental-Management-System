@@ -6,13 +6,23 @@ import { useAuth } from '../../contexts/AuthContext';
 import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import { completeFinishedAppointments, cancelExpiredPendingAppointments } from '../../services/appointmentCompletion';
-import { hasAppointmentEnded } from '../../utils/appointmentTiming';
+import BookingCalendar from '../patient/BookingCalendar';
+import { hasAppointmentEnded, getAppointmentDuration } from '../../utils/appointmentTiming';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import { saveAppointmentNote, getAppointmentRequestReason } from '../../services/appointmentNotes';
-import { validateAppointmentReschedule } from '../../services/doctorScheduling';
-import { CLINIC_TIME_ZONE, clinicDateTime, clinicDayBounds, formatClinicDateTime, toClinicDateTimeInput } from '../../utils/clinicScheduling';
+import { canClinicRescheduleAppointment, isConfirmedRescheduleWindowOpen, getBookingInterval, validateAppointmentReschedule } from '../../services/doctorScheduling';
+import { CLINIC_TIME_ZONE, clinicDateTime, clinicDayBounds, formatClinicDateTime } from '../../utils/clinicScheduling';
 import './manageAppointments.css';
+
+const formatDuration = minutes => {
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  return [
+    hours ? hours + (hours === 1 ? ' hour' : ' hours') : '',
+    remaining ? remaining + (remaining === 1 ? ' minute' : ' minutes') : '',
+  ].filter(Boolean).join(' ');
+};
 
 const ManageAppointments = () => {
   const { user, userType, loading: authLoading, signOut } = useAuth();
@@ -50,8 +60,16 @@ const ManageAppointments = () => {
   });
   const [rescheduleForm, setRescheduleForm] = useState({
     appointment_id: '',
-    new_datetime: ''
+    reason: ''
   });
+  const [rescheduleClock, setRescheduleClock] = useState(Date.now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setRescheduleClock(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const rescheduleDuration = getAppointmentDuration(currentAppointment);
   const [rejectReason, setRejectReason] = useState('');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -275,27 +293,37 @@ const ManageAppointments = () => {
   };
 
   const openRescheduleModal = (appointment) => {
+    if (!canClinicRescheduleAppointment(appointment)) {
+      toast.error('Confirmed appointments need at least 24 hours notice and no pending change request.');
+      return;
+    }
     setCurrentAppointment(appointment);
-    setRescheduleForm({ appointment_id: appointment.appointment_id, new_datetime: '' });
+    setRescheduleForm({ appointment_id: appointment.appointment_id, reason: '' });
+    setRescheduleDate('');
+    setRescheduleTime('');
     setShowRescheduleModal(true);
   };
 
   const approveReschedule = async (e) => {
     e.preventDefault();
-    if (!rescheduleForm.new_datetime) {
+    if (!rescheduleDate || !rescheduleTime) {
       toast.error('Please select a new date and time.');
+      return;
+    }
+    const reason = rescheduleForm.reason.trim();
+    if (!reason || reason.length > 2000) {
+      toast.error('Enter a reason for rescheduling of at most 2,000 characters.');
       return;
     }
     if (rescheduleSaving.current) return;
     rescheduleSaving.current = true;
     setSavingReschedule(true);
     try {
-      if (currentAppointment?.status !== 'pending') throw new Error('Reload this pending appointment before rescheduling.');
-      const [date, time] = rescheduleForm.new_datetime.split('T');
+      if (!canClinicRescheduleAppointment(currentAppointment)) throw new Error('This appointment is no longer eligible. Confirmed appointments require at least 24 hours notice and no pending change request.');
       const newTime = await validateAppointmentReschedule({
-        appointment: currentAppointment, targetDateTime: clinicDateTime(date, time), leadMinutes: 60,
+        appointment: currentAppointment, targetDateTime: clinicDateTime(rescheduleDate, rescheduleTime), leadMinutes: null,
       });
-      const newRemarks = `[Admin Action ${new Date().toLocaleString()}]: Rescheduled to ${formatClinicDateTime(newTime)}`;
+      const newRemarks = `[Clinic Reschedule ${formatClinicDateTime(new Date())}]\nPrevious appointment: ${formatClinicDateTime(currentAppointment.appointment_datetime)}\nNew appointment: ${formatClinicDateTime(newTime)}\nReason for rescheduling: ${reason}`;
       await saveAppointmentNote(supabase, currentAppointment, newRemarks, { appointment_datetime: newTime });
       toast.success('Appointment rescheduled!');
       setShowRescheduleModal(false);
@@ -320,6 +348,9 @@ const ManageAppointments = () => {
       if (action === 'approve') {
         if (currentAppointment?.status !== 'confirmed' || currentAppointment.request_status !== 'pending' || currentAppointment.request_type !== 'reschedule') {
           throw new Error('This reschedule request is no longer pending. Refresh the appointment.');
+        }
+        if (!isConfirmedRescheduleWindowOpen(currentAppointment)) {
+          throw new Error('Confirmed appointments cannot be rescheduled with less than 24 hours remaining.');
         }
         const requestedTime = await validateAppointmentReschedule({
           appointment: currentAppointment, targetDateTime: currentAppointment.request_new_datetime, leadMinutes: 0,
@@ -574,6 +605,10 @@ const ManageAppointments = () => {
                           )}
                           {app.status === 'confirmed' && (
                             <>
+                              <button className="btn btn-warning btn-sm"
+                                disabled={!canClinicRescheduleAppointment(app, rescheduleClock)}
+                                title={app.request_status === 'pending' ? 'Review the pending change request first.' : 'Rescheduling requires at least 24 hours before the current appointment.'}
+                                onClick={() => openRescheduleModal(app)}>Reschedule</button>
                               {canMarkCompleted && <button className="btn btn-success btn-sm" onClick={() => handleMarkCompleted(app)}>Mark Completed</button>}
                               {showRescheduleRequest && <button className="btn btn-warning btn-sm" onClick={() => openRescheduleRequestModal(app)}>Review Reschedule Request</button>}
                               {showCancelRequest && <button className="btn btn-danger btn-sm" onClick={() => openCancelRequestModal(app)}>Review Cancellation Request</button>}
@@ -673,14 +708,36 @@ const ManageAppointments = () => {
 
       {showRescheduleModal && (
         <div className="modal active" onClick={e => e.target === e.currentTarget && !savingReschedule && setShowRescheduleModal(false)}>
-          <div className="modal-content">
+          <div className="modal-content clinic-reschedule-dialog">
             <div className="modal-header"><h3>Reschedule Appointment</h3><button disabled={savingReschedule} className="modal-close" onClick={() => setShowRescheduleModal(false)}>&times;</button></div>
             <form onSubmit={approveReschedule}>
               <div className="modal-body">
                 <div className="form-group"><label>Current Time</label><input type="text" className="form-control" value={currentAppointment ? formatClinicDateTime(currentAppointment.appointment_datetime) : ''} disabled /></div>
-                <div className="form-group"><label>New Date & Time (Philippine time)</label><input disabled={savingReschedule} type="datetime-local" className="form-control" value={rescheduleForm.new_datetime} onChange={e => setRescheduleForm({...rescheduleForm, new_datetime: e.target.value})} required min={toClinicDateTimeInput(new Date(Date.now() + 3600000))} /></div>
+                {Number.isSafeInteger(rescheduleDuration) && rescheduleDuration > 0 ? (
+                  <>
+                  <dl className="reschedule-service-summary">
+                    <div><dt>Service</dt><dd>{currentAppointment.services?.service_name || 'Booked service'}</dd></div>
+                    <div><dt>Duration</dt><dd>{formatDuration(rescheduleDuration)}</dd></div>
+                  </dl>
+                  <p className="reschedule-time-notice">Choose a new time at least {formatDuration(rescheduleDuration)} from now.</p>
+                  <BookingCalendar key={currentAppointment.appointment_id}
+                    doctorId={currentAppointment.doctor_id} serviceId={currentAppointment.service_id}
+                    excludeAppointmentId={currentAppointment.appointment_id}
+                    interval={getBookingInterval(rescheduleDuration)} leadMinutes={rescheduleDuration}
+                    date={rescheduleDate} time={rescheduleTime}
+                    setDate={setRescheduleDate} setTime={setRescheduleTime} locked={savingReschedule} />
+                  </>
+                ) : <p role="alert">The booked service duration is unavailable. Reload the appointment before rescheduling.</p>}
+                <div className="form-group">
+                  <label htmlFor="clinic-reschedule-reason">Reason for rescheduling <span aria-hidden="true">*</span></label>
+                  <textarea id="clinic-reschedule-reason" className="form-control" rows={3}
+                    value={rescheduleForm.reason} onChange={e => setRescheduleForm({...rescheduleForm, reason: e.target.value})}
+                    disabled={savingReschedule} required maxLength={2000} aria-describedby="clinic-reschedule-reason-help"
+                    placeholder="Explain why the appointment needs to be moved." />
+                  <small id="clinic-reschedule-reason-help">This reason will be visible to the patient in their appointment details.</small>
+                </div>
               </div>
-              <div className="modal-footer"><button disabled={savingReschedule} type="button" className="btn btn-secondary" onClick={() => setShowRescheduleModal(false)}>Cancel</button><button disabled={savingReschedule} type="submit" className="btn btn-primary">Approve Reschedule</button></div>
+              <div className="modal-footer"><button disabled={savingReschedule} type="button" className="btn btn-secondary" onClick={() => setShowRescheduleModal(false)}>Cancel</button><button disabled={savingReschedule || !rescheduleDate || !rescheduleTime || !canClinicRescheduleAppointment(currentAppointment, rescheduleClock)} type="submit" className="btn btn-primary">Approve Reschedule</button></div>
             </form>
           </div>
         </div>
@@ -698,7 +755,7 @@ const ManageAppointments = () => {
             </div>
             <div className="modal-footer">
               <button disabled={savingReschedule} className="btn btn-danger" onClick={() => handleRescheduleRequest('reject', rejectReason)}>Reject</button>
-              <button disabled={savingReschedule} className="btn btn-success" onClick={() => handleRescheduleRequest('approve')}>Approve</button>
+              <button disabled={savingReschedule || !isConfirmedRescheduleWindowOpen(currentAppointment, rescheduleClock)} title="Approval requires at least 24 hours before the current appointment." className="btn btn-success" onClick={() => handleRescheduleRequest('approve')}>Approve</button>
               <button disabled={savingReschedule} className="btn btn-secondary" onClick={() => setShowRescheduleRequestModal(false)}>Cancel</button>
             </div>
           </div>

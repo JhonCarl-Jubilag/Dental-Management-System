@@ -397,3 +397,45 @@
 .manage-inventory-page .stat-card.warning .stat-number {
   color: var(--clinic-danger);
 }
+fieldset.inventory-form-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+
+.inventory-form-fields .inventory-name-hint {
+  display: block;
+  margin-top: 6px;
+  color: #465c70;
+}
+
+.inventory-form-fields .inventory-name-review {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-inline-start: 3px solid #b87915;
+  border-radius: 6px;
+  background: #fff7e7;
+  color: #60410e;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.inventory-form-fields .inventory-name-review[data-exact="true"] {
+  border-color: #ac4049;
+  background: #fff1f2;
+  color: #762732;
+}
+
+.inventory-form-fields .inventory-name-review p {
+  margin: 3px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.inventory-item-footer {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 600px) {
+  .inventory-form-fields .form-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

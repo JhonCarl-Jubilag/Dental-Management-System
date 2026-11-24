@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
 import Sidebar from '../../components/admin/Sidebar';
-import { loadDoctorBookingSlots } from '../../services/doctorScheduling';
+import { getBookingInterval, loadDoctorBookingSlots } from '../../services/doctorScheduling';
 import { appointmentWriteError, clinicDateTime, formatClinicTime } from '../../utils/clinicScheduling';
 import BookingCalendar from '../patient/BookingCalendar';
 import '../patient/bookAppointment.css';
@@ -144,7 +144,7 @@ const ManualBooking = () => {
       const appointmentDatetime = clinicDateTime(selectedDate, selectedTime);
       const slots = await loadDoctorBookingSlots({
         doctorId: selectedDoctorId, serviceId: selectedServiceId, date: selectedDate,
-        interval: selectedServiceDuration,
+        interval: getBookingInterval(selectedServiceDuration),
       });
       if (!slots.some(slot => slot.time === selectedTime)) {
         setSelectedTime('');
@@ -318,7 +318,7 @@ const ManualBooking = () => {
             {selectedDoctorId && <div className="form-section">
               <h2><i className="fas fa-calendar-alt" /> Select Date & Time</h2>
               <BookingCalendar key={selectedServiceId + ':' + selectedDoctorId} doctorId={selectedDoctorId} serviceId={selectedServiceId}
-                interval={selectedServiceDuration} leadMinutes={0} date={selectedDate} time={selectedTime}
+                interval={getBookingInterval(selectedServiceDuration)} leadMinutes={0} date={selectedDate} time={selectedTime}
                 setDate={setSelectedDate} setTime={setSelectedTime} revision={revision} locked={loading} />
               <div className="duration-info"><i className="fas fa-clock" /> This service takes {selectedServiceDuration} minutes.{selectedTime && ' Selected time: ' + formatClinicTime(selectedTime)}</div>
             </div>}

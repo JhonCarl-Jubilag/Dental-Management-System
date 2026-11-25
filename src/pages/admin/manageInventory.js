@@ -5,7 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '../../contexts/AuthContext';
 import { isClinicUser, isOwner, roleLabel } from '../../utils/accessControl';
 import { supabase } from '../../services/supabase';
-import { cleanInventoryName, normalizeInventoryName, reviewInventoryName, INVENTORY_DUPLICATE_MESSAGE } from '../../services/inventoryNames';
+import { formatInventoryItemCode, cleanInventoryName, normalizeInventoryName, reviewInventoryName, INVENTORY_DUPLICATE_MESSAGE } from '../../services/inventoryNames';
 import Sidebar from '../../components/admin/Sidebar';
 import AdminDataRegion from '../../components/admin/AdminDataRegion';
 import './manageInventory.css';
@@ -274,6 +274,14 @@ const ManageInventory = () => {
     setShowEditModal(false);
     resetForm();
   };
+  const renderItemCodeField = editing => (
+    <div className="form-group inventory-code-field">
+      <label htmlFor="inventory-item-code">Item Code</label>
+      <input id="inventory-item-code" className="form-control" type="text" readOnly
+        value={editing ? formatInventoryItemCode(selectedItem.item_id) : 'Assigned automatically when saved'} />
+    </div>
+  );
+
   const renderLocationField = () => {
     const current = formData.location;
     const currentKey = current.trim().replace(/\s+/g, ' ').toLowerCase();
@@ -474,6 +482,7 @@ const ManageInventory = () => {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>Item Code</th>
                   <th style={{ width: '20%' }}>Item Name</th>
                   <th style={{ width: '10%' }}>Category</th>
                   <th style={{ width: '8%' }}>Stock</th>
@@ -487,12 +496,13 @@ const ManageInventory = () => {
               </thead>
               <tbody>
                 {inventory.length === 0 ? (
-                  <tr><td colSpan="9" className="empty-state">No inventory items found</td></tr>
+                  <tr><td colSpan="10" className="empty-state">No inventory items found</td></tr>
                 ) : (
                   inventory.map(item => {
                     const isLowStock = item.stock_quantity <= item.reorder_level && item.status === 'active';
                     return (
                       <tr key={item.item_id} className={isLowStock ? 'low-stock-row' : ''}>
+                        <td className="inventory-item-code">{formatInventoryItemCode(item.item_id)}</td>
                         <td><strong>{item.item_name}</strong></td>
                         <td><span className="category-badge">{item.category}</span></td>
                         <td className={isLowStock ? 'low-stock-value' : ''}>{item.stock_quantity}</td>
@@ -531,6 +541,7 @@ const ManageInventory = () => {
             <div className="modal-header"><h3>Add New Inventory Item</h3><button className="modal-close" disabled={isSubmitting} onClick={closeItemModal}>&times;</button></div>
             <form onSubmit={handleAddItem}>
               <div className="modal-body"><fieldset className="inventory-form-fields" disabled={isSubmitting}>
+                {renderItemCodeField(false)}
                 <div className="form-row">
                   {renderNameField()}
                   <div className="form-group"><label>Category *</label><select className="form-control" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
@@ -565,6 +576,7 @@ const ManageInventory = () => {
             <div className="modal-header"><h3>Edit Item</h3><button className="modal-close" disabled={isSubmitting} onClick={closeItemModal}>&times;</button></div>
             <form onSubmit={handleEditItem}>
               <div className="modal-body"><fieldset className="inventory-form-fields" disabled={isSubmitting}>
+                {renderItemCodeField(true)}
                 <div className="form-row">
                   {renderNameField()}
                   <div className="form-group"><label>Category *</label><select className="form-control" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>

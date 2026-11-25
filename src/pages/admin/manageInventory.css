@@ -439,3 +439,14 @@ fieldset.inventory-form-fields { border: 0; padding: 0; margin: 0; min-width: 0;
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.manage-inventory-page .inventory-item-code {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--clinic-navy);
+}
+.inventory-form-fields .inventory-code-field input {
+  background: #f4f8fb;
+  color: var(--clinic-muted);
+}

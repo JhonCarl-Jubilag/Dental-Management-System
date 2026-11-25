@@ -1,3 +1,10 @@
+// The database-generated primary key is the permanent inventory identifier.
+// Format as text to preserve long IDs and keep restored records' codes stable.
+export const formatInventoryItemCode = itemId => {
+  const id = String(itemId ?? '');
+  return /^[1-9]\d*$/.test(id) ? 'INV-' + id.padStart(4, '0') : '—';
+};
+
 // Keep this whitespace/case rule aligned with normalized_inventory_item_name in SQL.
 export const normalizeInventoryName = value => String(value ?? '').replace(/\u00a0/g, ' ')
   .replace(/[ \t\r\n\f\v]+/g, ' ').trim().toLowerCase();

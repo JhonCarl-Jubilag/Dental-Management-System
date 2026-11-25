@@ -1,3 +1,4 @@
+import { formatInventoryItemCode } from './inventoryNames';
 import { clinicDayBounds, getClinicDate, CLINIC_TIME_ZONE } from '../utils/clinicScheduling';
 
 export const REPORT_TYPES = {
@@ -220,7 +221,7 @@ export const buildClinicReport = ({ filters, appointments = [], bills = [], regi
     result.summary = [card('Active inventory items', rows.length), card('Low stock (excluding zero)', rows.filter(row => row.state === 'Low stock').length), card('Out of stock', rows.filter(row => row.stock === 0).length), card('Known stock value', rows.reduce((total, row) => total + Math.round((row.value || 0) * 100), 0) / 100, true)];
     result.notes.push('Current active stock snapshot at generation time. Date, dentist and service filters do not apply. Values are quantity × recorded unit cost; missing costs are excluded. This is not historical stock consumption or profit.');
     if (rows.some(row => row.value == null)) result.notes.push(`${rows.filter(row => row.value == null).length} item(s) have no recorded unit cost and are excluded from known stock value.`);
-    result.tables.push({ title: 'Inventory and reorder review', columns: ['Item', 'Category', 'Quantity', 'Unit', 'Reorder level', 'Status', 'Unit cost', 'Known value'], rows: rows.map(row => [row.item_name, row.category || 'Unspecified', row.stock, row.unit_type || '—', row.reorder, row.state, row.unit_cost == null || row.unit_cost === '' ? 'Not recorded' : formatReportCurrency(row.unit_cost), row.value == null ? 'Not recorded' : formatReportCurrency(row.value)]) });
+    result.tables.push({ title: 'Inventory and reorder review', columns: ['Item Code', 'Item', 'Category', 'Quantity', 'Unit', 'Reorder level', 'Status', 'Unit cost', 'Known value'], rows: rows.map(row => [formatInventoryItemCode(row.item_id), row.item_name, row.category || 'Unspecified', row.stock, row.unit_type || '—', row.reorder, row.state, row.unit_cost == null || row.unit_cost === '' ? 'Not recorded' : formatReportCurrency(row.unit_cost), row.value == null ? 'Not recorded' : formatReportCurrency(row.value)]) });
   }
   if (filters.allTime) {
     const label = value => value.replaceAll('in the selected period', '')
